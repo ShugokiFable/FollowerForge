@@ -22,3 +22,8 @@ Update.esm
 Dawnguard.esm
 HearthFires.esm
 Dragonborn.esm
+# Follower Forge local build/publish artifacts (release ZIPs live on GitHub Releases)
+publish-ui/
+publish-cli/
+release-stage/
+FollowerForge-*.zip
