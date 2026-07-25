@@ -140,11 +140,11 @@ Completeness audit (asked to double-check nothing was forgotten) - gaps found an
     masters Skyrim.esm + SOSVoices.esm, SHARING_REQUIRES names the mod and its Vortex folder,
     voice files confirmed PRESENT inside the BSA, ship-gate PASS.
   - Tests 77 -> 83.
+  GitHub (product version 2.0.0 — not Skyrim Forge 4.x):
+  - Repo: https://github.com/ShugokiFable/FollowerForge
+  - Tag: v2.0.0 on the completeness-audit commit (marriage + loadout + body + 83 tests)
+  - Release asset: FollowerForge-2.0.0-win-x64.zip (self-contained win-x64)
   STILL OPEN (deliberately, not forgotten):
-  - No GitHub Release exists: the repo is pushed (ShugokiFable/FollowerForge, commit 95f1bae
-    "Release Follower Forge 2.0.0") but `git tag` is empty, so the 1.0 release asked for earlier
-    was never created and 2.0.0 has none either. Publishing one is outward-facing; awaiting the
-    user's go-ahead.
   - Level scaling and follower-framework integration are profile-only (sensible defaults used);
     not exposed in the wizard.
   - OutputStrategy now overlaps HubMode; kept because SharedHub still drives the hub keyword.
@@ -154,7 +154,6 @@ Notes:
     checks live in Validation/EspHeaderValidator.cs and ran green.
   - UNPROVEN: in-game recruit/trade/wait/dismiss and the follower actually standing in the inn.
     Requires launching Skyrim.
-  - NEXT: free-hub default (MAW Assets + Naz's Asset Collection) and build-your-own-hub.
 ================================================================================
 ## [1.0.0] — 2026-07-17 (Phases 0–6 complete — initial release)
 Agent: Claude

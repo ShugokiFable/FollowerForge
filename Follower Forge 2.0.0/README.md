@@ -25,11 +25,11 @@ Requires a Vortex-managed Skyrim Special Edition / Anniversary Edition install.
 
 | Step | What you choose |
 |---|---|
-| **Who she is** | Name, sex, and whether she can die. Protected is the default: only you can kill her. |
-| **Her look** | A face you exported from RaceMenu, plus her race. Vanilla races are listed first; custom races sit behind a checkbox because they become a requirement for anyone you share her with. |
+| **Who she is** | Name, sex, whether she can die (protected is the default), and optional **marriageable**. |
+| **Her look** | A face you exported from RaceMenu, her race (vanilla first; custom races opt-in), and optional **body** skin armor. Leave body unset and she inherits her race default — usually your installed body replacer. |
 | **Her voice** | Voices marked **FULL FOLLOWER** already have every recruit / trade / wait line. **SOS PACK** voices come from the Simply Open Source Voice Pack. Anything unverified is labelled honestly rather than hidden. |
 | **How she fights** | Her class and combat style. Every style in your load order appears, including ones added by combat overhauls, with plain-English tags. You can copy a style into her plugin to tweak later — the original is never edited. |
-| **What she wears** | Any outfit from your installed armour mods. |
+| **What she wears** | Any outfit from your installed armour mods, plus multi-select **weapons and spells**. |
 | **Where she waits** | See below. |
 | **Build her** | A summary, the build, and a plain list of anything worth knowing. |
 

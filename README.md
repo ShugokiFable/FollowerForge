@@ -27,6 +27,8 @@ hardcoded Whiterun spawn. **2.0 is a follower-maker.**
 | UI | Discover / Index / Search / Build panels | **7-step wizard** — real names only |
 | Placement | One hardcoded Whiterun cell | **3,000+ spawn spots** harvested from your mods |
 | Face pipeline | RaceMenu export + FaceGen | Same, plus **slot-aware** missing-texture warnings |
+| Loadout / body | Not in the wizard | **Weapons + spells** multi-select; optional **body** skin (or race default) |
+| Marriage | Profile field ignored | **Marriageable** adds PotentialMarriageFaction for real |
 | Asset hubs | Manual / advanced | **Free-hub default** (Naz skin maps when installed) + optional own-hub with permission gate |
 | Races | Every RACE record | **Vanilla first**; custom races opt-in (they become requirements) |
 | Sharing report | Masters list | **"Needs nothing but base game"** or exact mod requirements |
@@ -67,11 +69,11 @@ CHANGELOG.txt               full history
 
 | Step | What you choose |
 |---|---|
-| **Who she is** | Name, sex, protected-by-default |
-| **Her look** | RaceMenu head export + race (vanilla first) |
+| **Who she is** | Name, sex, protected-by-default, optional **marriageable** |
+| **Her look** | RaceMenu head export + race (vanilla first) + optional **body** (skin armor; unset = race default / your body replacer) |
 | **Her voice** | FULL FOLLOWER / SOS PACK / unverified — labelled honestly |
 | **How she fights** | Class + combat style (clone into her plugin; originals never edited) |
-| **What she wears** | Any outfit from your installed armour mods |
+| **What she wears** | Outfit plus multi-select **weapons and spells** loadout |
 | **Where she waits** | Searchable location library from real NPC placements |
 | **Build her** | Summary, build, and a plain list of anything worth knowing |
 
