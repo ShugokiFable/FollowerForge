@@ -17,22 +17,21 @@ plugin and an installable mod folder.
 
 ---
 
-## What's new in 2.0
+## What's in 2.0
 
-Version 1 was an engineer's tool: hand-written JSON profiles, raw FormKeys, and a single
-hardcoded Whiterun spawn. **2.0 is a follower-maker.**
+**2.0 is the first real follower-maker release** (earlier prototype snapshots were withdrawn).
 
-| | 1.0 | **2.0** |
-|---|---|---|
-| UI | Discover / Index / Search / Build panels | **7-step wizard** — real names only |
-| Placement | One hardcoded Whiterun cell | **3,000+ spawn spots** harvested from your mods |
-| Face pipeline | RaceMenu export + FaceGen | Same, plus **slot-aware** missing-texture warnings |
-| Loadout / body | Not in the wizard | **Weapons + spells** multi-select; optional **body** skin (or race default) |
-| Marriage | Profile field ignored | **Marriageable** adds PotentialMarriageFaction for real |
-| Asset hubs | Manual / advanced | **Free-hub default** (Naz skin maps when installed) + optional own-hub with permission gate |
-| Races | Every RACE record | **Vanilla first**; custom races opt-in (they become requirements) |
-| Sharing report | Masters list | **"Needs nothing but base game"** or exact mod requirements |
-| Ship form | Self-contained zip | **`Follower Forge.exe`** + CLI, no .NET install needed |
+| | **2.0** |
+|---|---|
+| UI | **7-step wizard** — real names only |
+| Placement | **3,000+ spawn spots** harvested from your mods |
+| Face pipeline | RaceMenu export + FaceGen + **slot-aware** missing-texture warnings |
+| Loadout / body | **Weapons + spells** multi-select; optional **body** skin (or race default) |
+| Marriage | **Marriageable** adds PotentialMarriageFaction for real |
+| Asset hubs | **Free-hub default** (Naz skin maps when installed) + optional own-hub with permission gate |
+| Races | **Vanilla first**; custom races opt-in (they become requirements) |
+| Sharing report | **"Needs nothing but base game"** or exact mod requirements |
+| Ship form | **`Follower Forge.exe`** + CLI, no .NET install needed |
 
 ---
 
