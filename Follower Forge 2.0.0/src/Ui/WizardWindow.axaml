@@ -137,6 +137,8 @@
           <ComboBoxItem>Essential — cannot die at all</ComboBoxItem>
           <ComboBoxItem>Mortal — she can die permanently</ComboBoxItem>
         </ComboBox>
+        <CheckBox x:Name="MarriageBox" Margin="0,14,0,0"
+                  Content="She can be married (needs a voice that has marriage lines)"/>
       </StackPanel>
 
       <!-- 2 look -->
@@ -185,12 +187,22 @@
       </Grid>
 
       <!-- 5 gear -->
-      <Grid x:Name="Page4" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*">
-        <TextBlock Grid.Row="0" Classes="h1" Text="What does she wear?"/>
+      <Grid x:Name="Page4" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,2*,Auto,Auto,3*,Auto,Auto,2*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="What does she wear and carry?"/>
         <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
-                   Text="An outfit is what she spawns wearing. Anything from your installed armour mods is here."/>
-        <TextBox Grid.Row="2" x:Name="OutfitSearch" Margin="0,10,0,0" PlaceholderText="search outfits…" KeyUp="OnOutfitSearch"/>
-        <ListBox Grid.Row="3" x:Name="OutfitList" Margin="0,6,0,0"/>
+                   Text="The outfit is what she spawns wearing. Weapons and spells are optional — followers happily use whatever you hand them later."/>
+
+        <TextBlock Grid.Row="2" Classes="label" Text="Outfit"/>
+        <TextBox Grid.Row="3" x:Name="OutfitSearch" PlaceholderText="search outfits…" KeyUp="OnOutfitSearch"/>
+        <ListBox Grid.Row="4" x:Name="OutfitList" Margin="0,6,0,0"/>
+
+        <TextBlock Grid.Row="5" Classes="label" Text="Weapons she starts with (optional, pick any number)"/>
+        <TextBox Grid.Row="6" x:Name="WeaponSearch" PlaceholderText="search weapons…" KeyUp="OnWeaponSearch"/>
+        <ListBox Grid.Row="7" x:Name="WeaponList" Margin="0,6,0,0" SelectionMode="Multiple"/>
+
+        <TextBlock Grid.Row="8" Classes="label" Text="Spells she knows (optional)"/>
+        <TextBox Grid.Row="9" x:Name="SpellSearch" PlaceholderText="search spells…" KeyUp="OnSpellSearch"/>
+        <ListBox Grid.Row="10" x:Name="SpellList" Margin="0,6,0,0" SelectionMode="Multiple"/>
       </Grid>
 
       <!-- 6 place -->

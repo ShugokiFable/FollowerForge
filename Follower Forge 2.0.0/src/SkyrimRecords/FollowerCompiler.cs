@@ -85,16 +85,39 @@ public sealed class FollowerCompiler(ILogger log)
             }
         }
 
+        // Body: only pin a skin when asked. Left alone she inherits her race's default skin,
+        // which is whatever body replacer the player has installed.
+        if (profile.SkinArmor is { } skin)
+            npc.WornArmor.SetTo(FormKey.Factory(skin.FormKey));
+
         // Outfit or explicit inventory.
         if (profile.Outfit is { } outfit)
             npc.DefaultOutfit.SetTo(FormKey.Factory(outfit.FormKey));
-        foreach (var item in profile.InventoryItems)
-            npc.Items!.Add(new ContainerEntry { Item = new ContainerItem { Item = FormKey.Factory(item.FormKey).ToLink<IItemGetter>(), Count = 1 } });
+        // These three lists are null on a fresh NPC — they have to be created before anything
+        // can be added, or handing her a weapon throws instead of arming her.
+        if (profile.InventoryItems.Count > 0)
+        {
+            npc.Items ??= [];
+            foreach (var item in profile.InventoryItems)
+                npc.Items.Add(new ContainerEntry
+                {
+                    Item = new ContainerItem { Item = FormKey.Factory(item.FormKey).ToLink<IItemGetter>(), Count = 1 },
+                });
+        }
 
-        foreach (var spell in profile.Spells)
-            npc.ActorEffect!.Add(FormKey.Factory(spell.FormKey).ToLink<ISpellRecordGetter>());
-        foreach (var perk in profile.Perks)
-            npc.Perks!.Add(new PerkPlacement { Perk = FormKey.Factory(perk.FormKey).ToLink<IPerkGetter>(), Rank = 1 });
+        if (profile.Spells.Count > 0)
+        {
+            npc.ActorEffect ??= [];
+            foreach (var spell in profile.Spells)
+                npc.ActorEffect.Add(FormKey.Factory(spell.FormKey).ToLink<ISpellRecordGetter>());
+        }
+
+        if (profile.Perks.Count > 0)
+        {
+            npc.Perks ??= [];
+            foreach (var perk in profile.Perks)
+                npc.Perks.Add(new PerkPlacement { Perk = FormKey.Factory(perk.FormKey).ToLink<IPerkGetter>(), Rank = 1 });
+        }
 
         // Shared-hub membership: carry the hub's marker keyword so the follower masters the hub.
         if (profile.Strategy == Domain.OutputStrategy.SharedHub && profile.HubPluginName is { } hub)
@@ -108,6 +131,14 @@ public sealed class FollowerCompiler(ILogger log)
         npc.Factions.Add(new RankPlacement { Faction = VanillaForms.PotentialFollowerFaction.ToLink<IFactionGetter>(), Rank = 0 });
         npc.Factions.Add(new RankPlacement { Faction = VanillaForms.CurrentFollowerFaction.ToLink<IFactionGetter>(), Rank = -1 });
         npc.Factions.Add(new RankPlacement { Faction = VanillaForms.PlayerFaction.ToLink<IFactionGetter>(), Rank = 0 });
+
+        // Marriage is gated on this faction; without it the courtship dialogue never appears.
+        if (profile.Marriageable)
+            npc.Factions.Add(new RankPlacement
+            {
+                Faction = VanillaForms.PotentialMarriageFaction.ToLink<IFactionGetter>(),
+                Rank = 0,
+            });
 
         // AI values.
         npc.AIData ??= new AIData();

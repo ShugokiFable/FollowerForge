@@ -122,6 +122,32 @@ Asset hubs (free-hub default + build-your-own):
     exists, so FindControl threw "Could not find parent name scope" and the app died on start.
     Guarded with a _ready flag set after AvaloniaXamlLoader.Load.
   - Tests 56 -> 77. Release build 0 warnings / 0 errors.
+Completeness audit (asked to double-check nothing was forgotten) - gaps found and closed:
+  - SILENT NO-OP FIXED: `Marriageable` existed on the profile and the compiler ignored it, so
+    ticking it did nothing. Now adds PotentialMarriageFaction rank 0. FormID verified from the
+    live load order as 019809:Skyrim.esm (the same query re-confirmed PotentialFollowerFaction
+    05C84D, which was already hardcoded correctly).
+  - LATENT CRASH FIXED: npc.Items / ActorEffect / Perks are null on a fresh NPC and the code used
+    `!` (null-forgiving) instead of creating them — any profile carrying weapons, spells or perks
+    threw NullReferenceException mid-build. Never hit before because nothing could set them.
+    Caught by the new tests the moment the wizard could.
+  - "loadout" (was missing): step 5 now offers multi-select weapons and spells alongside outfit.
+  - "body too" (was missing): profile gains SkinArmor -> NPC.WornArmor. Left unset she inherits
+    her race's default skin, i.e. whatever body replacer the player has — which is what most
+    people want. BodySlide *builds* remain outside this tool by nature.
+  - Marriage checkbox added to step 1.
+  - SOS voice proven end-to-end (was labelled but never built): follower with VP_11_Aria ->
+    masters Skyrim.esm + SOSVoices.esm, SHARING_REQUIRES names the mod and its Vortex folder,
+    voice files confirmed PRESENT inside the BSA, ship-gate PASS.
+  - Tests 77 -> 83.
+  STILL OPEN (deliberately, not forgotten):
+  - No GitHub Release exists: the repo is pushed (ShugokiFable/FollowerForge, commit 95f1bae
+    "Release Follower Forge 2.0.0") but `git tag` is empty, so the 1.0 release asked for earlier
+    was never created and 2.0.0 has none either. Publishing one is outward-facing; awaiting the
+    user's go-ahead.
+  - Level scaling and follower-framework integration are profile-only (sensible defaults used);
+    not exposed in the wizard.
+  - OutputStrategy now overlaps HubMode; kept because SharedHub still drives the hub keyword.
 Nexus: NO (local tool)
 Notes:
   - The external skyrim-ship-gate script is no longer present in the skill library; the same

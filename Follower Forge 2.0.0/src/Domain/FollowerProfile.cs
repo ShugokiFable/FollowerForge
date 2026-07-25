@@ -99,6 +99,13 @@ public sealed record FollowerProfile
     public CombatStyleChoice? CombatStyle { get; init; }
     /// <summary>OTFT to wear, or null when using explicit inventory.</summary>
     public RecordRef? Outfit { get; init; }
+
+    /// <summary>
+    /// Her body: a skin ARMO assigned to the NPC (WornArmor). Leave null and she uses her race's
+    /// default skin — i.e. whatever body replacer the player has installed, which is usually
+    /// what you want. Set it only to pin her to a specific body/skin record.
+    /// </summary>
+    public RecordRef? SkinArmor { get; init; }
     public IReadOnlyList<RecordRef> InventoryItems { get; init; } = [];
     public IReadOnlyList<RecordRef> Spells { get; init; } = [];
     public IReadOnlyList<RecordRef> Perks { get; init; } = [];

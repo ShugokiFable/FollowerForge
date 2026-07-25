@@ -26,6 +26,7 @@ public partial class WizardWindow : Window
 
     // Full lists, kept so the search boxes can filter without touching the database again.
     private IReadOnlyList<PickerItem> _voices = [], _classes = [], _styles = [], _outfits = [];
+    private IReadOnlyList<PickerItem> _weapons = [], _spells = [];
     private IReadOnlyList<FaceItem> _faces = [];
     // Races are split: ten vanilla by default, hundreds of custom ones only on request.
     private IReadOnlyList<PickerItem> _vanillaRaces = [], _customRaces = [];
@@ -119,6 +120,8 @@ public partial class WizardWindow : Window
             .Select(r => new PickerItem(r.Name, r.FormKey, r.Note)).ToList();
         _classes = Grab(IndexedRecordType.Class);
         _outfits = Grab(IndexedRecordType.Outfit);
+        _weapons = Grab(IndexedRecordType.Weapon);
+        _spells = Grab(IndexedRecordType.Spell);
         _styles = Grab(IndexedRecordType.CombatStyle, r => CombatTags(r) ?? SourceOf(r));
         _voices = db.SearchRecords(IndexedRecordType.VoiceType, null, 20000)
             .Where(r => !string.IsNullOrWhiteSpace(r.EditorId))
@@ -136,6 +139,8 @@ public partial class WizardWindow : Window
             Fill("OutfitList", _outfits, "Farm");
             Fill("CstyList", _styles, null);
             Fill("VoiceList", _voices, null);
+            Fill("WeaponList", _weapons, null);
+            Fill("SpellList", _spells, null);
             Ctl<ListBox>("FaceList").ItemsSource = _faces;
         });
     }
@@ -215,6 +220,8 @@ public partial class WizardWindow : Window
     private void OnClassSearch(object? s, RoutedEventArgs e) => Refilter("ClassSearch", "ClassList", _classes);
     private void OnCstySearch(object? s, RoutedEventArgs e) => Refilter("CstySearch", "CstyList", _styles);
     private void OnOutfitSearch(object? s, RoutedEventArgs e) => Refilter("OutfitSearch", "OutfitList", _outfits);
+    private void OnWeaponSearch(object? s, RoutedEventArgs e) => Refilter("WeaponSearch", "WeaponList", _weapons);
+    private void OnSpellSearch(object? s, RoutedEventArgs e) => Refilter("SpellSearch", "SpellList", _spells);
     private void OnPlaceSearch(object? s, RoutedEventArgs e) => FillPlaces(Ctl<TextBox>("PlaceSearch").Text);
 
     private void OnNameTyped(object? s, RoutedEventArgs e) => SyncPluginName();
@@ -290,6 +297,13 @@ public partial class WizardWindow : Window
 
     private PickerItem? Picked(string listName) => Ctl<ListBox>(listName).SelectedItem as PickerItem;
 
+    /// <summary>Multi-select lists (weapons, spells) — empty when nothing was chosen.</summary>
+    private IReadOnlyList<RecordRef> PickedMany(string listName) =>
+        (Ctl<ListBox>(listName).SelectedItems ?? new List<object>())
+            .OfType<PickerItem>()
+            .Select(p => new RecordRef(p.FormKey))
+            .ToList();
+
     private string Summary()
     {
         SyncPluginName();
@@ -350,6 +364,9 @@ public partial class WizardWindow : Window
                 : null,
             Protected = mortality == 0,
             Essential = mortality == 1,
+            Marriageable = Ctl<CheckBox>("MarriageBox").IsChecked == true,
+            InventoryItems = PickedMany("WeaponList"),
+            Spells = PickedMany("SpellList"),
             Ai = new AiValues
             {
                 Aggression = temper == 2 ? (byte)1 : (byte)0,

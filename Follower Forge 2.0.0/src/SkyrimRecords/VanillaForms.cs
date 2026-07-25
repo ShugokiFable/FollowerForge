@@ -19,6 +19,8 @@ public static class VanillaForms
     public static readonly FormKey CurrentFollowerFaction = K(0x0005C84E);   // rank -1 until hired
     public static readonly FormKey DismissedFollowerFaction = K(0x0005C84C);
     public static readonly FormKey PlayerFaction = K(0x000000DB);
+    /// <summary>Gates the "are you interested in me?" dialogue (with an Amulet of Mara).</summary>
+    public static readonly FormKey PotentialMarriageFaction = K(0x00019809);
 
     /// <summary>The Player NPC (RELA parent side); relationships link this to the follower.</summary>
     public static readonly FormKey PlayerNpc = K(0x00000007);
