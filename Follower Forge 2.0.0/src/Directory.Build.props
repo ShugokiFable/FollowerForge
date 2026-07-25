@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <!-- keep builds reproducible: no machine paths baked into PDBs -->
+    <PathMap>$(MSBuildThisFileDirectory)=/src/</PathMap>
+    <!-- MSB3246: NiflySharp ships the native niflycpp.dll inside lib/net10.0; MSBuild warns it has
+         no managed metadata. The file is required at runtime and cannot be restructured downstream. -->
+    <MSBuildWarningsAsMessages>MSB3246</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- DotNetZip is a transitive Mutagen dependency; the package is discontinued and no patched
+         version exists. Follower Forge never feeds untrusted zip archives through it. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-xhg6-9j5j-w4vf" />
+  </ItemGroup>
+</Project>

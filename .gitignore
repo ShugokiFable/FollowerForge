@@ -26,4 +26,8 @@ Dragonborn.esm
 publish-ui/
 publish-cli/
 release-stage/
+dist/
+**/dist/
 FollowerForge-*.zip
+# Promo / local scratch (not ship source)
+Gemini_Generated_Image_*.png

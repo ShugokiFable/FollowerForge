@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\FollowerForge.Domain.csproj" />
+    <ProjectReference Include="..\ModManagers\FollowerForge.ModManagers.csproj" />
+    <ProjectReference Include="..\SkyrimRecords\FollowerForge.SkyrimRecords.csproj" />
+    <ProjectReference Include="..\AssetIndex\FollowerForge.AssetIndex.csproj" />
+    <ProjectReference Include="..\FaceGen\FollowerForge.FaceGen.csproj" />
+    <ProjectReference Include="..\Validation\FollowerForge.Validation.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+

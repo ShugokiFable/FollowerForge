@@ -6,12 +6,15 @@
 | **Clone** | `git clone https://github.com/ShugokiFable/FollowerForge.git` |
 | **Account** | ShugokiFable |
 | **Default branch** | `main` |
-| **Owner work root** | `Z:\Backup\!Skyrim AE\z1ClaudeWork` |
+| **Owner work root** | workspace `Follower Forge` (versioned snapshots under this folder) |
+| **Current ship tree** | `Follower Forge 2.0.0/` (see `CURRENT.txt`) |
 | **This folder** | canonical publish home for this mod |
 
 ## What to push
 
-Publish Follower Forge CURRENT: src/ + docs/ (no bin/obj).
+Publish Follower Forge **CURRENT** snapshot: `src/`, `docs/`, build/publish scripts,
+`README.md`, `VERSION.txt` (no `bin/`, `obj/`, `dist/`). Root `README.md` + `CHANGELOG.txt`
++ `CURRENT.txt` describe the active release.
 
 ## Agent update checklist
 

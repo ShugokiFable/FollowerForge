@@ -1,0 +1,243 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FollowerForge.Ui.WizardWindow"
+        Width="1180" Height="820" MinWidth="900" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/appicon.ico"
+        Title="Follower Forge"
+        Background="#16161b">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="23"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#e8c877"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0aa"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="MaxWidth" Value="820"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TextBlock.step">
+      <Setter Property="Foreground" Value="#8b919b"/>
+      <Setter Property="Padding" Value="16,11"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="TextBlock.step.active">
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+      <Setter Property="Margin" Value="0,14,0,4"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <!-- Roomy rows: the default list packs lines together and is hard to scan. -->
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="12,9"/>
+      <Setter Property="MinHeight" Value="38"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="ListBoxItem:nth-child(2n)">
+      <Setter Property="Background" Value="#15151b"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="TextElement.Foreground" Value="#16161b"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Padding" Value="18,9"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <!-- step rail -->
+    <Border DockPanel.Dock="Left" Width="210" Background="#1d1d24">
+      <DockPanel Margin="0,20,0,14">
+        <TextBlock DockPanel.Dock="Top" Text="FOLLOWER FORGE" Foreground="#e8c877"
+                   FontWeight="Bold" FontSize="13" Margin="16,0,0,18"/>
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock x:Name="Step0" Classes="step" Tag="0" PointerPressed="OnStepClicked" Cursor="Hand" Text="1   Who she is"/>
+          <TextBlock x:Name="Step1" Classes="step" Tag="1" PointerPressed="OnStepClicked" Cursor="Hand" Text="2   Her look"/>
+          <TextBlock x:Name="Step2" Classes="step" Tag="2" PointerPressed="OnStepClicked" Cursor="Hand" Text="3   Her voice"/>
+          <TextBlock x:Name="Step3" Classes="step" Tag="3" PointerPressed="OnStepClicked" Cursor="Hand" Text="4   How she fights"/>
+          <TextBlock x:Name="Step4" Classes="step" Tag="4" PointerPressed="OnStepClicked" Cursor="Hand" Text="5   What she wears"/>
+          <TextBlock x:Name="Step5" Classes="step" Tag="5" PointerPressed="OnStepClicked" Cursor="Hand" Text="6   Where she waits"/>
+          <TextBlock x:Name="Step6" Classes="step" Tag="6" PointerPressed="OnStepClicked" Cursor="Hand" Text="7   Build her"/>
+        </StackPanel>
+        <TextBlock x:Name="EnvLine" Classes="hint" DockPanel.Dock="Bottom" FontSize="11.5"
+                   Margin="16,0,12,0" Text="Starting up…"/>
+      </DockPanel>
+    </Border>
+
+    <!-- footer -->
+    <Border DockPanel.Dock="Bottom" Background="#1d1d24" Padding="24,14">
+      <DockPanel>
+        <TextBlock x:Name="StatusLine" Classes="hint" VerticalAlignment="Center"/>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10"
+                    HorizontalAlignment="Right">
+          <Button x:Name="BackButton" Content="◀  Back" Click="OnBack"/>
+          <Button x:Name="NextButton" Classes="primary" Content="Next  ▶" Click="OnNext"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- pages: each is a Grid whose list rows are '*' so they grow with the window -->
+    <Panel Margin="28,22,28,10">
+
+      <!-- 1 identity -->
+      <StackPanel x:Name="Page0" Spacing="2">
+        <TextBlock Classes="h1" Text="Who is she?"/>
+        <TextBlock Classes="hint" Text="A name is enough to start — everything else has a sensible default."/>
+        <TextBlock Classes="label" Text="Name"/>
+        <TextBox x:Name="NameBox" Width="380" HorizontalAlignment="Left" PlaceholderText="e.g. Aria"
+                 KeyUp="OnNameTyped"/>
+        <TextBlock Classes="label" Text="Plugin file (filled in for you)"/>
+        <TextBox x:Name="PluginBox" Width="380" HorizontalAlignment="Left" IsReadOnly="True"
+                 PlaceholderText="appears once you type a name"/>
+        <TextBlock Classes="label" Text="Sex"/>
+        <ComboBox x:Name="SexBox" Width="240" HorizontalAlignment="Left" SelectedIndex="0">
+          <ComboBoxItem>Female</ComboBoxItem>
+          <ComboBoxItem>Male</ComboBoxItem>
+        </ComboBox>
+        <TextBlock Classes="label" Text="Survivability"/>
+        <ComboBox x:Name="MortalBox" Width="380" HorizontalAlignment="Left" SelectedIndex="0">
+          <ComboBoxItem>Protected — only you can kill her (recommended)</ComboBoxItem>
+          <ComboBoxItem>Essential — cannot die at all</ComboBoxItem>
+          <ComboBoxItem>Mortal — she can die permanently</ComboBoxItem>
+        </ComboBox>
+      </StackPanel>
+
+      <!-- 2 look -->
+      <Grid x:Name="Page1" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,2*,Auto,Auto,Auto,3*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="What does she look like?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Pick a face you exported from RaceMenu (Sculpt tab → F5 in game). Without one she gets a plain default face."/>
+        <TextBlock Grid.Row="2" Classes="label" Text="Face from RaceMenu"/>
+        <TextBox Grid.Row="3" x:Name="FaceSearch" PlaceholderText="search your exported faces…" KeyUp="OnFaceSearch"/>
+        <ListBox Grid.Row="4" x:Name="FaceList" Margin="0,6,0,0"/>
+        <TextBlock Grid.Row="5" Classes="label" Text="Race"/>
+        <CheckBox Grid.Row="6" x:Name="CustomRacesBox" Content="Also show custom races from my mods (they become requirements)"
+                  IsCheckedChanged="OnCustomRacesToggled"/>
+        <TextBox Grid.Row="7" x:Name="RaceSearch" Margin="0,6,0,0" PlaceholderText="search races…" KeyUp="OnRaceSearch"/>
+        <ListBox Grid.Row="8" x:Name="RaceList" Margin="0,6,0,0"/>
+      </Grid>
+
+      <!-- 3 voice -->
+      <Grid x:Name="Page2" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="How does she sound?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="FULL FOLLOWER voices already have every recruit / trade / wait line. SOS PACK voices come from the Simply Open Source Voice Pack."/>
+        <TextBox Grid.Row="2" x:Name="VoiceSearch" Margin="0,10,0,0" PlaceholderText="search voices…" KeyUp="OnVoiceSearch"/>
+        <ListBox Grid.Row="3" x:Name="VoiceList" Margin="0,6,0,0"/>
+      </Grid>
+
+      <!-- 4 combat -->
+      <Grid x:Name="Page3" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,*,Auto,Auto,Auto">
+        <TextBlock Grid.Row="0" Classes="h1" Text="How does she fight?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Class sets her skills; combat style sets her tactics. Every style in your load order is here, including ones from combat overhauls."/>
+        <TextBlock Grid.Row="2" Classes="label" Text="Class"/>
+        <TextBox Grid.Row="3" x:Name="ClassSearch" PlaceholderText="search classes…" KeyUp="OnClassSearch"/>
+        <ListBox Grid.Row="4" x:Name="ClassList" Margin="0,6,0,0"/>
+        <TextBlock Grid.Row="5" Classes="label" Text="Combat style"/>
+        <TextBox Grid.Row="6" x:Name="CstySearch" PlaceholderText="search combat styles…" KeyUp="OnCstySearch"/>
+        <ListBox Grid.Row="7" x:Name="CstyList" Margin="0,6,0,0"/>
+        <CheckBox Grid.Row="8" x:Name="CloneCstyBox" Margin="0,8,0,0"
+                  Content="Copy it into her plugin so I can tweak it later (never edits the original)"/>
+        <TextBlock Grid.Row="9" Classes="label" Text="Temperament"/>
+        <ComboBox Grid.Row="10" x:Name="TemperBox" Width="380" HorizontalAlignment="Left" SelectedIndex="1">
+          <ComboBoxItem>Cautious — hangs back, avoids fights</ComboBoxItem>
+          <ComboBoxItem>Balanced — fights when you do (recommended)</ComboBoxItem>
+          <ComboBoxItem>Fearless — charges in first</ComboBoxItem>
+        </ComboBox>
+      </Grid>
+
+      <!-- 5 gear -->
+      <Grid x:Name="Page4" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="What does she wear?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="An outfit is what she spawns wearing. Anything from your installed armour mods is here."/>
+        <TextBox Grid.Row="2" x:Name="OutfitSearch" Margin="0,10,0,0" PlaceholderText="search outfits…" KeyUp="OnOutfitSearch"/>
+        <ListBox Grid.Row="3" x:Name="OutfitList" Margin="0,6,0,0"/>
+      </Grid>
+
+      <!-- 6 place -->
+      <Grid x:Name="Page5" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="Where will she be waiting?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Real spots taken from follower mods you already have, so they are known to work. Most need nothing but Skyrim itself."/>
+        <TextBox Grid.Row="2" x:Name="PlaceSearch" Margin="0,10,0,0"
+                 PlaceholderText="search: bannered mare, riften, sleeping giant…" KeyUp="OnPlaceSearch"/>
+        <ListBox Grid.Row="3" x:Name="PlaceList" Margin="0,6,0,0"/>
+      </Grid>
+
+      <!-- 7 build -->
+      <Grid x:Name="Page6" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="Build her"/>
+        <TextBlock Grid.Row="1" x:Name="SummaryText" Classes="hint" Margin="0,10,0,10"
+                   FontFamily="Cascadia Mono,Consolas,monospace"/>
+
+        <TextBlock Grid.Row="2" Classes="label" Text="Her appearance assets"/>
+        <ComboBox Grid.Row="3" x:Name="HubModeBox" Width="620" HorizontalAlignment="Left"
+                  SelectedIndex="0" SelectionChanged="OnHubModeChanged">
+          <ComboBoxItem>Use free modder's resources where they fit (recommended)</ComboBoxItem>
+          <ComboBoxItem>Just point at my installed mods — copy nothing</ComboBoxItem>
+          <ComboBoxItem>Copy her assets into my own asset hub</ComboBoxItem>
+        </ComboBox>
+
+        <StackPanel Grid.Row="4" x:Name="OwnHubPanel" IsVisible="False" Spacing="6" Margin="0,10,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Hub name" Foreground="#d7dbe2" VerticalAlignment="Center"/>
+            <TextBox x:Name="HubPrefixBox" Width="240" PlaceholderText="e.g. KarloAssets"/>
+          </StackPanel>
+          <CheckBox x:Name="HubPermissionBox"
+                    Content="I have checked each source mod's permissions and may redistribute these files."/>
+          <TextBlock Classes="hint" FontSize="12"
+                     Text="Follower Forge cannot verify permissions and will not claim them for you. It writes PERMISSIONS.md listing every copied file and where it came from — read it before uploading anywhere."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="14" Margin="0,14,0,0"
+                    VerticalAlignment="Top">
+          <Button x:Name="BuildButton" Classes="primary" Content="Build follower" Click="OnBuild"/>
+          <CheckBox x:Name="ZipBox" Content="Also make an installable .zip" IsChecked="True"
+                    VerticalAlignment="Center"/>
+          <Button x:Name="OpenFolderButton" Content="Open output folder" Click="OnOpenFolder" IsEnabled="False"/>
+        </StackPanel>
+        <TextBox Grid.Row="6" x:Name="BuildLog" AcceptsReturn="True" IsReadOnly="True" Margin="0,12,0,0"
+                 FontFamily="Cascadia Mono,Consolas,monospace" TextWrapping="Wrap"/>
+      </Grid>
+    </Panel>
+  </DockPanel>
+</Window>

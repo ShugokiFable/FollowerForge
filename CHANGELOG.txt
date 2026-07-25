@@ -3,6 +3,133 @@
 # Format: version, date (YYYY-MM-DD), agent, summary, files, verify, nexus?
 
 ================================================================================
+## [2.0.0] — 2026-07-24 (Location Library + wizard)
+Agent: Claude
+Intent: Turn an engineer's tool into a follower-maker. v1 required hand-written JSON with raw
+  FormKeys and could effectively only spawn followers at one hardcoded Whiterun spot.
+Files changed (added):
+  - Domain/SpawnLocation.cs — SpawnLocation + LocationLibrary (Placeable, grid, provenance)
+  - SkyrimRecords/LocationScanner.cs — harvests spots from every plugin that places its OWN NPC
+  - SkyrimRecords/CellPlacer.cs — interior + worldspace placement, block math
+  - SkyrimRecords/CellSourceResolver.cs — reads the target cell's own definition
+  - BuildPipeline/LocationLibraryBuilder.cs — build/load/search the library
+  - Ui/WizardWindow.axaml(.cs), Ui/PickerItem.cs — 7-step wizard, real names only
+  - Tests/LocationTests.cs (+8 tests)
+Files changed (modified):
+  - Domain/FollowerProfile.cs — PlacementSpec.LocationId (Cell now optional)
+  - SkyrimRecords/FollowerCompiler.cs — placement takes a SpawnLocation, not a worldspace
+  - BuildPipeline/FollowerBuilder.cs — resolves LocationId, errors loudly if unknown
+  - Cli/Program.cs — `locations --scan | --text`
+  - Ui/App.axaml.cs — opens the wizard
+  - REMOVED BuildPipeline/PlacementResolver.cs (no longer needs to open Skyrim.esm to place)
+Why / root cause:
+  - Placement was hardcoded to WhiterunWorld's persistent cell; there was no way to say
+    "put her in the Bannered Mare" without knowing FormKeys and coordinates.
+Ground truth established (this is what made it correct):
+  - Real follower mods add themselves to a vanilla inn via a CELL override + persistent ACHR.
+    Z_Iseult.esp's CELL overrides are zlib-COMPRESSED; decompressed they carry the FULL record
+    (EDID, FULL, DATA, XCLL, LTMP, XCLW, XLCN, XCIM, XCMO, XCCM, XOWN, XCAS). An earlier
+    reading of them as "empty" was wrong — shipping that would have blanked the room's lighting.
+  - Interior cell grouping: block = formID % 10, sub-block = (formID / 10) % 10.
+    Verified on 0x013870 (4/8), 0x015239 (5/8), 0x0152AA (8/9), 0x01605E (6/0).
+  - Placement copies the cell's data but EXCLUDES Persistent/Temporary/Landscape/NavMeshes,
+    so the room's existing contents are never duplicated.
+Verify:
+  - dotnet build → 0 warnings / 0 errors; dotnet test → 45 passed
+  - fforge locations --scan → 2,834 plugins scanned, 17,274 custom-NPC placements,
+    3,370 distinct spots (1,346 interior / 2,024 exterior). Top: The Frozen Hearth (18 mods),
+    Moorside Inn (17), Windpeak Inn (15), Sleeping Giant Inn (13), The Bannered Mare (7).
+  - Built "Roze" → Sleeping Giant Inn + RaceMenu face A1_Nord_Roze + cloned CSTY:
+    generated CELL 000133C6 subrecords match the shipped-mod set exactly; ONE ACHR added;
+    masters = Skyrim.esm only.
+  - Independent check with Skyrim Forge `plugin-info`: form_version 44, header_version 1.71,
+    is_light_flag true, record_flags 512, masters [Skyrim.esm]. Agrees with the built-in gate.
+  - Avalonia wizard boot-verified (runs, window titled "Follower Forge", zero stderr).
+Field fixes (same day, from first real user run — 2.0.0 was never packaged/released):
+  - STALE CATALOGUE: the wizard only built the catalogue when missing, so a week-old index
+    reported installed mods as absent. It now rebuilds whenever Vortex has deployed since
+    (CatalogBuilder.IsFresh) and invalidates the location library with it.
+    Measured: 852,370 → 863,621 assets after refresh.
+  - TEXTURE WARNING NOISE: every referenced texture was warned about equally. Head meshes
+    routinely point at optional slots (_sk subsurface, _s specular, _e cubemap) that do not
+    exist and the engine skips. Warnings are now slot-aware — only diffuse (0) and normal (1)
+    are Warnings; the rest are Info. Verified the remaining warnings are REAL: the reported
+    face pointed at textures\actors\character\SGBrowsImproved\… while the installed folder is
+    …\SGbrows\…, and no Kala eye folder exists at all, so those brows/eyes would render broken.
+    Added an actionable hint (install the mod, or re-export the face with current mods).
+  - OPEN OUTPUT FOLDER failed with Explorer's "Location is not available" even though the
+    folder existed; shell-executing a directory path is unreliable. Now launches
+    explorer.exe with the path as an argument, with an existence check.
+  - RACE LIST: offered every RACE record including creatures, child and transformation races.
+    Added SkyrimRecords/RaceSuitability.cs — drops unsuitable races (beastrace/child/creature/
+    no-head-parts), sorts vanilla first, and labels custom races "everyone needs <mod>".
+  - SHARING CLARITY: the build now states which mods a downloader will need, or confirms
+    "needs nothing but the base game" (this is why a build showed Naz_Ardessa.esp as required).
+  - UI: plugin file name fills in as you type; list rows are taller with alternating stripes
+    and a readable selection colour.
+  - Added CLI `assets --path <rel>` to answer "is this texture actually in my load order?".
+  - Tests 45 → 56 (race suitability incl. a real-catalogue check).
+Presentation + shareability pass (second field report):
+  - LAYOUT: pages used fixed-height lists inside StackPanels, so on a large window the lists
+    stayed ~140px with hundreds of rows behind a hairline scrollbar and most of the window was
+    empty. Pages 2-7 are now Grids whose list rows are '*', so lists grow with the window.
+    Larger default window (1180x820, min 900x620), roomier rows (38px, striped, gold selection),
+    styled inputs/buttons.
+  - RACE LIST: 190 usable races in one flat list was overwhelming and opened scrolled into the
+    custom entries. Now shows the ten vanilla races by default with a checkbox to add custom
+    ones ("they become requirements"). Verified via new `fforge races`: 977 records -> 190 usable,
+    vanilla first.
+  - APP IDENTITY: tools/New-AppIcon.ps1 draws a multi-size .ico (256/128/64/48/32/16) in the
+    app palette; wired via ApplicationIcon + Window Icon. Output renamed "Follower Forge.exe"
+    (WinExe, no console window) with Product/Description/Version metadata.
+  - SHARING: Publish-FollowerForge.ps1 produces a self-contained single-file win-x64 build
+    (no .NET needed by the recipient), strips ~100MB of Skia/HarfBuzz native .pdb symbols,
+    copies README + CHANGELOG, boot-checks the exe, and zips it. 94.3 MB zip.
+  - README rewritten for end users (was developer notes) since it ships inside the zip.
+  - Removed dead MainWindow.axaml(.cs); fixed 12 Avalonia AVLN5001 warnings
+    (TextBox.Watermark -> PlaceholderText). Release build now 0 warnings / 0 errors.
+  - NOTE for PowerShell 5.1: .ps1 files must be ASCII — em-dashes were read as mojibake and
+    broke parsing.
+Asset hubs (free-hub default + build-your-own):
+  - Verified what the two free modder's resources ACTUALLY ship before writing any code:
+      MAW Assets  = head/brow/hairline MESHES + .tri morphs (+ hairline textures), MawAssets.esp
+      Naz's Coll. = per-race skin SUPPORT MAPS ONLY (_msn/_s/_sk + blankdetailmap), 8 human/mer
+                    races, NO diffuse.
+    So "free hubs make her fully shareable" is FALSE and is never claimed. Naz's filenames
+    (femalehead_msn/_s/_sk) map exactly onto what a RaceMenu head references, which is what
+    makes the substitution safe.
+  - Domain/AssetHub.cs (FaceAssetKind, AssetHub, FaceAsset, HubMode),
+    AssetIndex/HubCatalog.cs (detection by marker file, per-race Naz mapping, texture
+    classification), BuildPipeline/HubAssetPackager.cs (retarget + copy + declaration).
+  - HubMode.FreeHubs is the DEFAULT: skin support maps are repointed at Naz when installed and
+    the race is covered. Verified live on Roze (Nord): 4 maps repointed
+    (FemaleHead_msn/_sk/_S + BlankDetailmap -> textures\Nazarethblood\body\Nord\...), while the
+    diffuse (Zhizhen skin), eyes (Koralina) and mouth (Botox) correctly stayed as her mods.
+  - HubMode.OwnHub copies the assets she actually uses into textures\<Prefix>\{skin,hair,eyes,
+    brows,mouth}\ and repoints the face at them. Verified: 14 files copied into KarloAssets.
+    BSA-packed assets are never unpacked — that is the source author's call.
+  - PERMISSIONS GATE: OwnHub refuses (build fails, nothing copied) without a written
+    RedistributionPermission, checked ONCE up front. Every build writes PERMISSIONS.md listing
+    each copied file by source mod and stating plainly that Follower Forge did not and cannot
+    verify permission, and that credit is not permission. The app never sets the declaration
+    itself — in the wizard it comes from the user ticking the box.
+  - CLI `hubs` (what's installed and what it really covers) and `races`; source-assets.json now
+    lists every face texture, its source mod, and any retargeting.
+  - Bugs found by the new tests: "eyebrows03.dds" classified as Eyes (brow check had to precede
+    eyes), then "...\Eyes\brown\Amber Dark.dds" classified as Brows because "brown" contains
+    "brow" — now matched on eyebrow / brows\ / filename-brow-not-brown.
+  - Avalonia trap: ComboBox.SelectionChanged fires during XAML load, before the name scope
+    exists, so FindControl threw "Could not find parent name scope" and the app died on start.
+    Guarded with a _ready flag set after AvaloniaXamlLoader.Load.
+  - Tests 56 -> 77. Release build 0 warnings / 0 errors.
+Nexus: NO (local tool)
+Notes:
+  - The external skyrim-ship-gate script is no longer present in the skill library; the same
+    checks live in Validation/EspHeaderValidator.cs and ran green.
+  - UNPROVEN: in-game recruit/trade/wait/dismiss and the follower actually standing in the inn.
+    Requires launching Skyrim.
+  - NEXT: free-hub default (MAW Assets + Naz's Asset Collection) and build-your-own-hub.
+================================================================================
 ## [1.0.0] — 2026-07-17 (Phases 0–6 complete — initial release)
 Agent: Claude
 Intent: Environment recon, solution scaffold, modpack catalogue, a genuine deterministic
