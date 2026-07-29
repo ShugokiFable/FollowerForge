@@ -1,0 +1,25 @@
+# Follower Forge state
+
+- Date: 2026-07-28
+- Application/model: Codex desktop / GPT-5
+- Parent: `Follower Forge 2.1.2`
+- Active: `Follower Forge 2.1.3`
+- Runtime target: Skyrim SSE 1.6.1170, Vortex-managed
+- Runtime evidence:
+  - the user reports that 2.1.1 works wonderfully in game;
+  - 2.1.1 is the known-good rollback point;
+  - 2.1.3's custom-stat UI and generated custom-stat follower are not yet runtime tested.
+- Reported defect:
+  - the supplied 2.1.2 screenshot showed that all 18 custom skill values were clipped;
+  - the 82-pixel numeric column was consumed almost entirely by Avalonia's spinner buttons.
+- Implementation:
+  - skill numeric columns and controls now reserve 150 pixels;
+  - a regression test enforces a minimum readable width of 140 pixels;
+  - stat behavior and serialized output are otherwise unchanged from 2.1.2.
+- Current validation:
+  - exact authoritative Release build: 0 warnings, 0 errors;
+  - complete xUnit suite: 106 passed, 0 failed, 0 skipped;
+  - self-contained publish and hidden boot check passed;
+  - release-tree validator and archive inspection passed;
+  - final ZIP SHA-256: `7787E4546C85923CEE0DF6B92A39B28F4BEB516294ED23F8B5EB63742033E957`.
+- SSEEdit/Creation Kit GUI: not launched.

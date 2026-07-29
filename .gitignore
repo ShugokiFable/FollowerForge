@@ -31,3 +31,12 @@ dist/
 FollowerForge-*.zip
 # Promo / local scratch (not ship source)
 Gemini_Generated_Image_*.png
+
+# Superseded version snapshots (3.0.0 is the shipping source)
+Follower Forge 2.0.0/
+Follower Forge 2.1.0/
+Follower Forge 2.1.1/
+Follower Forge 2.1.2/
+Follower Forge 2.1.3/
+# Workspace scratch, not ship source
+MEMORY/

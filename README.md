@@ -4,9 +4,9 @@
 
 **Make a custom Skyrim SE/AE follower without ever opening the Creation Kit.**
 
-Pick her name, face, voice, class, combat style, outfit, and **where in Skyrim she waits** —
-all from your own installed mods, by name. Follower Forge writes a real, conflict-safe ESPFE
-plugin and an installable mod folder.
+Pick her face, voice, class, gear, and where in Skyrim she waits — all from your own installed
+mods, chosen by name. Follower Forge writes a real, conflict-safe ESPFE plugin and an installable
+mod folder.
 
 [![Release](https://img.shields.io/github/v/release/ShugokiFable/FollowerForge)](https://github.com/ShugokiFable/FollowerForge/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2064--bit-lightgrey)]()
@@ -17,168 +17,129 @@ plugin and an installable mod folder.
 
 ---
 
-## What's in 2.0
+## 3.0 — the follower suite
 
-**2.0 is the first real follower-maker release** (earlier prototype snapshots were withdrawn).
+2.0 could make a follower. **3.0 makes a character.**
 
-| | **2.0** |
-|---|---|
-| UI | **7-step wizard** — real names only |
-| Placement | **3,000+ spawn spots** harvested from your mods |
-| Face pipeline | RaceMenu export + FaceGen + **slot-aware** missing-texture warnings |
-| Loadout / body | **Weapons + spells** multi-select; optional **body** skin (or race default) |
-| Marriage | **Marriageable** adds PotentialMarriageFaction for real |
-| Asset hubs | **Free-hub default** (Naz skin maps when installed) + optional own-hub with permission gate |
-| Races | **Vanilla first**; custom races opt-in (they become requirements) |
-| Sharing report | **"Needs nothing but base game"** or exact mod requirements |
-| Ship form | **`Follower Forge.exe`** + CLI, no .NET install needed |
+| | 2.0 | **3.0** |
+|---|---|---|
+| Dialogue | voice type only | **custom spoken lines** with lip sync, 13 triggers, reactions to place and time |
+| Inherited dialogue | — | **scans your load order** and reports what each voice already says |
+| Alternate forms | — | **vampire** (scriptless), **werewolf** and mod transformations |
+| Non-humanoid | — | **creature followers** — dragons, mechs, beasts |
+| How you meet her | placed and recruited | that, or **enemy to ally** — find her, beat her, summon her |
+| Behaviour | — | **AI routine**, sleep schedule, relationship rank, NPC-to-NPC relationships |
+| Growth | — | optional **evolution** — she starts timid and grows into the job |
+| Inventory | armour, weapons | plus **books and belongings** for lore |
+| Marriage | added a faction | **tells you whether it will actually work** on your setup |
+| Testing | — | **`test-in-game.txt`** with the console commands for her exact features |
 
----
-
-## Download
-
-➡️ **Grab `FollowerForge-2.0.0-win-x64.zip` from the
-[Releases page](https://github.com/ShugokiFable/FollowerForge/releases).**
-
-Self-contained Windows 64-bit package — **no .NET install required**.
-
-```
-Follower Forge.exe          GUI wizard
-cli\FollowerForge.Cli.exe   same engine, scriptable
-README.md                   end-user guide (ships inside the zip)
-CHANGELOG.txt               full history
-```
-
-### Requirements
-
-- **Windows 10/11 (64-bit)**
-- A **Vortex-managed** Skyrim Special Edition / Anniversary Edition install
-- Your game Data, Vortex staging, and installed mods are **never written to**
+Everything is chosen from records you already have. Follower Forge never invents game data and
+never edits your installed plugins.
 
 ---
 
 ## Getting started
 
-1. Unzip anywhere and run **Follower Forge.exe**.
-2. First launch reads your mods (about a minute; only repeats after a Vortex deploy).
+1. Download the latest release, unzip anywhere, run **Follower Forge.exe**.
+   Self-contained — no .NET install needed.
+2. First launch reads your active Vortex deployment (about a minute).
 3. Walk the seven steps and press **Build follower**.
-4. Install the produced folder (or `.zip`) in Vortex, enable the plugin, and go find her.
+4. Install the produced ZIP with Vortex, enable the plugin, deploy.
 
-### Wizard steps
+Needs a Vortex-managed Skyrim Special Edition / Anniversary Edition install.
 
-| Step | What you choose |
-|---|---|
-| **Who she is** | Name, sex, protected-by-default, optional **marriageable** |
-| **Her look** | RaceMenu head export + race (vanilla first) + optional **body** (skin armor; unset = race default / your body replacer) |
-| **Her voice** | FULL FOLLOWER / SOS PACK / unverified — labelled honestly |
-| **How she fights** | Class + combat style (clone into her plugin; originals never edited) |
-| **What she wears** | Outfit plus multi-select **weapons and spells** loadout |
-| **Where she waits** | Searchable location library from real NPC placements |
-| **Build her** | Summary, build, and a plain list of anything worth knowing |
-
-### Her face
-
-Load the preset in game → RaceMenu **Sculpt** tab → **F5** to export the head.
-A `.jslot` alone is not enough; the exported head mesh carries the face.
-
-### Where she waits
-
-Follower Forge scans every mod that places its own NPC and builds a library of reachable
-spots — classic inns (Bannered Mare, Sleeping Giant, Bee and Barb, …) plus hundreds of
-mod-author placements. Each entry shows how many mods use it and whether it needs masters
-beyond the base game.
-
----
-
-## Sharing her
-
-The build report tells downloaders exactly what they need:
-
-> She needs nothing but the base game — safe to share with anyone.
-
-or a list like *"Anyone who installs her also needs: KS Hairdos"*.
-
-**Listing a mod as a requirement is not permission to redistribute its assets.** Follower Forge
-never copies another author's files unless you explicitly declare redistribution rights, and
-it will not make that claim on your behalf. Every build writes `credits.md`,
-`dependency-report.json`, and `source-assets.json`.
-
-### Asset hubs
-
-| Mode | Behaviour |
-|---|---|
-| **Free hubs** *(default)* | When Naz's Asset Collection is installed, skin *support maps* (`_msn` / `_s` / `_sk`) for covered races are retargeted so the follower leans less on private skin packs. Diffuse, eyes, hair, and mouth stay on their real sources. |
-| **Own hub** | Copies the face assets she uses into `textures\<Prefix>\…` and repoints the mesh — **only** after you tick the redistribution permission box. BSA-packed assets are never unpacked. |
-
-Free hubs do **not** make a follower fully shareable on their own; the report stays honest.
-
----
-
-## What each follower package contains
+There is a CLI too — `cli\FollowerForge.Cli.exe` — running the same engine:
 
 ```
-FF_YourFollower.esp                         ESPFE / ESL light plugin
-meshes/.../facegeom/FF_YourFollower.esp/    FaceGen mesh
-textures/.../facetint/FF_YourFollower.esp/  Face tint
-manifest.json  source-assets.json  dependency-report.json  rebuild-profile.json
-build-report.html  credits.md  PERMISSIONS.md (when own-hub copies)
-```
-
-Rebuilding the same follower produces a **byte-identical** plugin.
-
----
-
-## Command line (optional)
-
-`cli\FollowerForge.Cli.exe` drives the same engine:
-
-```powershell
-fforge env                                   # what Follower Forge sees on this PC
-fforge index                                 # re-read your mods
-fforge locations --scan                      # rebuild the spawn library
-fforge locations --text "bannered mare"      # search spawn points
-fforge races                                 # usable races + why
-fforge hubs                                  # free-hub coverage
-fforge assets --path "textures\...\x.dds"    # is this texture installed?
-fforge build --profile her.json --zip        # build from a saved profile
-fforge batch --profiles .\profiles\          # build a folder of profiles
+fforge env
+fforge locations --scan
+fforge voice-coverage --scan
+fforge build --profile follower.json --zip
 ```
 
 ---
 
-## Safety
+## What it actually does
 
-Your game folder, Vortex staging folder, and installed mods are **only ever read**.
-Everything Follower Forge creates goes in its own workspace. A write-guard refuses any
-path that would land inside your game or mod manager.
+**Spawn points from your own mods.** 3,300+ places harvested from mods that already put an NPC
+there, so the coordinates are ones a real author shipped. Pick "The Bannered Mare", not numbers.
+
+**Faces from RaceMenu.** Sculpt export plus the matching `.jslot`. The look step says up front
+whether a face will build, instead of failing at the end.
+
+**Custom voiced dialogue.** Write her lines; [xVASynth](https://www.nexusmods.com/skyrimspecialedition/mods/44184)
+speaks them and they are packed to `.fuz` with lip sync. Any line can be limited to a kind of place
+(45 location types — caves, inns, cities, mines) or a time of day. Without xVASynth you can ship
+subtitles, but you have to opt into that — the build refuses to quietly hand you a mute follower.
+
+**What she already says.** One scan reads every installed plugin for dialogue keyed to a voice
+type and reports the total. On a load order with RDO and OOD, `FemaleEvenToned` inherits ~4,600
+lines before you write a word. This is also how RDO support works — nothing is added to the
+plugin; she is covered the moment she uses a voice RDO handles.
+
+**Marriage that tells the truth.** Vanilla allows eight voice types. Mods add more — with RDO
+installed, 48. Follower Forge reads your load order and says which case you are in, including
+"she can only marry because of RDO, so anyone who installs her needs it too".
+
+**Vampires, werewolves, creatures.** Vampirism is a race swap plus two keywords — exactly what a
+vanilla vampire NPC has, no script. Werewolves are a transformation instead, because Skyrim has
+one beast race rather than one per race. Creature races (no head data) are available behind an
+explicit tick.
+
+**Enemy to ally.** Optionally she starts as an enemy at one of several places. Beat her, loot the
+spell tome she carries, read it, and the spell summons her as a follower.
 
 ---
 
-## Verification (tool-validated)
+## Experimental features — please read
 
-Generated plugins are checked for:
+Four features add a **Papyrus script** to your follower:
 
-- HEDR `1.71`, formVersion `44`, ESL light flag, new FormIDs in the light range
-- Clean reopen in Mutagen
-- Deterministic rebuild (SHA256 match on the ESP)
+- evolution (she grows with combat)
+- transformation (werewolf / custom)
+- random spawn points
+- enemy to ally
 
-**77** xUnit tests. Release build: 0 warnings / 0 errors.
+They compile cleanly and their records are verified, **but they have not yet been confirmed
+running in game.** Scripts persist in save files in a way plain records do not, so test them on a
+save you can throw away. Every other feature is records only.
 
-> **Not yet user-confirmed in-game for every path:** recruit / trade / wait / dismiss and
-> “she is standing in the inn” still need a Skyrim session. Structural validation is not
-> a substitute for that.
+Scripted followers can also behave oddly if you import them into a follower framework (NFF, EFF).
+Ordinary followers are unaffected.
+
+Every build writes `test-in-game.txt` with the console commands for that follower's exact
+features, and names the symptom that means one did not run.
 
 ---
 
-## Build from source
+## What it will not do
 
-**Requires:** [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- Edit your installed plugins, your saves, or your game folder. All of that is read-only.
+- Copy another author's assets without an explicit written permission declaration in the profile.
+- Launch the Creation Kit or xEdit.
+- Make a child follower, or use a child voice.
 
-```powershell
-cd "Follower Forge 2.0.0"
-.\Build-FollowerForge.ps1        # build + tests
-.\Publish-FollowerForge.ps1      # self-contained exe + zip in dist\
+---
+
+## Sharing what you make
+
+Every build reports its dependencies and says plainly whether she is safe to hand to anyone
+(`needs nothing but the base game`) or which mods a downloader also needs — including mods
+required only because of her voice or her race.
+
+---
+
+## Building from source
+
 ```
+git clone https://github.com/ShugokiFable/FollowerForge.git
+cd "FollowerForge/Follower Forge 3.0.0"
+.\Publish-FollowerForge.ps1
+```
+
+.NET 10 SDK. The publish script runs the tests, builds a self-contained single-file exe,
+boot-checks it, and writes `dist\FollowerForge-3.0.0-win-x64.zip`.
 
 ### Solution layout
 
@@ -186,14 +147,14 @@ cd "Follower Forge 2.0.0"
 |---|---|
 | `Domain` | Profiles, records, assets, hubs, manifests, validation types |
 | `ModManagers` | Vortex discovery, deployment manifest, write-guard |
-| `SkyrimRecords` | Mutagen indexing, follower compiler, cell placement, race suitability, analyzers |
-| `AssetIndex` | SQLite catalogue, loose + BSA, CharGen, hub catalog |
+| `SkyrimRecords` | Mutagen indexing, follower/dialogue/transform compilers, cell placement |
+| `AssetIndex` | SQLite catalogue, loose + BSA, CharGen, xVASynth voice synthesis |
 | `FaceGen` | NiflySharp head dirty-swap |
-| `BuildPipeline` | Atomic builder, location library, hubs, batch, packaging |
+| `BuildPipeline` | Atomic builder, location library, voice coverage, hubs, packaging |
 | `Validation` | In-process ESP header ship-gate |
 | `Cli` | `fforge` |
 | `Ui` | Avalonia 7-step wizard |
-| `Tests` | xUnit |
+| `Tests` | xUnit — 249 tests |
 
 ---
 
@@ -207,8 +168,16 @@ records that you made the claim — it cannot verify permission with the origina
 
 ---
 
+## Credits
+
+Built with [Mutagen](https://github.com/Mutagen-Modding/Mutagen) and
+[NiflySharp](https://github.com/ousnius/NiflySharp).
+Voice synthesis by [xVASynth](https://www.nexusmods.com/skyrimspecialedition/mods/44184).
+
+---
+
 <div align="center">
 
-**[⬇ Download Follower Forge 2.0.0](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
+**[⬇ Download Follower Forge 3.0.0](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
 
 </div>

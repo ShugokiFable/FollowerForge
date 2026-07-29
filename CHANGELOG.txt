@@ -3,6 +3,88 @@
 # Format: version, date (YYYY-MM-DD), agent, summary, files, verify, nexus?
 
 ================================================================================
+## [2.1.2] - 2026-07-28 (Optional full skill and primary-stat customization)
+Agent: Codex
+Parent: Follower Forge 2.1.1
+Runtime basis:
+  - The user confirmed that 2.1.1 works wonderfully in Skyrim.
+  - 2.1.1 remains unchanged as the known-good rollback point.
+New follower controls:
+  - AutoCalcStats remains enabled by default, preserving the easy class-and-level workflow.
+  - A new Skills & stats tab exposes all 18 Skyrim skills.
+  - Health, Magicka, and Stamina can be set directly in custom mode.
+  - Eight optional presets provide editable starting points: blank slate, one-handed warrior,
+    two-handed warrior, archer, pure mage, spellsword, restoration support, and rogue.
+Plugin behavior:
+  - Custom mode disables AutoCalcStats and writes a complete DNAM PlayerSkills block.
+  - Every skill value is serialized directly; hidden skill offsets are explicitly zero.
+  - Automatic and pre-2.1.2 profiles do not write custom DNAM values.
+Validation:
+  - Automatic/custom mode, all 18 skills, offsets, and primary attributes are checked after
+    reopening the final plugin bytes.
+  - Four focused tests cover default compatibility, preset completeness, exact DNAM round-trip,
+    and loading profiles that predate the Stats property.
+Runtime:
+  - 2.1.1 user-confirmed in game; 2.1.2 custom-stat behavior requires an in-game follower test.
+Nexus: NO (local tool)
+
+================================================================================
+## [2.1.1] - 2026-07-28 (Runtime-correct placement, equipment, FaceGen, masters, and cache recovery)
+Agent: Codex
+Parent: Follower Forge 2.1.0
+Confirmed repairs:
+  - SQLite cache failures are now self-recovering: broken DB/WAL/SHM files are quarantined
+    and the disposable catalogue is rebuilt once.
+  - Recursive installed-header master closure writes Update/DLC and every transitive origin.
+  - Cloned CSTY records are normalized to formVersion 44.
+  - Interior/exterior follower ACHR records carry the Persistent major-record flag.
+  - Selected ARMO pieces are both real NPC inventory and a generated private starting-equipment
+    OTFT so the follower initially wears them. Weapons remain real inventory.
+  - Matching RaceMenu jslot data now writes weight, head parts, default morphs/presets,
+    tint layers, skin tone, and hair color into the NPC record.
+  - RaceMenu tint alpha now becomes Skyrim's fractional TINV interpolation value instead of
+    forcing every non-zero makeup/complexion layer to full strength.
+  - Head-part formIdentifier dependencies are included even when RaceMenu's mods array omits them.
+  - Face texture validation falls back to the actual deployed Data file when a valid Vortex
+    hardlink is absent from the catalogue, preventing false missing-texture warnings.
+  - Installed matching face/body texture paths are the safe default; incomplete head-only
+    free-resource substitutions are no longer applied.
+  - Build-stopping errors are separated from warnings and show validation codes.
+  - Level numeric fields are wider and readable.
+Exact supplied test2 verification:
+  - Build PASS; HEDR 1.71; ESL; formVersion 44.
+  - Masters: Skyrim.esm, Update.esm, Dawnguard.esm, HearthFires.esm, Dragonborn.esm,
+    High Poly Head.esm, Aquarium.esp, Arclight.esp, KS Hairdo's.esp,
+    Even More Eyes.esp, Koralina's Eyebrows.esp, Ordinator - Perks of Skyrim.esp.
+  - Deterministic: two independent generated ESPs were byte-identical.
+Runtime:
+  - Not yet tested in Skyrim; Vortex install and in-game smoke matrix remain required.
+Nexus: NO (local tool)
+
+================================================================================
+## [2.1.0] - 2026-07-26 (Equipment-first follower construction + crash hardening)
+Agent: Codex
+Parent: Follower Forge 2.0.0
+Intent:
+  - Replace the primary OTFT picker with actual ARMO equipment selection grouped by
+    resolved biped slots (helmet, torso, gauntlets, boots, shield, accessories, and more).
+  - Keep optional OTFT import for compatibility while putting the chosen gear directly in
+    the NPC inventory.
+  - Expand complete-follower choices, including spells and perks, with reference validation.
+  - Stop presenting deterministic 2019/2020-era dates as the creation date of a new package.
+  - Harden generated-plugin validation after the reported FF_test.esp game-load crash.
+Runtime evidence:
+  - Supplied CrashLoggerSSE log: Skyrim 1.6.1170, EXCEPTION_BREAKPOINT on a loading worker.
+  - FF_test.esp was enabled at FE:224, but the log names no relevant form or generated record.
+  - The exact ESP/profile was removed before this audit; only Vortex folder markers remain.
+  - Therefore the original crash is confirmed, but no exact record culprit is yet proven.
+Verify (pending):
+  - Release build and complete xUnit suite.
+  - Generated equipment/spell/perk fixture reopened through Mutagen and Skyrim Forge.
+  - ESP header, master, FormID, record reference, package inventory, and SHA-256 gates.
+  - User Vortex install + in-game load/equipment/combat/follower/save-reload smoke test.
+Nexus: NO (local tool)
+================================================================================
 ## [2.0.0] — 2026-07-24 (Location Library + wizard)
 Agent: Claude
 Intent: Turn an engineer's tool into a follower-maker. v1 required hand-written JSON with raw
@@ -106,7 +188,7 @@ Asset hubs (free-hub default + build-your-own):
     (FemaleHead_msn/_sk/_S + BlankDetailmap -> textures\Nazarethblood\body\Nord\...), while the
     diffuse (Zhizhen skin), eyes (Koralina) and mouth (Botox) correctly stayed as her mods.
   - HubMode.OwnHub copies the assets she actually uses into textures\<Prefix>\{skin,hair,eyes,
-    brows,mouth}\ and repoints the face at them. Verified: 14 files copied into KarloAssets.
+    brows,mouth}\ and repoints the face at them. Verified: 14 files copied into AuthorAssets.
     BSA-packed assets are never unpacked — that is the source author's call.
   - PERMISSIONS GATE: OwnHub refuses (build fails, nothing copied) without a written
     RedistributionPermission, checked ONCE up front. Every build writes PERMISSIONS.md listing
