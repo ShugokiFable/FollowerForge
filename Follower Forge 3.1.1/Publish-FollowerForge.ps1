@@ -45,7 +45,10 @@ $common = @(
     '-p:IncludeNativeLibrariesForSelfExtract=true',
     '-p:EnableCompressionInSingleFile=true',
     '-p:DebugType=none',
-    "-p:Version=$Version"
+    "-p:Version=$Version",
+    "-p:FileVersion=$Version.0",
+    "-p:InformationalVersion=$Version",
+    "-p:AssemblyVersion=$Version.0"
 )
 
 Write-Host '-- app' -ForegroundColor DarkGray

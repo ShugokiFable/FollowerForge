@@ -7,8 +7,8 @@
 | **Account** | ShugokiFable |
 | **Default branch** | `main` |
 | **Owner work root** | workspace `Follower Forge` (versioned snapshots under this folder) |
-| **Current ship tree** | `Follower Forge 2.0.0/` (see `CURRENT.txt`) |
-| **This folder** | canonical publish home for this mod |
+| **Current ship tree** | `Follower Forge 3.1.1/` (see `CURRENT.txt`) |
+| **This folder** | canonical publish home for this app |
 
 ## What to push
 

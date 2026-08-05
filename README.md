@@ -17,7 +17,20 @@ mod folder.
 
 ---
 
-## 3.1 — the lists finally read
+## Current release: 3.1.1
+
+Download from the [latest release](https://github.com/ShugokiFable/FollowerForge/releases/latest):
+
+**`FollowerForge-3.1.1-win-x64.zip`** — unzip anywhere, run **Follower Forge.exe**. Self-contained (no .NET install).
+
+### 3.1.1 — say so when a preset cannot become a follower
+
+A RaceMenu preset can look right on *you* and still fail as a follower face if it has lots of
+slider values and **no sculpt**. Only baked geometry (Export Head) and the vanilla 19 morphs
+survive on an NPC. 3.1.1 detects that case early: the face picker marks **NO SCULPT**, and the
+build emits `FACE_SLIDERS_WITHOUT_SCULPT` with the fix (sculpt anything in RaceMenu, then re-export).
+
+### 3.1 — the lists finally read
 
 3.0 made a character. **3.1 makes the picking bearable**, and fixes two things that were
 quietly wrong.
@@ -165,12 +178,12 @@ required only because of her voice or her race.
 
 ```
 git clone https://github.com/ShugokiFable/FollowerForge.git
-cd "FollowerForge/Follower Forge 3.1.0"
+cd "FollowerForge/Follower Forge 3.1.1"
 .\Publish-FollowerForge.ps1
 ```
 
 .NET 10 SDK. The publish script runs the tests, builds a self-contained single-file exe,
-boot-checks it, and writes `dist\FollowerForge-3.1.0-win-x64.zip`.
+boot-checks it, and writes `dist\FollowerForge-3.1.1-win-x64.zip`.
 
 ### Solution layout
 
@@ -185,7 +198,7 @@ boot-checks it, and writes `dist\FollowerForge-3.1.0-win-x64.zip`.
 | `Validation` | In-process ESP header ship-gate |
 | `Cli` | `fforge` |
 | `Ui` | Avalonia 7-step wizard |
-| `Tests` | xUnit — 275 tests |
+| `Tests` | xUnit — 278 tests |
 
 ---
 
@@ -209,6 +222,6 @@ Voice synthesis by [xVASynth](https://www.nexusmods.com/skyrimspecialedition/mod
 
 <div align="center">
 
-**[⬇ Download Follower Forge 3.1.0](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
+**[⬇ Download Follower Forge 3.1.1](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
 
 </div>
