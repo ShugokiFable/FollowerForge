@@ -179,4 +179,5 @@ GitHub: [url=https://github.com/ShugokiFable/FollowerForge]github.com/ShugokiFab
 ## Claims you should not make
 
 - “All scripted 3.x features fully tested in long playthroughs”
-- “Every SMP hai
+- “Every SMP hair mod guaranteed”
+- “Permission to redistribute any assets the user picks”
