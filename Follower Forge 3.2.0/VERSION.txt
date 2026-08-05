@@ -1,0 +1,6 @@
+Follower Forge 3.2.0
+
+Parent: Follower Forge 3.1.1
+Created: 2026-08-05
+Owner: Grok
+Focus: MO2 instance support, share-package UX, face import clarity, Nexus rewrite.
