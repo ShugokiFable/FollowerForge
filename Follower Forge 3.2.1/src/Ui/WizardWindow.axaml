@@ -1,0 +1,737 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:FollowerForge.Ui"
+        x:Class="FollowerForge.Ui.WizardWindow"
+        Width="1320" Height="900" MinWidth="1040" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/appicon.ico"
+        Title="Follower Forge"
+        Background="#16161b">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="23"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#e8c877"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0aa"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="MaxWidth" Value="820"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TextBlock.step">
+      <Setter Property="Foreground" Value="#8b919b"/>
+      <Setter Property="Padding" Value="16,11"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="TextBlock.step.active">
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+      <Setter Property="Margin" Value="0,14,0,4"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <!-- Roomy rows: the default list packs lines together and is hard to scan. -->
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="12,7"/>
+      <Setter Property="MinHeight" Value="46"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="ListBoxItem:nth-child(2n)">
+      <Setter Property="Background" Value="#15151b"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="TextElement.Foreground" Value="#16161b"/>
+    </Style>
+    <!-- The second line and the chip must stay legible once the gold selection lands under
+         them, so they are re-coloured on selection rather than keeping their muted brushes. -->
+    <Style Selector="ListBoxItem:selected TextBlock.rowdetail">
+      <Setter Property="Foreground" Value="#4a4230"/>
+    </Style>
+    <Style Selector="TextBlock.rowname">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.rowdetail">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="#8b919b"/>
+      <Setter Property="Margin" Value="0,2,0,0"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Padding" Value="18,9"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+  </Window.Styles>
+
+  <!-- One row shape for every list in the wizard: what it is, why it matters, and a chip that
+       answers "can I actually use this?" without reading the sentence. -->
+  <Window.DataTemplates>
+    <DataTemplate DataType="ui:IPickerRow">
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+          <TextBlock Classes="rowname" Text="{Binding Display}"/>
+          <TextBlock Classes="rowdetail" Text="{Binding Detail}"
+                     IsVisible="{Binding HasDetail}"/>
+        </StackPanel>
+        <Border Grid.Column="1" IsVisible="{Binding HasBadge}"
+                Background="{Binding BadgeBrush}" CornerRadius="3"
+                Padding="7,3" Margin="12,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="Bold"
+                     Foreground="{Binding BadgeText}"/>
+        </Border>
+      </Grid>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <DockPanel>
+    <!-- step rail -->
+    <Border DockPanel.Dock="Left" Width="210" Background="#1d1d24">
+      <DockPanel Margin="0,20,0,14">
+        <TextBlock DockPanel.Dock="Top" Text="FOLLOWER FORGE" Foreground="#e8c877"
+                   FontWeight="Bold" FontSize="13" Margin="16,0,0,18"/>
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock x:Name="Step0" Classes="step" Tag="0" PointerPressed="OnStepClicked" Cursor="Hand" Text="1   Who she is"/>
+          <TextBlock x:Name="Step1" Classes="step" Tag="1" PointerPressed="OnStepClicked" Cursor="Hand" Text="2   Her look"/>
+          <TextBlock x:Name="Step2" Classes="step" Tag="2" PointerPressed="OnStepClicked" Cursor="Hand" Text="3   Her voice"/>
+          <TextBlock x:Name="Step3" Classes="step" Tag="3" PointerPressed="OnStepClicked" Cursor="Hand" Text="4   How she fights"/>
+          <TextBlock x:Name="Step4" Classes="step" Tag="4" PointerPressed="OnStepClicked" Cursor="Hand" Text="5   What she wears"/>
+          <TextBlock x:Name="Step5" Classes="step" Tag="5" PointerPressed="OnStepClicked" Cursor="Hand" Text="6   Where she waits"/>
+          <TextBlock x:Name="Step6" Classes="step" Tag="6" PointerPressed="OnStepClicked" Cursor="Hand" Text="7   Build her"/>
+        </StackPanel>
+        <TextBlock x:Name="EnvLine" Classes="hint" DockPanel.Dock="Bottom" FontSize="11.5"
+                   Margin="16,0,12,0" Text="Starting up…"/>
+      </DockPanel>
+    </Border>
+
+    <!-- footer -->
+    <Border DockPanel.Dock="Bottom" Background="#1d1d24" Padding="24,14">
+      <DockPanel>
+        <TextBlock x:Name="StatusLine" Classes="hint" VerticalAlignment="Center"/>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10"
+                    HorizontalAlignment="Right">
+          <Button x:Name="BackButton" Content="◀  Back" Click="OnBack"/>
+          <Button x:Name="NextButton" Classes="primary" Content="Next  ▶" Click="OnNext"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- pages: each is a Grid whose list rows are '*' so they grow with the window -->
+    <Panel Margin="28,22,28,10">
+
+      <!-- 1 identity. Two columns: the short answers on the left, the one thing that needs
+           room — her history with other people — on the right. As a single column this page
+           ran off the bottom of the window and left two thirds of the width empty. -->
+      <Grid x:Name="Page0" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,28,*">
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Classes="h1" Text="Who is she?"/>
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Classes="hint" Margin="0,4,0,0"
+                   Text="A name is enough to start — everything else has a sensible default."/>
+
+        <ScrollViewer Grid.Row="2" Grid.Column="0" Margin="0,8,0,0"
+                      HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="label" Text="Name"/>
+            <TextBox x:Name="NameBox" PlaceholderText="e.g. Aria" KeyUp="OnNameTyped"/>
+            <TextBlock Classes="label" Text="Plugin file (filled in for you)"/>
+            <TextBox x:Name="PluginBox" IsReadOnly="True"
+                     PlaceholderText="appears once you type a name"/>
+            <TextBlock Classes="label" Text="Sex"/>
+            <ComboBox x:Name="SexBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Female</ComboBoxItem>
+              <ComboBoxItem>Male</ComboBoxItem>
+            </ComboBox>
+            <TextBlock Classes="label" Text="Survivability"/>
+            <ComboBox x:Name="MortalBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Protected — only you can kill her (recommended)</ComboBoxItem>
+              <ComboBoxItem>Essential — cannot die at all</ComboBoxItem>
+              <ComboBoxItem>Mortal — she can die permanently</ComboBoxItem>
+            </ComboBox>
+            <CheckBox x:Name="MarriageBox" Margin="0,14,0,0"
+                      Content="She can be married (needs a voice that has marriage lines)"/>
+            <TextBlock Classes="label" Text="How she regards you"/>
+            <ComboBox x:Name="RelationshipBox" HorizontalAlignment="Stretch" SelectedIndex="1">
+              <ComboBoxItem>Lover</ComboBoxItem>
+              <ComboBoxItem>Ally (recommended)</ComboBoxItem>
+              <ComboBoxItem>Confidant</ComboBoxItem>
+              <ComboBoxItem>Friend</ComboBoxItem>
+              <ComboBoxItem>Acquaintance</ComboBoxItem>
+              <ComboBoxItem>Rival</ComboBoxItem>
+              <ComboBoxItem>Foe</ComboBoxItem>
+              <ComboBoxItem>Enemy</ComboBoxItem>
+              <ComboBoxItem>Archnemesis</ComboBoxItem>
+            </ComboBox>
+            <TextBlock Classes="hint" Margin="0,4,0,0" MaxWidth="560" TextWrapping="Wrap"
+                       Text="Not just flavour — mods that vary dialogue by relationship, Relationship Dialogue Overhaul above all, pick different lines for a Friend than for a Confidant."/>
+
+            <TextBlock Classes="label" Text="Leveling"/>
+            <ComboBox x:Name="LevelModeBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Scales with the player (recommended)</ComboBoxItem>
+              <ComboBoxItem>Fixed level</ComboBoxItem>
+            </ComboBox>
+            <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0">
+              <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Classes="hint" Text="Minimum"/>
+                <NumericUpDown x:Name="MinLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="1" Maximum="1000" Value="10"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                <TextBlock Classes="hint" Text="Maximum (0 = none)"/>
+                <NumericUpDown x:Name="MaxLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="0" Maximum="1000" Value="0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="hint" Text="Fixed"/>
+                <NumericUpDown x:Name="FixedLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="1" Maximum="1000" Value="20"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2" Grid.Column="2" Margin="0,8,0,0"
+              RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4"
+                     Text="How she regards other people (optional)"/>
+          <TextBlock Grid.Row="1" Classes="hint" TextWrapping="Wrap" MaxWidth="560"
+                     Text="Give her history with people already in the world — a sister, a rival, an old friend. Each one makes the mod that NPC comes from a requirement."/>
+          <Grid Grid.Row="2" Margin="0,10,0,0" ColumnDefinitions="*,170,90">
+            <TextBox Grid.Column="0" x:Name="KinSearch" PlaceholderText="search NPCs by name…" KeyUp="OnKinSearch"/>
+            <ComboBox Grid.Column="1" x:Name="KinRankBox" Margin="8,0,0,0" HorizontalAlignment="Stretch" SelectedIndex="3">
+              <ComboBoxItem>Lover</ComboBoxItem>
+              <ComboBoxItem>Ally</ComboBoxItem>
+              <ComboBoxItem>Confidant</ComboBoxItem>
+              <ComboBoxItem>Friend</ComboBoxItem>
+              <ComboBoxItem>Acquaintance</ComboBoxItem>
+              <ComboBoxItem>Rival</ComboBoxItem>
+              <ComboBoxItem>Foe</ComboBoxItem>
+              <ComboBoxItem>Enemy</ComboBoxItem>
+              <ComboBoxItem>Archnemesis</ComboBoxItem>
+            </ComboBox>
+            <Button Grid.Column="2" x:Name="AddKinButton" Margin="8,0,0,0" Content="Add"
+                    HorizontalAlignment="Stretch" Click="OnAddKin"/>
+          </Grid>
+          <ListBox Grid.Row="3" x:Name="KinCandidates" Margin="0,8,0,0" MinHeight="120"/>
+          <TextBlock Grid.Row="4" x:Name="KinError" Classes="hint" Margin="0,6,0,0"
+                     Foreground="#E06C6C" IsVisible="False" TextWrapping="Wrap"/>
+          <TextBlock Grid.Row="5" Classes="label" Text="Her people"/>
+          <ListBox Grid.Row="6" x:Name="KinList" Margin="0,4,0,0" Height="120"/>
+          <Button Grid.Row="7" Margin="0,8,0,0" Content="Remove selected" Click="OnRemoveKin"/>
+        </Grid>
+      </Grid>
+
+      <!-- 2 look. Face and race side by side: stacked, one exported face left a huge empty box
+           above a squeezed race list. -->
+      <Grid x:Name="Page1" IsVisible="False" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,28,*">
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Classes="h1" Text="What does she look like?"/>
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Classes="hint" Margin="0,4,0,0"
+                   Text="Pick a face you exported from RaceMenu (Sculpt tab → F5 in game). Without one she gets a plain default face."/>
+
+        <Grid Grid.Row="2" Grid.Column="0" Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4" Text="Face from RaceMenu"/>
+          <TextBox Grid.Row="1" x:Name="FaceSearch" PlaceholderText="search your exported faces…" KeyUp="OnFaceSearch"/>
+          <ListBox Grid.Row="2" x:Name="FaceList" Margin="0,6,0,0" SelectionChanged="OnFaceSelected"/>
+        </Grid>
+
+        <Grid Grid.Row="2" Grid.Column="2" Margin="0,8,0,0"
+              RowDefinitions="Auto,Auto,Auto,Auto,*">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4" Text="Race"/>
+          <CheckBox Grid.Row="0" x:Name="VampireBox" HorizontalAlignment="Right"
+                    Content="She is a vampire"/>
+          <CheckBox Grid.Row="1" x:Name="CustomRacesBox" Margin="0,2,0,0"
+                    Content="Also show custom races from my mods (they become requirements)"
+                    IsCheckedChanged="OnCustomRacesToggled"/>
+          <CheckBox Grid.Row="2" x:Name="CreatureRacesBox" Margin="0,4,0,0"
+                    Content="Include creatures (dragons, beasts — no face, no gear)"
+                    IsCheckedChanged="OnCustomRacesToggled"/>
+          <TextBox Grid.Row="3" x:Name="RaceSearch" Margin="0,8,0,0" PlaceholderText="search races…" KeyUp="OnRaceSearch"/>
+          <ListBox Grid.Row="4" x:Name="RaceList" Margin="0,6,0,0"/>
+        </Grid>
+      </Grid>
+
+      <!-- 3 voice -->
+      <Grid x:Name="Page2" IsVisible="False" RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="How does she sound?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Best voices first: VANILLA already has every recruit / trade / wait line, then SOS PACK from the Simply Open Source Voice Pack, then your other mod voices. Creature and unique voices are hidden until you ask for them."/>
+        <TabControl Grid.Row="2" Margin="0,10,0,0">
+          <TabItem Header="Voice">
+            <Grid Margin="8" RowDefinitions="Auto,Auto,*">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,260">
+                <TextBox Grid.Column="0" x:Name="VoiceSearch" PlaceholderText="search voices…" KeyUp="OnVoiceSearch"/>
+                <TextBlock Grid.Column="1" Text="Show" VerticalAlignment="Center"
+                           Foreground="#9aa0aa" Margin="14,0,8,0"/>
+                <ComboBox Grid.Column="2" x:Name="VoiceScopeBox" HorizontalAlignment="Stretch"
+                          SelectedIndex="0" SelectionChanged="OnVoiceScopeChanged">
+                  <ComboBoxItem Content="Voices she can actually use"/>
+                  <ComboBoxItem Content="Every voice, including creatures"/>
+                </ComboBox>
+              </Grid>
+              <TextBlock Grid.Row="1" x:Name="VoiceCountLine" Classes="hint" Margin="0,8,0,0"/>
+              <ListBox Grid.Row="2" x:Name="VoiceList" Margin="0,6,0,0" SelectionChanged="OnVoiceSelected"/>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Custom lines (optional)">
+            <Grid Margin="8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto">
+              <TextBlock Grid.Row="0" Classes="hint" TextWrapping="Wrap"
+                         Text="Write your own lines and Follower Forge speaks them in the voice you picked, with lip sync, so she is not silent. These are hers alone — they never change any other NPC."/>
+              <TextBlock Grid.Row="1" x:Name="VoiceSynthStatus" Classes="hint" Margin="0,8,0,0" TextWrapping="Wrap"
+                         Text="Checking for xVASynth…"/>
+
+              <Grid Grid.Row="2" Margin="0,10,0,0" ColumnDefinitions="160,*" >
+                <ComboBox Grid.Column="0" x:Name="LineTriggerBox" HorizontalAlignment="Stretch"
+                          SelectedIndex="0" SelectionChanged="OnLineTriggerChanged">
+                  <ComboBoxItem Content="When you talk to her"/>
+                  <ComboBoxItem Content="As you walk away"/>
+                  <ComboBoxItem Content="Idle chatter"/>
+                  <ComboBoxItem Content="A topic you can pick"/>
+                  <ComboBoxItem Content="A fight starts"/>
+                  <ComboBoxItem Content="The fight is over"/>
+                  <ComboBoxItem Content="Taunting an enemy"/>
+                  <ComboBoxItem Content="Swinging a weapon"/>
+                  <ComboBoxItem Content="Power attack"/>
+                  <ComboBoxItem Content="Blocking a blow"/>
+                  <ComboBoxItem Content="Taking a hit"/>
+                  <ComboBoxItem Content="Going down"/>
+                  <ComboBoxItem Content="Dying"/>
+                </ComboBox>
+                <TextBox Grid.Column="1" x:Name="LinePromptBox" Margin="8,0,0,0" IsVisible="False"
+                         PlaceholderText="menu entry the player clicks, e.g. “Come with me.”"/>
+              </Grid>
+
+              <Grid Grid.Row="3" Margin="0,6,0,0" ColumnDefinitions="*,160,110">
+                <TextBox Grid.Column="0" x:Name="LineTextBox" PlaceholderText="what she says…"/>
+                <ComboBox Grid.Column="1" x:Name="LineEmotionBox" Margin="8,0,0,0" HorizontalAlignment="Stretch"
+                          SelectedIndex="0">
+                  <ComboBoxItem Content="Neutral"/>
+                  <ComboBoxItem Content="Anger"/>
+                  <ComboBoxItem Content="Disgust"/>
+                  <ComboBoxItem Content="Fear"/>
+                  <ComboBoxItem Content="Sad"/>
+                  <ComboBoxItem Content="Happy"/>
+                  <ComboBoxItem Content="Surprise"/>
+                  <ComboBoxItem Content="Puzzled"/>
+                </ComboBox>
+                <Button Grid.Column="2" x:Name="AddLineButton" Margin="8,0,0,0" Content="Add line"
+                        HorizontalAlignment="Stretch" Click="OnAddLine"/>
+              </Grid>
+
+              <Grid Grid.Row="4" Margin="0,6,0,0" ColumnDefinitions="Auto,*,Auto,170">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="#9aa0aa" Text="Only when"/>
+                <ComboBox Grid.Column="1" x:Name="LinePlaceBox" Margin="8,0,0,0"
+                          HorizontalAlignment="Stretch" SelectedIndex="0"/>
+                <TextBlock Grid.Column="2" Margin="14,0,0,0" VerticalAlignment="Center"
+                           Foreground="#9aa0aa" Text="Time"/>
+                <ComboBox Grid.Column="3" x:Name="LineTimeBox" Margin="8,0,0,0"
+                          HorizontalAlignment="Stretch" SelectedIndex="0">
+                  <ComboBoxItem Content="Any time"/>
+                  <ComboBoxItem Content="Daytime"/>
+                  <ComboBoxItem Content="At night"/>
+                </ComboBox>
+              </Grid>
+              <TextBlock Grid.Row="5" x:Name="LineError" Classes="hint" Margin="0,6,0,0"
+                         Foreground="#E06C6C" IsVisible="False" TextWrapping="Wrap"/>
+
+              <TextBlock Grid.Row="6" Classes="label" Margin="0,10,0,0" Text="Her lines"/>
+              <ListBox Grid.Row="7" x:Name="LineList" Margin="0,6,0,0" MinHeight="120"/>
+
+              <Grid Grid.Row="8" Margin="0,6,0,0" ColumnDefinitions="Auto,*">
+                <Button Grid.Column="0" Content="Remove selected" Click="OnRemoveLine"/>
+                <CheckBox Grid.Column="1" x:Name="SynthesizeBox" Margin="12,0,0,0" IsChecked="True"
+                          Content="Speak them out loud (needs xVASynth)"/>
+              </Grid>
+            </Grid>
+          </TabItem>
+        </TabControl>
+      </Grid>
+
+      <!-- 4 combat, skills, and primary stats -->
+      <Grid x:Name="Page3" IsVisible="False" RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="How does she fight?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Keep automatic stats for an easy class-based follower, or open Skills &amp; stats to set every value yourself."/>
+        <TabControl Grid.Row="2" Margin="0,10,0,0">
+          <TabItem Header="Class &amp; tactics">
+            <Grid Margin="8" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,*,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="hint"
+                         Text="Class controls automatic skill growth; combat style controls tactics and weapon choices."/>
+              <TextBlock Grid.Row="1" Classes="label" Text="Class"/>
+              <TextBox Grid.Row="2" x:Name="ClassSearch" PlaceholderText="search classes..." KeyUp="OnClassSearch"/>
+              <ListBox Grid.Row="3" x:Name="ClassList" Margin="0,6,0,0" MinHeight="120"/>
+              <TextBlock Grid.Row="4" Classes="label" Text="Combat style"/>
+              <TextBox Grid.Row="5" x:Name="CstySearch" PlaceholderText="search combat styles..." KeyUp="OnCstySearch"/>
+              <ListBox Grid.Row="6" x:Name="CstyList" Margin="0,6,0,0" MinHeight="120"/>
+              <CheckBox Grid.Row="7" x:Name="CloneCstyBox" Margin="0,8,0,0"
+                        Content="Copy it into her plugin so I can tweak it later (never edits the original)"/>
+              <StackPanel Grid.Row="8">
+                <TextBlock Classes="label" Text="Temperament"/>
+                <ComboBox x:Name="TemperBox" Width="420" HorizontalAlignment="Left" SelectedIndex="3">
+                  <ComboBoxItem>Cowardly - flees from any fight</ComboBoxItem>
+                  <ComboBoxItem>Cautious - hangs back, avoids fights</ComboBoxItem>
+                  <ComboBoxItem>Average - stands her ground</ComboBoxItem>
+                  <ComboBoxItem>Brave - fights when you do (recommended)</ComboBoxItem>
+                  <ComboBoxItem>Foolhardy - charges in first</ComboBoxItem>
+                </ComboBox>
+                <TextBlock Classes="hint" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="These are the game's own five confidence ranks. Cowardly makes her run from danger — pick it if you want someone who has to grow into the job."/>
+
+                <Border Margin="0,14,0,0" Padding="10" CornerRadius="4"
+                        BorderBrush="#7a5a2a" BorderThickness="1" Background="#2a2216">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="EXPERIMENTAL — let her grow" FontWeight="Bold" Foreground="#e0b060"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap"
+                               Text="She starts timid and gains confidence, skills and health as she survives fights beside you — the idea behind Melana the War Maiden. This is the ONLY feature that puts a script in your follower, and scripts stay in your save file in a way records do not. It has not been confirmed working in game. Test on a save you can throw away."/>
+                    <CheckBox x:Name="EvolveBox" Margin="0,8,0,0" IsChecked="False"
+                              Content="Let her evolve as she fights (experimental)"
+                              IsCheckedChanged="OnEvolveToggled"/>
+                    <!-- Numeric columns are 150 wide: Avalonia's two spinner buttons eat most of
+                         a narrow field and hide the value itself. -->
+                    <Grid x:Name="EvolveOptions" IsEnabled="False" Margin="0,6,0,0"
+                          ColumnDefinitions="Auto,150,Auto,150,Auto,150">
+                      <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="#9aa0aa" Text="Phases"/>
+                      <NumericUpDown Grid.Column="1" x:Name="EvolvePhases" Margin="6,0,0,0" MinWidth="150"
+                                     Minimum="2" Maximum="5" Value="3" Increment="1" FormatString="0"/>
+                      <TextBlock Grid.Column="2" Margin="14,0,0,0" VerticalAlignment="Center"
+                                 Foreground="#9aa0aa" Text="Fights per phase"/>
+                      <NumericUpDown Grid.Column="3" x:Name="EvolveCombats" Margin="6,0,0,0" MinWidth="150"
+                                     Minimum="1" Maximum="500" Value="25" Increment="5" FormatString="0"/>
+                      <TextBlock Grid.Column="4" Margin="14,0,0,0" VerticalAlignment="Center"
+                                 Foreground="#9aa0aa" Text="Ends as"/>
+                      <ComboBox Grid.Column="5" x:Name="EvolveEndBox" Margin="6,0,0,0"
+                                HorizontalAlignment="Stretch" SelectedIndex="4">
+                        <ComboBoxItem>Cowardly</ComboBoxItem>
+                        <ComboBoxItem>Cautious</ComboBoxItem>
+                        <ComboBoxItem>Average</ComboBoxItem>
+                        <ComboBoxItem>Brave</ComboBoxItem>
+                        <ComboBoxItem>Foolhardy</ComboBoxItem>
+                      </ComboBox>
+                    </Grid>
+                    <TextBlock x:Name="EvolveNote" Classes="hint" Margin="0,6,0,0" TextWrapping="Wrap"/>
+
+                    <TextBlock Text="EXPERIMENTAL — change form in combat" FontWeight="Bold"
+                               Foreground="#e0b060" Margin="0,16,0,0"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap"
+                               Text="She transforms when a fight starts and changes back when it ends. Werewolf uses the game's own beast race and change effect and needs nothing installed. Custom uses a race and/or spell from your own mods — the same trick the transforming followers use. Also adds a script."/>
+                    <ComboBox x:Name="TransformKindBox" Margin="0,8,0,0" Width="420"
+                              HorizontalAlignment="Left" SelectedIndex="0"
+                              SelectionChanged="OnTransformKindChanged">
+                      <ComboBoxItem>No transformation</ComboBoxItem>
+                      <ComboBoxItem>Werewolf (vanilla, no extra mods needed)</ComboBoxItem>
+                      <ComboBoxItem>Custom — pick a race and/or spell from my mods</ComboBoxItem>
+                    </ComboBox>
+                    <Grid x:Name="TransformCustom" IsVisible="False" Margin="0,8,0,0"
+                          ColumnDefinitions="*,*" ColumnSpacing="10">
+                      <StackPanel Grid.Column="0">
+                        <TextBlock Classes="hint" Text="Race to become (optional)"/>
+                        <TextBox x:Name="TransformRaceSearch" Margin="0,4,0,0"
+                                 PlaceholderText="search races…" KeyUp="OnTransformRaceSearch"/>
+                        <ListBox x:Name="TransformRaceList" Margin="0,4,0,0" Height="110"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="hint" Text="Spell cast on transforming (optional)"/>
+                        <TextBox x:Name="TransformSpellSearch" Margin="0,4,0,0"
+                                 PlaceholderText="search spells…" KeyUp="OnTransformSpellSearch"/>
+                        <ListBox x:Name="TransformSpellList" Margin="0,4,0,0" Height="110"/>
+                      </StackPanel>
+                    </Grid>
+                    <CheckBox x:Name="TransformRevertBox" Margin="0,8,0,0" IsChecked="True"
+                              Content="Change back when the fight ends"/>
+                    <TextBlock Classes="hint" Margin="0,10,0,0" TextWrapping="Wrap"
+                               Foreground="#c9a24a"
+                               Text="Note: any option on this panel adds a script. Scripted followers can behave oddly if you also import them into a follower framework such as NFF or EFF. Ordinary followers are unaffected."/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Skills &amp; stats">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="10">
+                <TextBlock Classes="label" Text="Stat calculation"/>
+                <ComboBox x:Name="StatsModeBox" SelectedIndex="0"
+                          SelectionChanged="OnStatsModeChanged">
+                  <ComboBoxItem>Automatic - class and level calculate everything (recommended)</ComboBoxItem>
+                  <ComboBoxItem>Custom - use the exact values below</ComboBoxItem>
+                </ComboBox>
+                <TextBlock Classes="hint" Margin="0,6,0,0"
+                           Text="Automatic is normal Skyrim behavior. Custom disables AutoCalcStats and writes all 18 skills plus Health, Magicka, and Stamina."/>
+
+                <StackPanel x:Name="CustomStatsPanel" IsVisible="False" Margin="0,12,0,0">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                      <TextBlock Classes="label" Text="Quick starting point"/>
+                      <ComboBox x:Name="StatPresetBox" SelectedIndex="0">
+                        <ComboBoxItem>Blank slate</ComboBoxItem>
+                        <ComboBoxItem>One-handed warrior</ComboBoxItem>
+                        <ComboBoxItem>Two-handed warrior</ComboBoxItem>
+                        <ComboBoxItem>Archer</ComboBoxItem>
+                        <ComboBoxItem>Pure mage</ComboBoxItem>
+                        <ComboBoxItem>Spellsword</ComboBoxItem>
+                        <ComboBoxItem>Restoration support</ComboBoxItem>
+                        <ComboBoxItem>Rogue</ComboBoxItem>
+                      </ComboBox>
+                    </StackPanel>
+                    <Button Grid.Column="1" Margin="10,24,0,0" Content="Apply preset"
+                            Click="OnApplyStatPreset"/>
+                  </Grid>
+
+                  <TextBlock Classes="label" Margin="0,14,0,0" Text="Primary stats"/>
+                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0">
+                      <TextBlock Text="Health"/>
+                      <NumericUpDown x:Name="HealthStatBox" MinWidth="150" Minimum="0" Maximum="65535"
+                                     Value="100" FormatString="0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="Magicka"/>
+                      <NumericUpDown x:Name="MagickaStatBox" MinWidth="150" Minimum="0" Maximum="65535"
+                                     Value="100" FormatString="0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="Stamina"/>
+                      <NumericUpDown x:Name="StaminaStatBox" MinWidth="150" Minimum="0" Maximum="65535"
+                                     Value="100" FormatString="0"/>
+                    </StackPanel>
+                  </Grid>
+
+                  <TextBlock Classes="label" Margin="0,14,0,0" Text="All 18 skills"/>
+                  <TextBlock Classes="hint" Margin="0,0,0,6"
+                             Text="Presets are only starting points; every value below remains editable."/>
+                  <Grid x:Name="SkillEditorGrid" ColumnDefinitions="*,*,*" ColumnSpacing="18"/>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+      </Grid>
+
+      <!-- 5 gear -->
+      <Grid x:Name="Page4" IsVisible="False" RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="What does she wear and carry?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Pick the actual armor, accessories, weapons, spells, and perks she owns. Biped-slot conflicts are checked before a plugin can be published."/>
+
+        <TabControl Grid.Row="2" Margin="0,12,0,0">
+          <TabItem Header="Armor &amp; accessories">
+            <Grid RowDefinitions="Auto,*" Margin="8">
+              <TextBox Grid.Row="0" x:Name="ArmorSearch" PlaceholderText="search all armor and accessories…"
+                       KeyUp="OnArmorSearch"/>
+              <TabControl Grid.Row="1" Margin="0,8,0,0">
+                <TabItem Header="Torso">
+                  <ListBox x:Name="ArmorTorsoList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Helmet">
+                  <ListBox x:Name="ArmorHeadList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Gauntlets">
+                  <ListBox x:Name="ArmorHandsList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Boots">
+                  <ListBox x:Name="ArmorFeetList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Shields">
+                  <ListBox x:Name="ArmorShieldList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Accessories">
+                  <ListBox x:Name="ArmorAccessoriesList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+                <TabItem Header="Other">
+                  <ListBox x:Name="ArmorOtherList" SelectionMode="Multiple"
+                           SelectionChanged="OnArmorSelectionChanged"/>
+                </TabItem>
+              </TabControl>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Weapons">
+            <Grid RowDefinitions="Auto,*" Margin="8">
+              <TextBox Grid.Row="0" x:Name="WeaponSearch" PlaceholderText="search weapons…"
+                       KeyUp="OnWeaponSearch"/>
+              <ListBox Grid.Row="1" x:Name="WeaponList" Margin="0,8,0,0" SelectionMode="Multiple"
+                       SelectionChanged="OnWeaponSelectionChanged"/>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Books &amp; belongings">
+            <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="8">
+              <TextBlock Grid.Row="0" Classes="hint" TextWrapping="Wrap"
+                         Text="Things she carries that say who she is — a journal, a letter from home, a keepsake, her favourite mead. These go into her inventory, so you can take them from her or read them after recruiting her."/>
+              <ComboBox Grid.Row="1" x:Name="LoreKindBox" Margin="0,8,0,0" Width="300"
+                        HorizontalAlignment="Left" SelectedIndex="0"
+                        SelectionChanged="OnLoreKindChanged">
+                <ComboBoxItem Content="Books and notes"/>
+                <ComboBoxItem Content="Miscellaneous items"/>
+                <ComboBoxItem Content="Food, potions and poisons"/>
+                <ComboBoxItem Content="Ingredients"/>
+              </ComboBox>
+              <TextBox Grid.Row="2" x:Name="LoreSearch" Margin="0,8,0,0"
+                       PlaceholderText="search…" KeyUp="OnLoreSearch"/>
+              <ListBox Grid.Row="3" x:Name="LoreList" Margin="0,8,0,0" SelectionMode="Multiple"
+                       SelectionChanged="OnLoreSelectionChanged"/>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Spells &amp; perks">
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,*" Margin="8">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Margin="0,0,8,4"
+                         Text="Spells she knows"/>
+              <TextBlock Grid.Row="0" Grid.Column="1" Classes="label" Margin="8,0,0,4"
+                         Text="Perks she has"/>
+              <TextBox Grid.Row="1" Grid.Column="0" Margin="0,0,8,0" x:Name="SpellSearch"
+                       PlaceholderText="search spells…" KeyUp="OnSpellSearch"/>
+              <TextBox Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" x:Name="PerkSearch"
+                       PlaceholderText="search perks…" KeyUp="OnPerkSearch"/>
+              <ListBox Grid.Row="2" Grid.Column="0" Margin="0,8,8,0" x:Name="SpellList"
+                       SelectionMode="Multiple" SelectionChanged="OnSpellSelectionChanged"/>
+              <ListBox Grid.Row="2" Grid.Column="1" Margin="8,8,0,0" x:Name="PerkList"
+                       SelectionMode="Multiple" SelectionChanged="OnPerkSelectionChanged"/>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="Legacy outfit (optional)">
+            <Grid RowDefinitions="Auto,Auto,*" Margin="8">
+              <TextBlock Grid.Row="0" Classes="hint"
+                         Text="Compatibility only: an OTFT is a predefined form list, not the primary equipment workflow. Leave this empty when you picked actual gear."/>
+              <TextBox Grid.Row="1" x:Name="OutfitSearch" Margin="0,8,0,0"
+                       PlaceholderText="search legacy outfit records…" KeyUp="OnOutfitSearch"/>
+              <ListBox Grid.Row="2" x:Name="OutfitList" Margin="0,8,0,0"/>
+            </Grid>
+          </TabItem>
+        </TabControl>
+      </Grid>
+
+      <!-- 6 place -->
+      <Grid x:Name="Page5" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+        <TextBlock Grid.Row="0" Classes="h1" Text="Where will she be waiting?"/>
+        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+                   Text="Real spots taken from follower mods you already have, so they are known to work. Most need nothing but Skyrim itself."/>
+        <TextBox Grid.Row="2" x:Name="PlaceSearch" Margin="0,10,0,0"
+                 PlaceholderText="search: bannered mare, riften, sleeping giant…" KeyUp="OnPlaceSearch"/>
+        <ListBox Grid.Row="3" x:Name="PlaceList" Margin="0,6,0,0"/>
+
+        <TextBlock Grid.Row="4" Classes="label" Margin="0,12,0,0" Text="What she does while she waits"/>
+        <ComboBox Grid.Row="5" x:Name="IdleBox" Width="460" HorizontalAlignment="Left" SelectedIndex="2">
+          <ComboBoxItem>Leave it to the game (she will still sit and eat)</ComboBoxItem>
+          <ComboBoxItem>Keeps to her spot — barely strays</ComboBoxItem>
+          <ComboBoxItem>Uses the room she is in (recommended)</ComboBoxItem>
+          <ComboBoxItem>Settles wherever she happens to be</ComboBoxItem>
+        </ComboBox>
+        <CheckBox Grid.Row="6" x:Name="SleepsBox" Margin="0,8,0,0" IsChecked="True"
+                  Content="Goes to bed at night"/>
+        <StackPanel Grid.Row="7" Margin="0,12,0,0">
+          <TextBlock Classes="label" Margin="0,0,0,4" Text="Or let her start somewhere different each game (optional)"/>
+          <TextBlock Classes="hint" TextWrapping="Wrap"
+                     Text="Add up to four places from the list above. She then starts at one of them at random, the way the Enemy-to-Ally followers do — using our own script, so it does not conflict with theirs."/>
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+            <Button Content="Add the selected place" Click="OnAddAlternateSpawn"/>
+            <Button Content="Remove selected" Click="OnRemoveAlternateSpawn"/>
+          </StackPanel>
+          <TextBlock x:Name="SpawnError" Classes="hint" Margin="0,6,0,0"
+                     Foreground="#E06C6C" IsVisible="False" TextWrapping="Wrap"/>
+          <ListBox x:Name="AlternateSpawnList" Margin="0,6,0,0" Height="90"/>
+          <Border Margin="0,12,0,0" Padding="10" CornerRadius="4"
+                  BorderBrush="#7a5a2a" BorderThickness="1" Background="#2a2216">
+            <StackPanel Spacing="2">
+              <TextBlock Text="Enemy to ally" FontWeight="Bold" Foreground="#e0b060"/>
+              <TextBlock Classes="hint" TextWrapping="Wrap"
+                         Text="Instead of waiting to be recruited, a hostile version of her lurks at one of the places above. Beat her, loot the spell tome she carries, read it, and the spell summons her to you as a follower. She does not exist in the world until then."/>
+              <CheckBox x:Name="E2ABox" Margin="0,8,0,0" IsChecked="False"
+                        Content="She has to be defeated before she can be recruited"
+                        IsCheckedChanged="OnE2AToggled"/>
+              <StackPanel x:Name="E2AOptions" IsVisible="False" Orientation="Horizontal"
+                          Spacing="10" Margin="0,6,0,0">
+                <TextBlock VerticalAlignment="Center" Foreground="#9aa0aa" Text="Fights alongside"/>
+                <ComboBox x:Name="E2ACompanyBox" Width="260" SelectedIndex="0">
+                  <ComboBoxItem>Bandits</ComboBoxItem>
+                  <ComboBoxItem>Draugr</ComboBoxItem>
+                  <ComboBoxItem>Warlocks</ComboBoxItem>
+                  <ComboBoxItem>Beasts and creatures</ComboBoxItem>
+                </ComboBox>
+              </StackPanel>
+              <TextBlock x:Name="E2ANote" Classes="hint" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- 7 build -->
+      <Grid x:Name="Page6" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="h1" Text="Build her"/>
+        <TextBlock Grid.Row="1" x:Name="SummaryText" Classes="hint" Margin="0,10,0,10"
+                   FontFamily="Cascadia Mono,Consolas,monospace"/>
+
+        <TextBlock Grid.Row="2" Classes="label" Text="Her appearance assets"/>
+        <ComboBox Grid.Row="3" x:Name="HubModeBox" Width="620" HorizontalAlignment="Left"
+                  SelectedIndex="0" SelectionChanged="OnHubModeChanged">
+          <ComboBoxItem>Keep the matching textures from my installed mods (recommended)</ComboBoxItem>
+          <ComboBoxItem>Use safe free-resource substitutions where a complete set exists</ComboBoxItem>
+          <ComboBoxItem>Copy her assets into my own asset hub</ComboBoxItem>
+        </ComboBox>
+
+        <StackPanel Grid.Row="4" x:Name="OwnHubPanel" IsVisible="False" Spacing="6" Margin="0,10,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Hub name" Foreground="#d7dbe2" VerticalAlignment="Center"/>
+            <TextBox x:Name="HubPrefixBox" Width="240" PlaceholderText="e.g. KarloAssets"/>
+          </StackPanel>
+          <CheckBox x:Name="HubPermissionBox"
+                    Content="I have checked each source mod's permissions and may redistribute these files."/>
+          <TextBlock Classes="hint" FontSize="12"
+                     Text="Follower Forge cannot verify permissions and will not claim them for you. It writes PERMISSIONS.md listing every copied file and where it came from — read it before uploading anywhere."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="14" Margin="0,14,0,0"
+                    VerticalAlignment="Top">
+          <Button x:Name="BuildButton" Classes="primary" Content="Build follower" Click="OnBuild"/>
+          <CheckBox x:Name="ZipBox" Content="Also make an installable .zip" IsChecked="True"
+                    VerticalAlignment="Center"/>
+          <Button x:Name="OpenFolderButton" Content="Open output folder" Click="OnOpenFolder" IsEnabled="False"/>
+        </StackPanel>
+        <TextBox Grid.Row="6" x:Name="BuildLog" AcceptsReturn="True" IsReadOnly="True" Margin="0,12,0,0"
+                 FontFamily="Cascadia Mono,Consolas,monospace" TextWrapping="Wrap"/>
+      </Grid>
+    </Panel>
+  </DockPanel>
+</Window>
+
+

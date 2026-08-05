@@ -1,0 +1,5 @@
+Follower Forge 3.2.1
+
+Parent: Follower Forge 3.2.0
+Created: 2026-08-05
+Hotfix: prefer Vortex over SKYRIM_MO2_INSTANCE houseCARL shim; skip shim instances.
