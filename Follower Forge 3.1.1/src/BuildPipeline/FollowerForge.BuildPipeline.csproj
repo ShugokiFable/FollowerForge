@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\FollowerForge.Domain.csproj" />
+    <ProjectReference Include="..\ModManagers\FollowerForge.ModManagers.csproj" />
+    <ProjectReference Include="..\SkyrimRecords\FollowerForge.SkyrimRecords.csproj" />
+    <ProjectReference Include="..\AssetIndex\FollowerForge.AssetIndex.csproj" />
+    <ProjectReference Include="..\FaceGen\FollowerForge.FaceGen.csproj" />
+    <ProjectReference Include="..\Validation\FollowerForge.Validation.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FollowerForge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compiled once by us and carried inside the exe, so nobody building a follower needs a
+         Papyrus compiler. The .psc sits beside it so the shipped script is auditable. -->
+    <EmbeddedResource Include="Resources\FF_Evolution.pex" />
+    <EmbeddedResource Include="Resources\FF_Evolution.psc" />
+    <EmbeddedResource Include="Resources\FF_Transform.pex" />
+    <EmbeddedResource Include="Resources\FF_Transform.psc" />
+    <EmbeddedResource Include="Resources\FF_RandomSpawn.pex" />
+    <EmbeddedResource Include="Resources\FF_RandomSpawn.psc" />
+    <EmbeddedResource Include="Resources\FF_Summon.pex" />
+    <EmbeddedResource Include="Resources\FF_Summon.psc" />
+  </ItemGroup>
+
+</Project>
+
