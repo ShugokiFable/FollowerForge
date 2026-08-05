@@ -1,4 +1,4 @@
-# Follower Forge 3.0.1
+# Follower Forge 3.1.0
 
 Make a custom Skyrim SE/AE follower without opening the Creation Kit.
 
@@ -297,8 +297,8 @@ Requires the .NET 10 SDK.
 
 ```powershell
 .\Build-FollowerForge.ps1
-.\Publish-FollowerForge.ps1 -Version 3.0.1
+.\Publish-FollowerForge.ps1 -Version 3.1.0
 ```
 
 The publish script runs tests, creates self-contained Windows app and CLI executables, performs a
-12-second boot check, and writes `dist\FollowerForge-3.0.1-win-x64.zip`.
+12-second boot check, and writes `dist\FollowerForge-3.1.0-win-x64.zip`.

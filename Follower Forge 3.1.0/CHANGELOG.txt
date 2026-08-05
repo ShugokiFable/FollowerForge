@@ -3,57 +3,84 @@
 # Format: version, date (YYYY-MM-DD), agent, summary, files, verify, nexus?
 
 ================================================================================
-## [3.0.1] - 2026-08-05 - lore items build; the preset's complexion ships with her
+## [3.1.0] - 2026-08-05 - lore items build, the preset's complexion ships, and the lists finally read
 Agent: Claude
 Parent: Follower Forge 3.0.0
+Note: 3.0.1 was prepared and never released; its fixes are folded in here.
+
 Runtime basis:
-  - User report: selecting any book / misc item / potion failed the build outright with
-    REFERENCE_WRONG_TYPE, so no follower carrying belongings could be produced at all.
-  - Same report: a High Poly Head follower built from a preset with extended (EFM) sliders
-    "looked a bit worse" than in RaceMenu and showed a skin-tone seam at the neck.
+  - User report: selecting any book / misc item / potion failed the build outright, so no
+    follower carrying belongings could be produced at all.
+  - Same report: a High Poly Head follower built from an extended-slider (EFM) preset "looked
+    a bit worse" than in RaceMenu and showed a skin-tone seam at the neck.
+  - Follow-up: "SOSVoicePack voices are lost within weird creature voices"; the wizard as a
+    whole rated 6.5/10 and felt compacted.
 
 Fixed - lore items were rejected as equipment (blocking):
   - The lore step writes books, keepsakes, food and ingredients into the same InventoryItems
-    list as gear, but the reference check still only accepted Armor and Weapon. Every lore
-    pick therefore failed the build with REFERENCE_WRONG_TYPE.
-  - Inventory references are now checked against what the engine actually accepts in an NPC's
-    container list: Armor, Weapon, Book, MiscItem, Ingestible, Ingredient.
-  - Spells and other non-carryables are still rejected, so the check keeps its teeth.
+    list as gear, but the reference check still only accepted Armor and Weapon.
+  - Inventory now accepts what the engine takes in an NPC container list: Armor, Weapon, Book,
+    MiscItem, Ingestible, Ingredient. Spells and other non-carryables are still rejected.
 
 Fixed - the preset's face texture set was dropped (neck seam):
-  - A RaceMenu jslot records actor.headTexture, the TXST the face was built on. Follower Forge
-    read weight and hair colour from that block and ignored it.
-  - Left unset, the follower inherits her race's DEFAULT complexion while the exported head
-    keeps the preset's - the two meet at a visible skin-tone seam at the neck.
-  - The jslot value is now read, resolved against the live catalogue (with an ESL-mask retry,
-    since RaceMenu writes the id with no hint of whether the plugin is light) and written to
-    the NPC record's HeadTexture.
-  - An unresolvable texture set is dropped with FACE_HEAD_TEXTURE_UNRESOLVED rather than
-    failing the build - a complexion is worth a warning, never a dead end.
+  - A RaceMenu jslot records actor.headTexture, the TXST the face was built on; weight and hair
+    colour were read from that block and this was ignored.
+  - Unset, the follower inherits her race's DEFAULT complexion while the exported head keeps the
+    preset's - the two meet at a visible skin-tone seam at the neck.
+  - Now read, resolved against the live catalogue (with an ESL-mask retry, since RaceMenu writes
+    the id with no hint whether the plugin is light) and written to the NPC record's FTST.
+  - An unresolvable set warns (FACE_HEAD_TEXTURE_UNRESOLVED) rather than failing the build.
 
-Fixed - marriage support could not be determined from the app:
-  - The wizard read the voice-dialogue library but never built it, so a marriageable follower
-    reported MARRIAGE_UNKNOWN and told the user to go run a CLI command.
-  - First launch now scans the load order itself and reloads the voice list with the result.
+Fixed - every voice pack voice claimed its files were missing:
+  - RecordIndexer classified voices with no file-existence check, because the asset index is
+    built AFTER the records and so is always empty at that moment. FilesVerified was therefore
+    false for all 17 SOS voices even with every .fuz present.
+  - Verification now happens where the catalogue is complete, against the folder the files
+    actually live in - the PART plugin's folder, not the master's.
+
+Voice list - ordered by what a voice can actually do:
+  - Measured here: 1,018 voice types - 24 vanilla, 17 SOS pack, 379 unverified modded, 598
+    creature/unique. Alphabetical order put "VP_11_Aria" under V, below hundreds of mudcrabs.
+  - Order is now vanilla -> voice pack -> other mod voices -> no-follower-lines, then by name.
+  - A "Show" filter hides the 598 creature and unique voices by default and says how many.
+  - Each row carries a chip and a sentence: what she gets, and whether the files are on disk.
+
+Every list reads differently:
+  - One row template for all of them: name, a muted line of why it matters, and a colour chip.
+    Previously every row was a single dense "Name - detail" string from ToString().
+  - Races, items, places and faces are chipped BASE GAME / MOD / READY / CANNOT BUILD, so the
+    cost to whoever installs her is visible without reading.
+  - Vortex's bookkeeping is stripped from mod names: "Call Of The Deep-154194-1-1-1754764218"
+    reads as "Call Of The Deep". The build report keeps the full folder name as provenance.
+
+Layout:
+  - Window 1320x900 (was 1180x820).
+  - Step 1 was a single column that overflowed the window and painted over the status bar; it
+    is now two columns and fits.
+  - Step 2 stacked one exported face above a squeezed race list; face and race are now side by
+    side and all ten vanilla races are visible at once.
 
 Investigated and cleared - the exported head mesh:
   - Sculpt and extended (EFM) slider work lives entirely in the exported NIF's vertices, so a
-    lossy save would soften a high-poly face in exactly the way described.
+    lossy save would soften a high-poly face exactly as described.
   - FaceGenRoundTripTests runs the real dirty swap over every CharGen export on the machine and
-    compares every vertex before and after. Bit-exact, including the High Poly Head export.
-    The mesh path is not the cause; the missing head texture set was.
+    compares every vertex before and after. Bit-exact, High Poly Head included. The mesh path
+    was never the cause; the missing head texture set was.
 
 Files:
-  - src/BuildPipeline/FollowerBuilder.cs (CarryableTypes, ResolveHeadTexture, hydrate)
-  - src/AssetIndex/CharGenDiscovery.cs (actor.headTexture, shared ParseIdentifier)
-  - src/Domain/FollowerProfile.cs (AppearanceSpec.HeadTextureSet)
-  - src/SkyrimRecords/FollowerCompiler.cs (writes npc.HeadTexture)
-  - src/FaceGen/NifHeadFile.cs (Vertices, for the round-trip proof)
-  - src/Ui/WizardWindow.axaml.cs (ScanVoiceCoverage on first launch)
-  - src/Tests/InventoryReferenceTests.cs, FaceGenRoundTripTests.cs (new)
-  - src/Tests/CharGenDiscoveryTests.cs, FollowerOptionsTests.cs
+  - src/BuildPipeline/FollowerBuilder.cs, src/AssetIndex/CharGenDiscovery.cs
+  - src/Domain/FollowerProfile.cs, src/SkyrimRecords/FollowerCompiler.cs
+  - src/SkyrimRecords/VoiceRanking.cs (new), src/SkyrimRecords/VoiceClassifier.cs
+  - src/FaceGen/NifHeadFile.cs, src/Ui/PickerItem.cs, src/Ui/ModNames.cs (new)
+  - src/Ui/WizardWindow.axaml, src/Ui/WizardWindow.axaml.cs
+  - src/Tests: InventoryReferenceTests, FaceGenRoundTripTests, ModNameTests,
+    VoiceRankingTests (all new), CharGenDiscoveryTests, FollowerOptionsTests
 
-Verify: 257 tests pass (249 at 3.0.0 + 8).
+Verify: 275 tests pass (249 at 3.0.0 + 26).
+  - End-to-end CLI build carrying the exact five records that failed for the user: BUILD OK.
+  - FTST read back from shipped plugin bytes: 00051648 -> 051648:Skyrim.esm (absent before).
+  - Wizard driven and screenshotted on the real load order: tiers, chips and both new layouts
+    confirmed rendering, SOS voices reading "voice files installed".
 Runtime: UNTESTED in game. The four scripted features carry over from 3.0.0 unchanged and
   remain runtime-unconfirmed.
 Nexus: NO (local tool)

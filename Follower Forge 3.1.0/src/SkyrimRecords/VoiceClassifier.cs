@@ -33,6 +33,14 @@ public static class VoiceClassifier
         "SOSVoices.esm", "SOSVoices_Part1.esl", "SOSVoices_Part2.esl",
     };
 
+    /// <summary>
+    /// The same plugins, in order, for callers that need to look for their voice folders on disk.
+    /// The voice files live under the PART plugin's folder, not the master's, so all three have
+    /// to be tried.
+    /// </summary>
+    public static IReadOnlyList<string> VoiceResourcePluginNames { get; } =
+        ["SOSVoices.esm", "SOSVoices_Part1.esl", "SOSVoices_Part2.esl"];
+
     /// <param name="voiceFileExists">
     /// Checks whether a sound\voice\&lt;plugin&gt;\&lt;voiceType&gt; folder has any file in the
     /// asset index — used to verify SOS voice resources are actually installed.

@@ -1,7 +1,8 @@
 ﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:FollowerForge.Ui"
         x:Class="FollowerForge.Ui.WizardWindow"
-        Width="1180" Height="820" MinWidth="900" MinHeight="620"
+        Width="1320" Height="900" MinWidth="1040" MinHeight="700"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/appicon.ico"
         Title="Follower Forge"
@@ -43,8 +44,8 @@
     </Style>
     <!-- Roomy rows: the default list packs lines together and is hard to scan. -->
     <Style Selector="ListBoxItem">
-      <Setter Property="Padding" Value="12,9"/>
-      <Setter Property="MinHeight" Value="38"/>
+      <Setter Property="Padding" Value="12,7"/>
+      <Setter Property="MinHeight" Value="46"/>
       <Setter Property="FontSize" Value="14"/>
     </Style>
     <Style Selector="ListBoxItem:nth-child(2n)">
@@ -53,6 +54,22 @@
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="#e8c877"/>
       <Setter Property="TextElement.Foreground" Value="#16161b"/>
+    </Style>
+    <!-- The second line and the chip must stay legible once the gold selection lands under
+         them, so they are re-coloured on selection rather than keeping their muted brushes. -->
+    <Style Selector="ListBoxItem:selected TextBlock.rowdetail">
+      <Setter Property="Foreground" Value="#4a4230"/>
+    </Style>
+    <Style Selector="TextBlock.rowname">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.rowdetail">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="#8b919b"/>
+      <Setter Property="Margin" Value="0,2,0,0"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="TextBox">
       <Setter Property="Background" Value="#101015"/>
@@ -80,6 +97,26 @@
       <Setter Property="FontSize" Value="14"/>
     </Style>
   </Window.Styles>
+
+  <!-- One row shape for every list in the wizard: what it is, why it matters, and a chip that
+       answers "can I actually use this?" without reading the sentence. -->
+  <Window.DataTemplates>
+    <DataTemplate DataType="ui:IPickerRow">
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+          <TextBlock Classes="rowname" Text="{Binding Display}"/>
+          <TextBlock Classes="rowdetail" Text="{Binding Detail}"
+                     IsVisible="{Binding HasDetail}"/>
+        </StackPanel>
+        <Border Grid.Column="1" IsVisible="{Binding HasBadge}"
+                Background="{Binding BadgeBrush}" CornerRadius="3"
+                Padding="7,3" Margin="12,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="Bold"
+                     Foreground="{Binding BadgeText}"/>
+        </Border>
+      </Grid>
+    </DataTemplate>
+  </Window.DataTemplates>
 
   <DockPanel>
     <!-- step rail -->
@@ -116,118 +153,155 @@
     <!-- pages: each is a Grid whose list rows are '*' so they grow with the window -->
     <Panel Margin="28,22,28,10">
 
-      <!-- 1 identity -->
-      <StackPanel x:Name="Page0" Spacing="2">
-        <TextBlock Classes="h1" Text="Who is she?"/>
-        <TextBlock Classes="hint" Text="A name is enough to start — everything else has a sensible default."/>
-        <TextBlock Classes="label" Text="Name"/>
-        <TextBox x:Name="NameBox" Width="380" HorizontalAlignment="Left" PlaceholderText="e.g. Aria"
-                 KeyUp="OnNameTyped"/>
-        <TextBlock Classes="label" Text="Plugin file (filled in for you)"/>
-        <TextBox x:Name="PluginBox" Width="380" HorizontalAlignment="Left" IsReadOnly="True"
-                 PlaceholderText="appears once you type a name"/>
-        <TextBlock Classes="label" Text="Sex"/>
-        <ComboBox x:Name="SexBox" Width="240" HorizontalAlignment="Left" SelectedIndex="0">
-          <ComboBoxItem>Female</ComboBoxItem>
-          <ComboBoxItem>Male</ComboBoxItem>
-        </ComboBox>
-        <TextBlock Classes="label" Text="Survivability"/>
-        <ComboBox x:Name="MortalBox" Width="380" HorizontalAlignment="Left" SelectedIndex="0">
-          <ComboBoxItem>Protected — only you can kill her (recommended)</ComboBoxItem>
-          <ComboBoxItem>Essential — cannot die at all</ComboBoxItem>
-          <ComboBoxItem>Mortal — she can die permanently</ComboBoxItem>
-        </ComboBox>
-        <CheckBox x:Name="MarriageBox" Margin="0,14,0,0"
-                  Content="She can be married (needs a voice that has marriage lines)"/>
-        <TextBlock Classes="label" Text="How she regards you"/>
-        <ComboBox x:Name="RelationshipBox" Width="380" HorizontalAlignment="Left" SelectedIndex="1">
-          <ComboBoxItem>Lover</ComboBoxItem>
-          <ComboBoxItem>Ally (recommended)</ComboBoxItem>
-          <ComboBoxItem>Confidant</ComboBoxItem>
-          <ComboBoxItem>Friend</ComboBoxItem>
-          <ComboBoxItem>Acquaintance</ComboBoxItem>
-          <ComboBoxItem>Rival</ComboBoxItem>
-          <ComboBoxItem>Foe</ComboBoxItem>
-          <ComboBoxItem>Enemy</ComboBoxItem>
-          <ComboBoxItem>Archnemesis</ComboBoxItem>
-        </ComboBox>
-        <TextBlock Classes="hint" Margin="0,4,0,0" TextWrapping="Wrap"
-                   Text="Not just flavour — mods that vary dialogue by relationship, Relationship Dialogue Overhaul above all, pick different lines for a Friend than for a Confidant."/>
+      <!-- 1 identity. Two columns: the short answers on the left, the one thing that needs
+           room — her history with other people — on the right. As a single column this page
+           ran off the bottom of the window and left two thirds of the width empty. -->
+      <Grid x:Name="Page0" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,28,*">
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Classes="h1" Text="Who is she?"/>
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Classes="hint" Margin="0,4,0,0"
+                   Text="A name is enough to start — everything else has a sensible default."/>
 
-        <TextBlock Classes="label" Text="How she regards other people (optional)"/>
-        <TextBlock Classes="hint" TextWrapping="Wrap"
-                   Text="Give her history with people already in the world — a sister, a rival, an old friend. Each one makes the mod that NPC comes from a requirement."/>
-        <Grid Margin="0,6,0,0" ColumnDefinitions="*,190,110">
-          <TextBox Grid.Column="0" x:Name="KinSearch" PlaceholderText="search NPCs by name…" KeyUp="OnKinSearch"/>
-          <ComboBox Grid.Column="1" x:Name="KinRankBox" Margin="8,0,0,0" HorizontalAlignment="Stretch" SelectedIndex="3">
-            <ComboBoxItem>Lover</ComboBoxItem>
-            <ComboBoxItem>Ally</ComboBoxItem>
-            <ComboBoxItem>Confidant</ComboBoxItem>
-            <ComboBoxItem>Friend</ComboBoxItem>
-            <ComboBoxItem>Acquaintance</ComboBoxItem>
-            <ComboBoxItem>Rival</ComboBoxItem>
-            <ComboBoxItem>Foe</ComboBoxItem>
-            <ComboBoxItem>Enemy</ComboBoxItem>
-            <ComboBoxItem>Archnemesis</ComboBoxItem>
-          </ComboBox>
-          <Button Grid.Column="2" x:Name="AddKinButton" Margin="8,0,0,0" Content="Add"
-                  HorizontalAlignment="Stretch" Click="OnAddKin"/>
+        <ScrollViewer Grid.Row="2" Grid.Column="0" Margin="0,8,0,0"
+                      HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="label" Text="Name"/>
+            <TextBox x:Name="NameBox" PlaceholderText="e.g. Aria" KeyUp="OnNameTyped"/>
+            <TextBlock Classes="label" Text="Plugin file (filled in for you)"/>
+            <TextBox x:Name="PluginBox" IsReadOnly="True"
+                     PlaceholderText="appears once you type a name"/>
+            <TextBlock Classes="label" Text="Sex"/>
+            <ComboBox x:Name="SexBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Female</ComboBoxItem>
+              <ComboBoxItem>Male</ComboBoxItem>
+            </ComboBox>
+            <TextBlock Classes="label" Text="Survivability"/>
+            <ComboBox x:Name="MortalBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Protected — only you can kill her (recommended)</ComboBoxItem>
+              <ComboBoxItem>Essential — cannot die at all</ComboBoxItem>
+              <ComboBoxItem>Mortal — she can die permanently</ComboBoxItem>
+            </ComboBox>
+            <CheckBox x:Name="MarriageBox" Margin="0,14,0,0"
+                      Content="She can be married (needs a voice that has marriage lines)"/>
+            <TextBlock Classes="label" Text="How she regards you"/>
+            <ComboBox x:Name="RelationshipBox" HorizontalAlignment="Stretch" SelectedIndex="1">
+              <ComboBoxItem>Lover</ComboBoxItem>
+              <ComboBoxItem>Ally (recommended)</ComboBoxItem>
+              <ComboBoxItem>Confidant</ComboBoxItem>
+              <ComboBoxItem>Friend</ComboBoxItem>
+              <ComboBoxItem>Acquaintance</ComboBoxItem>
+              <ComboBoxItem>Rival</ComboBoxItem>
+              <ComboBoxItem>Foe</ComboBoxItem>
+              <ComboBoxItem>Enemy</ComboBoxItem>
+              <ComboBoxItem>Archnemesis</ComboBoxItem>
+            </ComboBox>
+            <TextBlock Classes="hint" Margin="0,4,0,0" MaxWidth="560" TextWrapping="Wrap"
+                       Text="Not just flavour — mods that vary dialogue by relationship, Relationship Dialogue Overhaul above all, pick different lines for a Friend than for a Confidant."/>
+
+            <TextBlock Classes="label" Text="Leveling"/>
+            <ComboBox x:Name="LevelModeBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem>Scales with the player (recommended)</ComboBoxItem>
+              <ComboBoxItem>Fixed level</ComboBoxItem>
+            </ComboBox>
+            <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0">
+              <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Classes="hint" Text="Minimum"/>
+                <NumericUpDown x:Name="MinLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="1" Maximum="1000" Value="10"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                <TextBlock Classes="hint" Text="Maximum (0 = none)"/>
+                <NumericUpDown x:Name="MaxLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="0" Maximum="1000" Value="0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="hint" Text="Fixed"/>
+                <NumericUpDown x:Name="FixedLevelBox" Margin="0,4,0,0" MinWidth="150"
+                               Minimum="1" Maximum="1000" Value="20"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2" Grid.Column="2" Margin="0,8,0,0"
+              RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4"
+                     Text="How she regards other people (optional)"/>
+          <TextBlock Grid.Row="1" Classes="hint" TextWrapping="Wrap" MaxWidth="560"
+                     Text="Give her history with people already in the world — a sister, a rival, an old friend. Each one makes the mod that NPC comes from a requirement."/>
+          <Grid Grid.Row="2" Margin="0,10,0,0" ColumnDefinitions="*,170,90">
+            <TextBox Grid.Column="0" x:Name="KinSearch" PlaceholderText="search NPCs by name…" KeyUp="OnKinSearch"/>
+            <ComboBox Grid.Column="1" x:Name="KinRankBox" Margin="8,0,0,0" HorizontalAlignment="Stretch" SelectedIndex="3">
+              <ComboBoxItem>Lover</ComboBoxItem>
+              <ComboBoxItem>Ally</ComboBoxItem>
+              <ComboBoxItem>Confidant</ComboBoxItem>
+              <ComboBoxItem>Friend</ComboBoxItem>
+              <ComboBoxItem>Acquaintance</ComboBoxItem>
+              <ComboBoxItem>Rival</ComboBoxItem>
+              <ComboBoxItem>Foe</ComboBoxItem>
+              <ComboBoxItem>Enemy</ComboBoxItem>
+              <ComboBoxItem>Archnemesis</ComboBoxItem>
+            </ComboBox>
+            <Button Grid.Column="2" x:Name="AddKinButton" Margin="8,0,0,0" Content="Add"
+                    HorizontalAlignment="Stretch" Click="OnAddKin"/>
+          </Grid>
+          <ListBox Grid.Row="3" x:Name="KinCandidates" Margin="0,8,0,0" MinHeight="120"/>
+          <TextBlock Grid.Row="4" x:Name="KinError" Classes="hint" Margin="0,6,0,0"
+                     Foreground="#E06C6C" IsVisible="False" TextWrapping="Wrap"/>
+          <TextBlock Grid.Row="5" Classes="label" Text="Her people"/>
+          <ListBox Grid.Row="6" x:Name="KinList" Margin="0,4,0,0" Height="120"/>
+          <Button Grid.Row="7" Margin="0,8,0,0" Content="Remove selected" Click="OnRemoveKin"/>
         </Grid>
-        <ListBox x:Name="KinCandidates" Margin="0,6,0,0" Height="120"/>
-        <TextBlock x:Name="KinError" Classes="hint" Margin="0,6,0,0"
-                   Foreground="#E06C6C" IsVisible="False" TextWrapping="Wrap"/>
-        <ListBox x:Name="KinList" Margin="0,6,0,0" Height="90"/>
-        <Button Margin="0,6,0,0" Content="Remove selected" Click="OnRemoveKin"/>
+      </Grid>
 
-        <TextBlock Classes="label" Text="Leveling"/>
-        <ComboBox x:Name="LevelModeBox" Width="380" HorizontalAlignment="Left" SelectedIndex="0">
-          <ComboBoxItem>Scales with the player (recommended)</ComboBoxItem>
-          <ComboBoxItem>Fixed level</ComboBoxItem>
-        </ComboBox>
-        <Grid ColumnDefinitions="Auto,155,Auto,155,Auto,155" Margin="0,8,0,0">
-          <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="#9aa0aa" Text="Minimum"/>
-          <NumericUpDown Grid.Column="1" x:Name="MinLevelBox" Margin="8,0,18,0" MinWidth="150"
-                         Minimum="1" Maximum="1000" Value="10"/>
-          <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#9aa0aa" Text="Maximum (0 = none)"/>
-          <NumericUpDown Grid.Column="3" x:Name="MaxLevelBox" Margin="8,0,18,0" MinWidth="150"
-                         Minimum="0" Maximum="1000" Value="0"/>
-          <TextBlock Grid.Column="4" VerticalAlignment="Center" Foreground="#9aa0aa" Text="Fixed"/>
-          <NumericUpDown Grid.Column="5" x:Name="FixedLevelBox" Margin="8,0,0,0" MinWidth="150"
-                         Minimum="1" Maximum="1000" Value="20"/>
-        </Grid>
-      </StackPanel>
-
-      <!-- 2 look -->
-      <Grid x:Name="Page1" IsVisible="False" RowDefinitions="Auto,Auto,Auto,Auto,2*,Auto,Auto,Auto,3*">
-        <TextBlock Grid.Row="0" Classes="h1" Text="What does she look like?"/>
-        <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
+      <!-- 2 look. Face and race side by side: stacked, one exported face left a huge empty box
+           above a squeezed race list. -->
+      <Grid x:Name="Page1" IsVisible="False" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,28,*">
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Classes="h1" Text="What does she look like?"/>
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Classes="hint" Margin="0,4,0,0"
                    Text="Pick a face you exported from RaceMenu (Sculpt tab → F5 in game). Without one she gets a plain default face."/>
-        <TextBlock Grid.Row="2" Classes="label" Text="Face from RaceMenu"/>
-        <TextBox Grid.Row="3" x:Name="FaceSearch" PlaceholderText="search your exported faces…" KeyUp="OnFaceSearch"/>
-        <ListBox Grid.Row="4" x:Name="FaceList" Margin="0,6,0,0" SelectionChanged="OnFaceSelected"/>
-        <TextBlock Grid.Row="5" Classes="label" Text="Race"/>
-        <CheckBox Grid.Row="5" x:Name="VampireBox" HorizontalAlignment="Right" Margin="0,10,0,0"
-                  Content="She is a vampire"/>
-        <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="18">
-          <CheckBox x:Name="CustomRacesBox" Content="Also show custom races from my mods (they become requirements)"
+
+        <Grid Grid.Row="2" Grid.Column="0" Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4" Text="Face from RaceMenu"/>
+          <TextBox Grid.Row="1" x:Name="FaceSearch" PlaceholderText="search your exported faces…" KeyUp="OnFaceSearch"/>
+          <ListBox Grid.Row="2" x:Name="FaceList" Margin="0,6,0,0" SelectionChanged="OnFaceSelected"/>
+        </Grid>
+
+        <Grid Grid.Row="2" Grid.Column="2" Margin="0,8,0,0"
+              RowDefinitions="Auto,Auto,Auto,Auto,*">
+          <TextBlock Grid.Row="0" Classes="label" Margin="0,0,0,4" Text="Race"/>
+          <CheckBox Grid.Row="0" x:Name="VampireBox" HorizontalAlignment="Right"
+                    Content="She is a vampire"/>
+          <CheckBox Grid.Row="1" x:Name="CustomRacesBox" Margin="0,2,0,0"
+                    Content="Also show custom races from my mods (they become requirements)"
                     IsCheckedChanged="OnCustomRacesToggled"/>
-          <CheckBox x:Name="CreatureRacesBox" Content="Include creatures (dragons, beasts — no face, no gear)"
+          <CheckBox Grid.Row="2" x:Name="CreatureRacesBox" Margin="0,4,0,0"
+                    Content="Include creatures (dragons, beasts — no face, no gear)"
                     IsCheckedChanged="OnCustomRacesToggled"/>
-        </StackPanel>
-        <TextBox Grid.Row="7" x:Name="RaceSearch" Margin="0,6,0,0" PlaceholderText="search races…" KeyUp="OnRaceSearch"/>
-        <ListBox Grid.Row="8" x:Name="RaceList" Margin="0,6,0,0"/>
+          <TextBox Grid.Row="3" x:Name="RaceSearch" Margin="0,8,0,0" PlaceholderText="search races…" KeyUp="OnRaceSearch"/>
+          <ListBox Grid.Row="4" x:Name="RaceList" Margin="0,6,0,0"/>
+        </Grid>
       </Grid>
 
       <!-- 3 voice -->
       <Grid x:Name="Page2" IsVisible="False" RowDefinitions="Auto,Auto,*">
         <TextBlock Grid.Row="0" Classes="h1" Text="How does she sound?"/>
         <TextBlock Grid.Row="1" Classes="hint" Margin="0,4,0,0"
-                   Text="FULL FOLLOWER voices already have every recruit / trade / wait line. SOS PACK voices come from the Simply Open Source Voice Pack."/>
+                   Text="Best voices first: VANILLA already has every recruit / trade / wait line, then SOS PACK from the Simply Open Source Voice Pack, then your other mod voices. Creature and unique voices are hidden until you ask for them."/>
         <TabControl Grid.Row="2" Margin="0,10,0,0">
           <TabItem Header="Voice">
-            <Grid Margin="8" RowDefinitions="Auto,*">
-              <TextBox Grid.Row="0" x:Name="VoiceSearch" PlaceholderText="search voices…" KeyUp="OnVoiceSearch"/>
-              <ListBox Grid.Row="1" x:Name="VoiceList" Margin="0,6,0,0" SelectionChanged="OnVoiceSelected"/>
+            <Grid Margin="8" RowDefinitions="Auto,Auto,*">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,260">
+                <TextBox Grid.Column="0" x:Name="VoiceSearch" PlaceholderText="search voices…" KeyUp="OnVoiceSearch"/>
+                <TextBlock Grid.Column="1" Text="Show" VerticalAlignment="Center"
+                           Foreground="#9aa0aa" Margin="14,0,8,0"/>
+                <ComboBox Grid.Column="2" x:Name="VoiceScopeBox" HorizontalAlignment="Stretch"
+                          SelectedIndex="0" SelectionChanged="OnVoiceScopeChanged">
+                  <ComboBoxItem Content="Voices she can actually use"/>
+                  <ComboBoxItem Content="Every voice, including creatures"/>
+                </ComboBox>
+              </Grid>
+              <TextBlock Grid.Row="1" x:Name="VoiceCountLine" Classes="hint" Margin="0,8,0,0"/>
+              <ListBox Grid.Row="2" x:Name="VoiceList" Margin="0,6,0,0" SelectionChanged="OnVoiceSelected"/>
             </Grid>
           </TabItem>
 

@@ -182,10 +182,15 @@ public partial class WizardWindow : Window
         static string? Best(IndexedRecord r) =>
             !string.IsNullOrWhiteSpace(r.DisplayName) ? r.DisplayName : r.EditorId;
 
+        // Every row says whether picking it costs the downloader another mod. Ordering stays
+        // alphabetical here — people search these lists for a specific thing by name.
         List<PickerItem> Grab(IndexedRecordType type, Func<IndexedRecord, string?>? detail = null) =>
             db.SearchRecords(type, null, AllPickerRecords)
                 .Where(r => !string.IsNullOrWhiteSpace(Best(r)))
-                .Select(r => new PickerItem(Best(r)!, r.FormKey, detail?.Invoke(r) ?? SourceOf(r)))
+                .Select(r => new PickerItem(
+                    Best(r)!, r.FormKey, detail?.Invoke(r) ?? SourceOf(r),
+                    badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
+                    badgeKind: IsBaseGame(r) ? "good" : "dim"))
                 .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -199,13 +204,11 @@ public partial class WizardWindow : Window
         // Showing all ~190 at once was overwhelming, so custom ones are behind a checkbox.
         var offered = RaceSuitability.Offer(
             db.SearchRecords(IndexedRecordType.Race, null, AllPickerRecords), includeCreatures: true);
-        _vanillaRaces = offered.Where(r => r.Class == RaceClass.Vanilla)
-            .Select(r => new PickerItem(r.Name, r.FormKey, r.Note)).ToList();
+        _vanillaRaces = offered.Where(r => r.Class == RaceClass.Vanilla).Select(RaceRow).ToList();
         _customRaces = offered.Where(r => r.Class is not RaceClass.Vanilla and not RaceClass.Creature)
-            .Select(r => new PickerItem(r.Name, r.FormKey, r.Note)).ToList();
+            .Select(RaceRow).ToList();
         // Creatures are kept apart so they can never appear unless deliberately asked for.
-        _creatureRaces = offered.Where(r => r.Class == RaceClass.Creature)
-            .Select(r => new PickerItem(r.Name, r.FormKey, r.Note)).ToList();
+        _creatureRaces = offered.Where(r => r.Class == RaceClass.Creature).Select(RaceRow).ToList();
         _classes = Grab(IndexedRecordType.Class);
         _outfits = Grab(IndexedRecordType.Outfit);
         _weapons = Grab(IndexedRecordType.Weapon);
@@ -223,7 +226,12 @@ public partial class WizardWindow : Window
         _perks = Grab(IndexedRecordType.Perk);
         var armor = db.SearchRecords(IndexedRecordType.Armor, null, AllPickerRecords)
             .Where(r => !string.IsNullOrWhiteSpace(Best(r)))
-            .Select(r => (Item: new PickerItem(Best(r)!, r.FormKey, ArmorLabel(r)), Group: ArmorGroup(r)))
+            .Select(r => (
+                Item: new PickerItem(
+                    Best(r)!, r.FormKey, ArmorLabel(r),
+                    badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
+                    badgeKind: IsBaseGame(r) ? "good" : "dim"),
+                Group: ArmorGroup(r)))
             .OrderBy(pair => pair.Item.Display, StringComparer.OrdinalIgnoreCase)
             .ToList();
         _armorTorso = armor.Where(a => a.Group == "Torso").Select(a => a.Item).ToList();
@@ -234,11 +242,13 @@ public partial class WizardWindow : Window
         _armorAccessories = armor.Where(a => a.Group == "Accessories").Select(a => a.Item).ToList();
         _armorOther = armor.Where(a => a.Group == "Other").Select(a => a.Item).ToList();
         _styles = Grab(IndexedRecordType.CombatStyle, r => CombatTags(r) ?? SourceOf(r));
+        // Ordered by how useful a voice actually is, then by name. Alphabetical alone buried the
+        // whole SOS pack among ~600 creature voices, which is exactly how it reads in game too.
         _voices = db.SearchRecords(IndexedRecordType.VoiceType, null, AllPickerRecords)
             .Where(r => !string.IsNullOrWhiteSpace(r.EditorId))
             .Where(r => VoiceSuitability.IsAllowed(r.EditorId))
-            .Select(r => new PickerItem(r.EditorId!, r.FormKey, VoiceLabel(r)))
-            .OrderBy(p => p.Detail is not null && p.Detail.StartsWith("FULL") ? 0 : 1)
+            .Select(r => VoiceItem(r, db))
+            .OrderBy(p => p.Tier)
             .ThenBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -256,7 +266,7 @@ public partial class WizardWindow : Window
             Fill("ClassList", _classes, "CombatWarrior1H");
             Fill("OutfitList", _outfits, null);
             Fill("CstyList", _styles, null);
-            Fill("VoiceList", _voices, null);
+            RefreshVoices();
             Fill("WeaponList", _weapons, null);
             Fill("LoreList", _books, null);
             FillPlaceKeywords();
@@ -273,7 +283,41 @@ public partial class WizardWindow : Window
         });
     }
 
-    private static string SourceOf(IndexedRecord r) => r.SourceMod ?? r.WinningPlugin;
+    private static string SourceOf(IndexedRecord r) =>
+        r.SourceMod is { Length: > 0 } mod ? ModNames.Pretty(mod) : r.WinningPlugin;
+
+    /// <summary>
+    /// True when the winning version of this record comes from the game itself, so choosing it
+    /// adds no requirement for anyone who installs her. Judged on the WINNING plugin: a vanilla
+    /// sword a mod overrides is that mod's sword now.
+    /// </summary>
+    private static bool IsBaseGame(IndexedRecord r) =>
+        VanillaMasters.Contains(r.WinningPlugin);
+
+    private static readonly HashSet<string> VanillaMasters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm",
+    };
+
+    /// <summary>
+    /// A race row says what it costs the downloader. Vanilla is free; anything else becomes a
+    /// hard requirement for everyone who installs her, and a creature can never have a face.
+    /// </summary>
+    private static PickerItem RaceRow(RaceOption r) => new(
+        r.Name, r.FormKey, r.Note, (int)r.Class,
+        r.Class switch
+        {
+            RaceClass.Vanilla => "VANILLA",
+            RaceClass.CustomPlayable => "NEEDS A MOD",
+            RaceClass.Creature => "CREATURE",
+            _ => "MOD RACE",
+        },
+        r.Class switch
+        {
+            RaceClass.Vanilla => "good",
+            RaceClass.Creature => "warn",
+            _ => "dim",
+        });
 
     private static string ArmorGroup(IndexedRecord r)
     {
@@ -320,25 +364,44 @@ public partial class WizardWindow : Window
         catch (System.Text.Json.JsonException) { return null; }
     }
 
-    /// <summary>Marks how usable a voice is for an actual follower.</summary>
-    private string VoiceLabel(IndexedRecord r)
+    /// <summary>
+    /// One voice as the user sees it: its tier, a chip, and a sentence about what she gets.
+    ///
+    /// Whether a voice pack's files are really installed is checked here rather than at index
+    /// time, because the asset index is built after the records and so is always empty when the
+    /// classifier runs. That left every SOS voice reading "not confirmed on disk" even with all
+    /// its .fuz files present.
+    /// </summary>
+    private PickerItem VoiceItem(IndexedRecord r, CatalogDb db)
     {
+        var capability = VoiceRanking.CapabilityOf(CapabilityJson(r));
+        var tier = VoiceRanking.TierOf(capability);
         var source = SourceOf(r);
-        var bonus = CoverageLabel(r.FormKey);
-        if (r.DetailJson is null) return Join(source, bonus);
+
+        var what = tier switch
+        {
+            VoiceTier.Vanilla => "Every recruit, trade and wait line — nothing extra needed",
+            VoiceTier.VoicePack => VoiceRanking.VoiceFolders(r.EditorId!).Any(db.AssetPathPrefixExists)
+                ? "Simply Open Source Voice Pack — voice files installed"
+                : "Simply Open Source Voice Pack — listed, but its voice files are NOT on disk",
+            VoiceTier.NoFollowerLines => $"{source} — no follower dialogue, she would be silent",
+            _ => $"{source} — allows generic dialogue, unverified",
+        };
+
+        return new PickerItem(
+            r.EditorId!, r.FormKey, Join(what, CoverageLabel(r.FormKey)),
+            (int)tier, VoiceRanking.Badge(tier), VoiceRanking.BadgeKind(tier));
+    }
+
+    private static string? CapabilityJson(IndexedRecord r)
+    {
+        if (r.DetailJson is null) return null;
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(r.DetailJson);
-            var cap = doc.RootElement.TryGetProperty("Capability", out var c) ? c.GetString() : null;
-            return Join(cap switch
-            {
-                "FullyCapable" => "FULL FOLLOWER — every recruit/trade/wait line",
-                "ResourceIntegrated" => "SOS PACK — lines supplied by the voice pack",
-                "NonFollowerCapable" => "no follower lines (she would be silent)",
-                _ => "unverified — test it in game",
-            }, bonus);
+            return doc.RootElement.TryGetProperty("Capability", out var c) ? c.GetString() : null;
         }
-        catch (System.Text.Json.JsonException) { return Join(source, bonus); }
+        catch (System.Text.Json.JsonException) { return null; }
     }
 
     private void Fill(string listName, IReadOnlyList<PickerItem> items, string? preselect)
@@ -402,7 +465,35 @@ public partial class WizardWindow : Window
     }
 
     private void OnRaceSearch(object? s, RoutedEventArgs e) => Refilter("RaceSearch", "RaceList", _races);
-    private void OnVoiceSearch(object? s, RoutedEventArgs e) => Refilter("VoiceSearch", "VoiceList", _voices);
+
+    // ---------- voices ----------
+
+    /// <summary>
+    /// The voices on offer. 598 of the 1,018 on a real load order are creature or unique voices
+    /// with no follower dialogue at all; showing them by default is what buried the SOS pack.
+    /// </summary>
+    private IReadOnlyList<PickerItem> VoiceSource() =>
+        Ctl<ComboBox>("VoiceScopeBox").SelectedIndex == 1
+            ? _voices
+            : _voices.Where(v => VoiceRanking.IsFollowerReady((VoiceTier)v.Tier)).ToList();
+
+    private void OnVoiceSearch(object? s, RoutedEventArgs e) => RefreshVoices();
+
+    private void OnVoiceScopeChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (_ready) RefreshVoices();
+    }
+
+    private void RefreshVoices()
+    {
+        var source = VoiceSource();
+        Refilter("VoiceSearch", "VoiceList", source);
+
+        var hidden = _voices.Count - source.Count;
+        Ctl<TextBlock>("VoiceCountLine").Text = hidden > 0
+            ? $"{source.Count:N0} voices she can use  ·  {hidden:N0} creature and unique voices hidden"
+            : $"{source.Count:N0} voices";
+    }
 
     // ---------- books and belongings ----------
 
