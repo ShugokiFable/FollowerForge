@@ -1,4 +1,4 @@
-﻿bin/
+bin/
 obj/
 build/
 extern/
@@ -48,3 +48,11 @@ MEMORY/
 **/src/ui-err.txt
 
 **/src/ui-out.txt
+
+# Superseded snapshots (CURRENT = FollowerForge 3.2.2)
+Follower Forge 3.0.0/
+Follower Forge 3.1.0/
+Follower Forge 3.1.1/
+Follower Forge 3.2.0/
+Follower Forge 3.2.1/
+ChatGPT Image*.png

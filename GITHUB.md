@@ -6,13 +6,13 @@
 | **Clone** | `git clone https://github.com/ShugokiFable/FollowerForge.git` |
 | **Account** | ShugokiFable |
 | **Default branch** | `main` |
-| **Owner work root** | workspace `Follower Forge` (versioned snapshots under this folder) |
-| **Current ship tree** | `Follower Forge 3.2.0/` (see `CURRENT.txt`) |
+| **Owner work root** | workspace `FollowerForge` (versioned snapshots under this folder) |
+| **Current ship tree** | `FollowerForge 3.2.2/` (see `CURRENT.txt`) |
 | **This folder** | canonical publish home for this app |
 
 ## What to push
 
-Publish Follower Forge **CURRENT** snapshot: `src/`, `docs/`, build/publish scripts,
+Publish FollowerForge **CURRENT** snapshot: `src/`, `docs/`, build/publish scripts,
 `README.md`, `VERSION.txt` (no `bin/`, `obj/`, `dist/`). Root `README.md` + `CHANGELOG.txt`
 + `CURRENT.txt` describe the active release.
 

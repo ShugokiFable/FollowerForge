@@ -1,7 +1,7 @@
-# Follower Forge state
+# FollowerForge state
 
 - Date: 2026-08-05
-- Active: `Follower Forge 3.2.0` (parent 3.1.1)
+- Active: `FollowerForge 3.2.0` (parent 3.1.1)
 - Runtime target: Skyrim SSE 1.6.x, Vortex or MO2
 
 ## 3.2.0 validation (this session)

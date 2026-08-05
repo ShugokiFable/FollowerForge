@@ -1,4 +1,4 @@
-# Follower Forge 3.1.1
+# FollowerForge 3.1.1
 
 **Windows tool:** build a custom Skyrim SE/AE follower (ESPFE plugin + installable mod folder) without the Creation Kit.
 
@@ -6,7 +6,7 @@
 
 **`FollowerForge-3.1.1-win-x64.zip`**
 
-Unzip anywhere and run **Follower Forge.exe**. Self-contained — no .NET install required.
+Unzip anywhere and run **FollowerForge.exe**. Self-contained — no .NET install required.
 
 Also includes `cli\FollowerForge.Cli.exe` for the same engine from the command line.
 

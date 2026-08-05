@@ -1,4 +1,4 @@
-﻿# Follower Forge 3.2.0
+# FollowerForge 3.2.0
 
 **Windows tool:** build a full custom Skyrim SE/AE follower without the Creation Kit.
 
@@ -6,7 +6,7 @@
 
 **`FollowerForge-3.2.0-win-x64.zip`**
 
-Unzip anywhere → **Follower Forge.exe**. Self-contained.
+Unzip anywhere → **FollowerForge.exe**. Self-contained.
 
 ## Highlights
 

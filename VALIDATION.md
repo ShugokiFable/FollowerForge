@@ -1,4 +1,4 @@
-# Follower Forge 2.1.3 validation
+# FollowerForge 2.1.3 validation
 
 ## Inputs and symptom
 
@@ -10,8 +10,8 @@
 
 ## Version and scope gates
 
-- [x] `Follower Forge 2.1.2` remains unchanged as the parent snapshot.
-- [x] `Follower Forge 2.1.3` is a full-copy successor.
+- [x] `FollowerForge 2.1.2` remains unchanged as the parent snapshot.
+- [x] `FollowerForge 2.1.3` is a full-copy successor.
 - [x] Source diff contains exactly eight intended paths:
   - `CHANGELOG.txt`
   - `Publish-FollowerForge.ps1`
@@ -40,7 +40,7 @@
 - [x] Ship-gate release-tree validator self-test: PASS.
 - [x] Ship-gate final staged-tree validation: PASS.
 - [x] Final archive contains exactly four intended files:
-  - `Follower Forge.exe`
+  - `FollowerForge.exe`
   - `cli/FollowerForge.Cli.exe`
   - `README.md`
   - `CHANGELOG.txt`
@@ -58,7 +58,7 @@
   - Exit code `0`; 106 tests passed; app and CLI published; hidden boot check passed.
 - `validate_release_tree.py --self-test`
   - Exit code `0`; `SELF-TEST: PASS`.
-- `validate_release_tree.py "...\dist\Follower Forge 2.1.3"`
+- `validate_release_tree.py "...\dist\FollowerForge 2.1.3"`
   - Exit code `0`; `RESULT: PASS`.
 - Direct SHA-256, Windows version-resource, ZIP inventory, and negative-entry inspection
   - Exit code `0`; all checks passed.

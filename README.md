@@ -1,11 +1,11 @@
 <div align="center">
 
-# ⚒️ Follower Forge
+# ⚒️ FollowerForge
 
 **Make a custom Skyrim SE/AE follower without ever opening the Creation Kit.**
 
 Pick her face, voice, class, gear, and where in Skyrim she waits — all from your own installed
-mods, chosen by name. Follower Forge writes a real, conflict-safe ESPFE plugin and an installable
+mods, chosen by name. FollowerForge writes a real, conflict-safe ESPFE plugin and an installable
 mod folder.
 
 [![Release](https://img.shields.io/github/v/release/ShugokiFable/FollowerForge)](https://github.com/ShugokiFable/FollowerForge/releases)
@@ -21,7 +21,7 @@ mod folder.
 
 Download from the [latest release](https://github.com/ShugokiFable/FollowerForge/releases/latest):
 
-**`FollowerForge-3.2.1-win-x64.zip`** — unzip anywhere, run **Follower Forge.exe**. Self-contained (no .NET install).
+**`FollowerForge-3.2.1-win-x64.zip`** — unzip anywhere, run **FollowerForge.exe**. Self-contained (no .NET install).
 
 ### 3.1.1 — say so when a preset cannot become a follower
 
@@ -77,14 +77,14 @@ without reading. Mod names lost the Vortex download bookkeeping: `Call Of The De
 | Marriage | added a faction | **tells you whether it will actually work** on your setup |
 | Testing | — | **`test-in-game.txt`** with the console commands for her exact features |
 
-Everything is chosen from records you already have. Follower Forge never invents game data and
+Everything is chosen from records you already have. FollowerForge never invents game data and
 never edits your installed plugins.
 
 ---
 
 ## Getting started
 
-1. Download the latest release, unzip anywhere, run **Follower Forge.exe**.
+1. Download the latest release, unzip anywhere, run **FollowerForge.exe**.
    Self-contained — no .NET install needed.
 2. First launch reads your active Vortex deployment and what your mods already say
    (a minute or two, once).
@@ -123,7 +123,7 @@ lines before you write a word. This is also how RDO support works — nothing is
 plugin; she is covered the moment she uses a voice RDO handles.
 
 **Marriage that tells the truth.** Vanilla allows eight voice types. Mods add more — with RDO
-installed, 48. Follower Forge reads your load order and says which case you are in, including
+installed, 48. FollowerForge reads your load order and says which case you are in, including
 "she can only marry because of RDO, so anyone who installs her needs it too".
 
 **Vampires, werewolves, creatures.** Vampirism is a race swap plus two keywords — exactly what a
@@ -178,7 +178,7 @@ required only because of her voice or her race.
 
 ```
 git clone https://github.com/ShugokiFable/FollowerForge.git
-cd "FollowerForge/Follower Forge 3.2.1"
+cd "FollowerForge/FollowerForge 3.2.1"
 .\Publish-FollowerForge.ps1
 ```
 
@@ -204,9 +204,9 @@ boot-checks it, and writes `dist\FollowerForge-3.2.1-win-x64.zip`.
 
 ## License
 
-MIT for Follower Forge source and binaries you build from it.
+MIT for FollowerForge source and binaries you build from it.
 
-Follower Forge never redistributes Bethesda masters or third-party mod assets. Portable /
+FollowerForge never redistributes Bethesda masters or third-party mod assets. Portable /
 own-hub copies require an explicit redistribution declaration from **you**, and the tool
 records that you made the claim — it cannot verify permission with the original authors.
 
@@ -222,6 +222,6 @@ Voice synthesis by [xVASynth](https://www.nexusmods.com/skyrimspecialedition/mod
 
 <div align="center">
 
-**[⬇ Download Follower Forge 3.2.1](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
+**[⬇ Download FollowerForge 3.2.1](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
 
 </div>

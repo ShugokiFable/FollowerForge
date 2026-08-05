@@ -1,4 +1,4 @@
-# Follower Forge decisions
+# FollowerForge decisions
 
 ## 2026-07-28 - 2.1.3
 
@@ -26,7 +26,7 @@
 ## 2026-07-28
 
 - Use patch version 2.1.1 because this completes and repairs the unreleased 2.1 equipment/appearance implementation without replacing its user workflow.
-- Preserve `Follower Forge 2.1.0` unchanged for rollback.
+- Preserve `FollowerForge 2.1.0` unchanged for rollback.
 - Keep equipment-first UI semantics. Skyrim still requires an OTFT on `NPC.DefaultOutfit` to decide initial worn armor, so the compiler creates a private OTFT from the user's selected ARMO records; it is an engine implementation detail, not a legacy outfit choice.
 - Keep every equipped ARMO in NPC inventory so gear remains real, tradable equipment. Weapons remain inventory and are not placed in OTFT.
 - Treat a RaceMenu export as NIF/DDS plus matching jslot record data. A missing/unreadable matching jslot is a build-stopping error.
@@ -34,6 +34,6 @@
 - Convert RaceMenu tint ARGB alpha to Skyrim TINV as `alpha / 255`, preserving partial makeup and complexion strength.
 - Resolve FaceGen textures against the catalogue first, then the deployed Data tree; reject traversal outside Data.
 - Preserve installed matching face/body textures by default. Never retarget head-only skin support maps unless a complete matched head-and-body skin set is available.
-- Repair only disposable Follower Forge SQLite cache files: close handles, move the DB/WAL/SHM aside with a `.broken-<timestamp>` suffix, then rebuild once. Never loop or hide non-cache failures.
-- Treat Follower Forge NG and NPCMANAGER as read-only references. NPCMANAGER's portrait is a Fallout 4 OpenTK/NiflySharp renderer with a full material/skin pipeline; a Skyrim portrait preview is deferred rather than importing incompatible code.
+- Repair only disposable FollowerForge SQLite cache files: close handles, move the DB/WAL/SHM aside with a `.broken-<timestamp>` suffix, then rebuild once. Never loop or hide non-cache failures.
+- Treat FollowerForge NG and NPCMANAGER as read-only references. NPCMANAGER's portrait is a Fallout 4 OpenTK/NiflySharp renderer with a full material/skin pipeline; a Skyrim portrait preview is deferred rather than importing incompatible code.
 - Do not launch SSEEdit or Creation Kit GUI.

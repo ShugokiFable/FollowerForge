@@ -1,4 +1,4 @@
-﻿# Follower Forge 3.2.1
+# FollowerForge 3.2.1
 
 Hotfix for the 3.2.0 hang on "re-reading your mods".
 
@@ -16,5 +16,5 @@ Hotfix for the 3.2.0 hang on "re-reading your mods".
 
 **`FollowerForge-3.2.1-win-x64.zip`**
 
-Close any stuck 3.2.0 window, unzip 3.2.1, run **Follower Forge.exe**.
+Close any stuck 3.2.0 window, unzip 3.2.1, run **FollowerForge.exe**.
 First launch may re-index once under Vortex (~1–2 min) — that is expected after the manager switch.

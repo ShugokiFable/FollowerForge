@@ -1,4 +1,4 @@
-# Follower Forge 2.1.3 plan
+# FollowerForge 2.1.3 plan
 
 1. Preserve 2.1.2 unchanged and establish 2.1.3 as a full-copy successor.
 2. Reproduce the supplied screenshot symptom in the custom Skills & stats editor.

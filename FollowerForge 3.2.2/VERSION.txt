@@ -1,0 +1,11 @@
+﻿FollowerForge 3.2.2
+
+Parent: FollowerForge 3.2.1
+Created: 2026-08-05
+Brand: product name unified to FollowerForge (matches FaceForge + GitHub).
+
+Tests: 285 passed
+Final ZIP: FollowerForge-3.2.2-win-x64.zip
+Bytes: 99153165
+SHA-256: 7F0D1F028AB8B95FA24D743CBDED88D18748A3ECA3032D95F0D6F0531D5E7ABA
+EXE: FollowerForge.exe
