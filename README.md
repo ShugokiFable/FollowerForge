@@ -17,6 +17,36 @@ mod folder.
 
 ---
 
+## 3.1 — the lists finally read
+
+3.0 made a character. **3.1 makes the picking bearable**, and fixes two things that were
+quietly wrong.
+
+**Voices are ordered by what they can actually do.** On a real load order there are ~1,000 voice
+types: about two dozen vanilla, a handful from a voice pack, a few hundred modded, and *six
+hundred* creature and unique voices. Sorted by name, a pack voice called `VP_11_Aria` landed
+under **V**, hundreds of rows below the mudcrabs. Now it goes vanilla → voice pack → other mod
+voices → no-follower-lines, and the creature voices are hidden until you ask for them.
+
+**Voice packs no longer claim their files are missing.** Every pack voice used to read "voice
+files not confirmed on disk" even with all its `.fuz` present, because the check ran before the
+file index existed. It now runs where the index is complete, and against the folder the files
+are really in.
+
+**Books and belongings build.** Picking any book, keepsake, potion or ingredient failed the
+build outright — the inventory check had never been widened past armour and weapons.
+
+**Your preset's complexion ships with her.** A RaceMenu preset records the face texture set it
+was built on, and that was being dropped, leaving the follower on her race's *default*
+complexion under the preset's exported head. That is the skin-tone seam at the neck.
+
+Every row in the app now reads as a name, a line of why it matters, and a chip — `VANILLA`,
+`BASE GAME`, `READY`, `CANNOT BUILD` — so what a choice costs whoever installs her is visible
+without reading. Mod names lost the Vortex download bookkeeping: `Call Of The Deep`, not
+`Call Of The Deep-154194-1-1-1754764218`.
+
+---
+
 ## 3.0 — the follower suite
 
 2.0 could make a follower. **3.0 makes a character.**
@@ -43,7 +73,8 @@ never edits your installed plugins.
 
 1. Download the latest release, unzip anywhere, run **Follower Forge.exe**.
    Self-contained — no .NET install needed.
-2. First launch reads your active Vortex deployment (about a minute).
+2. First launch reads your active Vortex deployment and what your mods already say
+   (a minute or two, once).
 3. Walk the seven steps and press **Build follower**.
 4. Install the produced ZIP with Vortex, enable the plugin, deploy.
 
@@ -134,12 +165,12 @@ required only because of her voice or her race.
 
 ```
 git clone https://github.com/ShugokiFable/FollowerForge.git
-cd "FollowerForge/Follower Forge 3.0.0"
+cd "FollowerForge/Follower Forge 3.1.0"
 .\Publish-FollowerForge.ps1
 ```
 
 .NET 10 SDK. The publish script runs the tests, builds a self-contained single-file exe,
-boot-checks it, and writes `dist\FollowerForge-3.0.0-win-x64.zip`.
+boot-checks it, and writes `dist\FollowerForge-3.1.0-win-x64.zip`.
 
 ### Solution layout
 
@@ -154,7 +185,7 @@ boot-checks it, and writes `dist\FollowerForge-3.0.0-win-x64.zip`.
 | `Validation` | In-process ESP header ship-gate |
 | `Cli` | `fforge` |
 | `Ui` | Avalonia 7-step wizard |
-| `Tests` | xUnit — 249 tests |
+| `Tests` | xUnit — 275 tests |
 
 ---
 
@@ -178,6 +209,6 @@ Voice synthesis by [xVASynth](https://www.nexusmods.com/skyrimspecialedition/mod
 
 <div align="center">
 
-**[⬇ Download Follower Forge 3.0.0](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
+**[⬇ Download Follower Forge 3.1.0](https://github.com/ShugokiFable/FollowerForge/releases/latest)**
 
 </div>
