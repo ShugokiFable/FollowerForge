@@ -1,172 +1,85 @@
 # FollowerForge — Nexus Mods release kit
 
-**Status:** ready to upload  
-**Version:** 3.2.2  
-**Main file to upload:** `FollowerForge-3.2.2-win-x64.zip`  
-**Size:** 99,153,165 bytes  
-**SHA-256:** `7F0D1F028AB8B95FA24D743CBDED88D18748A3ECA3032D95F0D6F0531D5E7ABA`  
+## Upload (author)
 
-**Archive contents:**
-- `FollowerForge.exe`
-- `cli\FollowerForge.Cli.exe`
-- `README.md`
-- `CHANGELOG.txt`
+| | |
+|--|--|
+| **Folder** | `FollowerForge\NEXUS-UPLOAD\` |
+| **File** | `FollowerForge-3.2.3-win-x64.zip` |
+| **Size** | 99154164 bytes |
+| **SHA-256** | `0FD13049656890BFC92F0DD21859E846950BF46F4543D42D53533893EC8FB7FE` |
+| **Inside zip** | `FollowerForge.exe`, `cli\FollowerForge.Cli.exe`, `README.md`, `CHANGELOG.txt` |
+| **GitHub** | https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.3 |
 
-**Local path (for you only — do not put on Nexus):**  
-`Z:\Backup\!Skyrim AE\!!!SkyrimAEaiWorkspace\FollowerForge\FollowerForge 3.2.2\dist\FollowerForge-3.2.2-win-x64.zip`  
+Do **not** paste local disk paths on the Nexus page.
 
-**GitHub release:** https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.2  
+## Nexus form
 
-Do **not** paste local disk paths, usernames, or API keys on the Nexus page.
-
----
-
-## Nexus form fields
-
-| Field | Suggested value |
-|--------|------------------|
+| Field | Value |
+|--------|--------|
 | Mod name | FollowerForge |
 | Category | Utilities |
-| Version | 3.2.2 |
-| Tags | Utilities for Players, Followers, RaceMenu, tool, Vortex, MO2 |
-| Language | English |
-| Adult content | No (utility; generated followers may use adult assets the user already owns — the tool ships none) |
-| Main file | `FollowerForge-3.2.2-win-x64.zip` |
-| File type | Main File |
-| Software type | Utility / tool (executable) |
+| Version | 3.2.3 |
+| Main file | FollowerForge-3.2.3-win-x64.zip |
 
-**Name note:** Product name is **FollowerForge** (one word), pairing with **FaceForge**. Several character followers on Nexus use “Forge” in the title — this is the **builder tool**, not a character.
-
-**Requirements (Nexus requirements list):**
-- Skyrim Special Edition / Anniversary Edition (hard)
-- Vortex **or** Mod Organizer 2 (hard)
-- RaceMenu (hard for custom faces)
-- Optional: xVASynth, RDO, High Poly Head, FSMP for SMP hair physics
-- Soft recommend: FaceForge for photo → preset before Export Head
-
----
-
-## Short summary (mod card — paste as-is)
+## Short summary
 
 ```
-Windows tool that builds a full custom Skyrim SE/AE follower without the Creation Kit — voice, dialogue, gear, spells, perks, spawn place, marriage truth, creatures/alts, and more from YOUR load order. Vortex or Mod Organizer 2. Writes an ESPFE plugin + installable mod folder/zip. Self-contained EXE. Pairs with FaceForge for photo → RaceMenu preset.
+WINDOWS TOOL (not a Skyrim mod). Unzip anywhere → run FollowerForge.exe. Builds a full custom SE/AE follower from YOUR Vortex or MO2 load order and writes a new ESPFE package you install afterward. 3.2.3: quieter face list, empty-head import block, GUI Vortex/MO2 switch, custom MO2 Overwrite path. Pairs with FaceForge.
 ```
 
----
-
-## Detailed description (BBCode — paste as-is)
+## Detailed BBCode
 
 ```bbcode
 [center][size=5][b]FollowerForge[/b][/size]
-[i]A full custom companion from your load order — not just a face packager[/i]
+[i]Build a full custom companion from your load order — without Creation Kit[/i]
 
-Windows utility for Skyrim Special Edition / Anniversary Edition.
-Unzip, run [b]FollowerForge.exe[/b]. Self-contained — no .NET install.
-Pairs with [b]FaceForge[/b] (photo → RaceMenu preset).
+[b][color=#e8a84a]This is a Windows TOOL, not a Skyrim mod and not a downloadable follower.[/color][/b]
+Unzip anywhere → run [b]FollowerForge.exe[/b]. Do [b]not[/b] install this tool into Skyrim Data / Vortex / MO2 as content.
+When the wizard finishes, install the [b]output follower package[/b] like any normal mod.
 [/center]
 
-[size=4][b]What it is[/b][/size]
-FollowerForge is an [b]out-of-game character builder[/b]. It reads your [b]Vortex[/b] or [b]Mod Organizer 2[/b] setup [b]read-only[/b], lets you design a follower from records you already have, and writes a [b]new[/b] installable mod folder (and zip) with an ESL-flagged plugin.
+[size=4][b]How to run[/b][/size]
+[list=1]
+[*]Download [font=Courier New]FollowerForge-3.2.3-win-x64.zip[/font]
+[*]Unzip anywhere (not inside Skyrim\Data)
+[*]Run FollowerForge.exe
+[*]If you use [b]Mod Organizer 2[/b] and Vortex is also installed: click [b]Use Mod Organizer 2 instead[/b] in the left sidebar (remembered next launch)
+[*]Build → install the generated follower package in Vortex or MO2
+[/list]
 
-It does [b]not[/b] edit your installed plugins, your saves, or your game folder.
-
-If you only need “RaceMenu head → zip a HPH face with class/perks,” other tools specialise there. FollowerForge is for when you want a [b]real companion[/b]: where she waits, what she says, what she carries, whether marriage works on [i]your[/i] list, and what anyone else needs to install her.
-
-[size=4][b]Why people pick this[/b][/size]
+[size=4][b]3.2.3[/b][/size]
 [list]
-[*][b]Voices that make sense[/b] — ranks vanilla → voice packs → mod voices; hides creature/unique voices until you ask; checks whether pack files are on disk
-[*][b]Marriage that tells the truth[/b] — reports vanilla vs RDO-style coverage and whether downloaders need the same dialogue overhaul
-[*][b]Inherited dialogue[/b] — scans your load order for lines already keyed to a voice and shows the count
-[*][b]Custom spoken lines[/b] — optional lines with lip sync via xVASynth, with place/time context; refuses to quietly ship mute “custom” dialogue
-[*][b]Spawn places from real mods[/b] — pick “The Bannered Mare,” not raw coordinates
-[*][b]Loadout from your mods[/b] — armor, weapons, spells, perks, factions drawn from the active profile
-[*][b]Face clarity[/b] — distinguishes missing Export Head vs slider-only (NO SCULPT) presets so you know when the face will not match RaceMenu
-[*][b]Share package honesty[/b] — SHARE-CHECKLIST.txt and PERMISSIONS.md; no false “you may upload” claims
-[*][b]SMP honesty[/b] — does not invent physics; FSMP is optional for hair that already has it
+[*]Healthy Export Head faces no longer show a useless SavePCFace / .npc warning
+[*]Empty / zero-shape head meshes are blocked at import (black-face protection)
+[*]GUI switch between Vortex and Mod Organizer 2
+[*]Custom MO2 Overwrite folder (Settings/overwrite_directory) is respected for RaceMenu exports
 [/list]
 
 [size=4][b]Requirements[/b][/size]
-[b]Hard[/b]
-[list]
-[*]Skyrim Special Edition or Anniversary Edition
-[*]Vortex or Mod Organizer 2 (active profile / deployment)
-[*]RaceMenu (for custom faces / Export Head)
-[/list]
-[b]Optional[/b]
-[list]
-[*]xVASynth — custom spoken lines with lips
-[*]Relationship Dialogue Overhaul (or similar) — marriage/dialogue coverage
-[*]High Poly Head — if your preset uses it
-[*]FSMP — only if the hair assets need it
-[*][url=https://github.com/ShugokiFable/FaceForge]FaceForge[/url] — photo → RaceMenu starting preset before bake
-[/list]
+Hard: Skyrim SE/AE, Vortex or MO2, RaceMenu for custom faces.
+Soft: FaceForge for photo → preset; xVASynth; RDO; High Poly Head; FSMP as needed.
 
-[size=4][b]Install[/b][/size]
-[list=1]
-[*]Download [font=Courier New]FollowerForge-3.2.2-win-x64.zip[/font]
-[*]Unzip anywhere (not inside game Data)
-[*]Run [b]FollowerForge.exe[/b]
-[*]Point it at your Vortex or MO2 setup if it does not auto-detect
-[*]Build → install the output mod folder/zip like any other mod
-[/list]
-
-[size=4][b]Update[/b][/size]
-Replace the FollowerForge folder/EXE with the new zip contents. Rebuilt follower mods do not auto-update; rebuild if you need new tool features in a follower package.
-
-[size=4][b]What this is not[/b][/size]
-[list]
-[*]Not a pre-made follower character
-[*]Not Creation Kit
-[*]Not an SKSE plugin inside Skyrim
-[*]Not a guarantee that every third-party asset is redistributable — you must check permissions before sharing a built follower
-[/list]
-
-[size=4][b]3.2.2[/b][/size]
-Brand alignment: product name, EXE, and docs are [b]FollowerForge[/b] (one word) to match FaceForge and the GitHub repo. Includes the 3.2.1 hang fix (Vortex preferred over houseCARL MO2 shim).
-
-[size=4][b]Source / releases[/b][/size]
-GitHub: [url=https://github.com/ShugokiFable/FollowerForge]ShugokiFable/FollowerForge[/url]
-Release: [url=https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.2]v3.2.2[/url]
-
-[size=4][b]Credits[/b][/size]
-Bethesda (Skyrim). RaceMenu / CharGen ecosystem. Mutagen. Avalonia. Your installed mods remain the asset sources — credit their authors when you share a follower built from them.
+GitHub: [url=https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.3]v3.2.3[/url]
 ```
 
----
-
-## Permissions (Nexus form)
-
-- You may upload this tool as released (utility EXE + docs).
-- Generated followers are the [b]user's[/b] responsibility: credit asset authors; do not claim FollowerForge granted redistribution rights.
-- No assets from other mods ship inside the FollowerForge download.
-
----
-
-## Changelog (Nexus version field / sticky)
+## File description
 
 ```
+Windows utility (not a game mod). Unzip → run FollowerForge.exe. README inside. Do NOT install this tool into Skyrim Data. Builds a separate follower package you install afterward.
+```
+
+## Changelog (paste on Nexus)
+
+```
+3.2.3
+- No more SavePCFace/.npc noise on healthy Export Head faces
+- Empty/zero-shape head meshes blocked at import (black-face protection)
+- GUI: switch Vortex ↔ Mod Organizer 2 (remembered)
+- Custom MO2 Overwrite path respected for RaceMenu exports
+- CLI hints use FollowerForge.Cli.exe
+
 3.2.2
-- Product name unified to FollowerForge (EXE, UI, docs) — pairs with FaceForge
-- Same engine as 3.2.1 (Vortex-first hang fix retained)
-
-3.2.1
-- Prefer Vortex over SKYRIM_MO2_INSTANCE houseCARL shim; skip shim instances
-- Catalogue freshness checks manager kind
-
-3.2.0
-- MO2 support, share package UX, face clarity, Nexus rewrite
+- Product name unified to FollowerForge (EXE + docs)
+- Pairs with FaceForge branding
 ```
-
----
-
-## Troubleshooting (short)
-
-- Hang / “re-reading mods” forever: use 3.2.1+; if SKYRIM_MO2_INSTANCE points at a houseCARL shim, Vortex should win automatically. Or set FFORGE_MO2_INSTANCE to a real MO2 instance.
-- Face wrong in-game: Export Head from RaceMenu (not slider-only / NO SCULPT alone).
-- Logs: under LocalAppData\FollowerForge when diagnosing.
-
----
-
-## Upload checklist
-
-See `NEXUS-UPLOAD-CHECKLIST.md` in this folder.

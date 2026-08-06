@@ -1,17 +1,7 @@
-# FollowerForge — Nexus upload
+# FollowerForge 3.2.3 — Nexus upload
 
-Full copy kit: `NEXUS-RELEASE.md` (same folder).
-
-| | |
-|--|--|
-| Upload file | `FollowerForge 3.2.2\dist\FollowerForge-3.2.2-win-x64.zip` |
-| Size | 99,153,165 bytes |
-| SHA-256 | `7F0D1F028AB8B95FA24D743CBDED88D18748A3ECA3032D95F0D6F0531D5E7ABA` |
-| Category | Utilities |
-| Version | 3.2.2 |
-| Mod name | FollowerForge |
-| EXE inside zip | FollowerForge.exe |
-| GitHub | https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.2 |
-
-Paste short summary + BBCode from `NEXUS-RELEASE.md`. Do not put local paths on the public page.
-Pair soft-req: FaceForge 0.23.1+
+1. File: `NEXUS-UPLOAD\FollowerForge-3.2.3-win-x64.zip`
+2. Size: 99154164
+3. SHA-256: `0FD13049656890BFC92F0DD21859E846950BF46F4543D42D53533893EC8FB7FE`
+4. Version: 3.2.3 | Category: Utilities
+5. Paste short summary + BBCode + changelog from `NEXUS-RELEASE.md`

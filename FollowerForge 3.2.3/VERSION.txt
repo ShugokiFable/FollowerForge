@@ -1,0 +1,9 @@
+FollowerForge 3.2.3
+
+Parent: FollowerForge 3.2.2
+Created: 2026-08-05
+Tests: 290 passed
+Final ZIP: FollowerForge-3.2.3-win-x64.zip
+Bytes: 99154164
+SHA-256: 0FD13049656890BFC92F0DD21859E846950BF46F4543D42D53533893EC8FB7FE
+EXE: FollowerForge.exe
