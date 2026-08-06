@@ -1,0 +1,57 @@
+using FollowerForge.Domain;
+using Mutagen.Bethesda.Plugins;
+using Mutagen.Bethesda.Skyrim;
+using Serilog;
+
+namespace FollowerForge.SkyrimRecords;
+
+/// <summary>
+/// Attaches the optional transformation script.
+///
+/// Werewolf fills itself in from the game's own records — WerewolfBeastRace and WerewolfChangeFX
+/// — so a werewolf follower needs nothing installed beyond Skyrim itself. A custom transformation
+/// points at whatever race and spell the user picked from their own mods, which is the same shape
+/// the transforming followers already ship (a spell cast a few seconds into combat).
+/// </summary>
+public sealed class TransformCompiler(ILogger log)
+{
+    /// <summary>Must match the compiled FF_Transform.pex shipped alongside the app.</summary>
+    public const string ScriptName = "FF_Transform";
+
+    public sealed record TransformResult(TransformKind Kind, FormKey? BeastRace);
+
+    /// <summary>Returns null when no transformation was asked for, which is the default.</summary>
+    public TransformResult? Compile(Npc npc, TransformSpec spec)
+    {
+        if (!spec.IsUsable) return null;
+
+        // Werewolf resolves to vanilla records; anything else uses the user's own choices.
+        var beastRace = spec.Kind == TransformKind.Werewolf
+            ? VanillaForms.WerewolfBeastRace
+            : Key(spec.BeastRace);
+        var fx = spec.Kind == TransformKind.Werewolf && spec.TransformFx is null
+            ? VanillaForms.WerewolfChangeFx
+            : Key(spec.TransformFx);
+
+        var entry = new ScriptEntry { Name = ScriptName, Flags = ScriptEntry.Flag.Local };
+        if (beastRace is { } race) entry.Properties.Add(Obj("BeastRace", race));
+        if (fx is { } effect) entry.Properties.Add(Obj("TransformFX", effect));
+        if (Key(spec.OnTransformSpell) is { } onTransform)
+            entry.Properties.Add(Obj("OnTransform", onTransform));
+        entry.Properties.Add(new ScriptBoolProperty { Name = "RevertOutOfCombat", Data = spec.RevertOutOfCombat });
+        entry.Properties.Add(new ScriptFloatProperty { Name = "DelaySeconds", Data = Math.Max(0f, spec.DelaySeconds) });
+
+        npc.VirtualMachineAdapter ??= new VirtualMachineAdapter();
+        npc.VirtualMachineAdapter.Scripts.Add(entry);
+
+        log.Information("Transformation: {Kind}, beast race {Race}, reverts {Revert}",
+            spec.Kind, beastRace?.ToString() ?? "(none)", spec.RevertOutOfCombat);
+        return new TransformResult(spec.Kind, beastRace);
+    }
+
+    private static FormKey? Key(RecordRef? reference) =>
+        reference is null ? null : FormKey.Factory(reference.FormKey);
+
+    private static ScriptObjectProperty Obj(string name, FormKey key) =>
+        new() { Name = name, Object = new FormLink<ISkyrimMajorRecordGetter>(key) };
+}
