@@ -1,43 +1,5 @@
-﻿# CHANGELOG — FollowerForge
+# CHANGELOG — FollowerForge
 
-================================================================================
-## [3.2.5] - 2026-08-06 - choose her body; find the game and MO2 off drive C:
-Agent: Claude
-Parent: FollowerForge 3.2.4
-
-Added:
-  - Step 5 gains a "Body" tab: pick the skin ARMO she wears as her body, or leave it empty
-    (the default) so she uses whatever body the player installed - which is what OBody needs
-    in order to reshape her. Costs no storage: it is a FormID reference, so asset-hub bodies
-    and standalone follower skins work without copying a mesh.
-  - Skin records are identified by MajorFlags NonPlayable + torso slot. Verified against
-    Orimagen's Fauna: 00081A:Fauna.esp FaunaBody is NonPlayable over slots 30-33/37/40/55 and
-    is that follower's WornArmor.
-  - BODY_PINNED build note: pinning a body makes that mod a hard requirement for anyone who
-    installs her, and stops OBody reshaping her.
-
-Fixed (reported by users):
-  - "FollowerForge only uses the default paths (no one has Steam files on drive C:)" - correct.
-    ResolveGameRoot tried exactly one hardcoded path. New GameRootResolver searches every fixed
-    drive: known Steam roots, every library listed in each steamapps/libraryfolders.vdf, and a
-    bare "<drive>\Skyrim Special Edition". The old C: path is now the last resort, not the only
-    candidate. Used by BOTH the Vortex and MO2 paths.
-  - MO2 instances were only looked for under %LOCALAPPDATA%\ModOrganizer, so PORTABLE installs -
-    the common setup - were never found. Portable folder names are now probed on every drive.
-  - An MO2 instance whose ModOrganizer.ini gamePath is stale/missing now falls back to the same
-    drive-wide search instead of giving up.
-  - FaceGenSwapperTests no longer hardcodes a C: CharGen path (the same bug, inside a test, which
-    made it silently test nothing on other machines) and no longer fails the suite when one
-    export on the user's disk is not convertible.
-
-Known unresolved:
-  - Whether MO2's modlist.txt stores highest-priority-first or last is NOT confirmed. The code
-    consumes it as "last entry wins" and now says so in a comment. Settling it needs a real MO2
-    instance; if MO2 users report the wrong file winning a conflict, reverse ParseMo2ModList.
-
-Verify: 297 tests pass, 0 failed. Published zip boot-checked; `env` on this machine still
-  resolves Vortex + 2911 enabled plugins.
-Nexus: YES
 ================================================================================
 ## [3.2.4] - 2026-08-06 - MO2 switch during load; Export Head not false NO SCULPT
 Agent: Grok

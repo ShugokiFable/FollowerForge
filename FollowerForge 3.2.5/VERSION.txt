@@ -1,0 +1,11 @@
+FollowerForge 3.2.5
+
+Parent: FollowerForge 3.2.4
+Created: 2026-08-06
+Change: choose her body (skin ARMO); find Skyrim off drive C:; find portable MO2 instances.
+
+Tests: 297 passed, 0 failed
+Final ZIP: FollowerForge-3.2.5-win-x64.zip
+Bytes: 99162215
+SHA-256: B93D37A07AFD2DB4D0783F1CDB30813A1CEFA616D872776D65F70CF74CF73810
+EXE: FollowerForge.exe
