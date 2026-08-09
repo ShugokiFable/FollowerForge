@@ -2,7 +2,7 @@
 
 Date: 2026-08-09  
 Parent: FollowerForge 3.2.6  
-Status: proposed for implementation
+Status: implemented and tool-validated in FollowerForge 3.2.7
 
 ## Problem and verified root cause
 

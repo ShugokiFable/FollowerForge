@@ -1,11 +1,12 @@
 # FollowerForge 3.2.7 plan
 
-1. Preserve 3.2.6 unchanged and establish 3.2.7 as a full-copy patch successor.
-2. Add failing fixtures for manual MO2 instance/profile selection and `%BASE_DIR%` paths.
-3. Resolve MO2 base/mods/profiles/overwrite paths using MO2's documented path semantics.
-4. Add a persisted, read-only GUI MO2 Setup dialog with `ModOrganizer.ini` browse and profile selector.
-5. Validate the chosen profile before indexing; never silently substitute another profile in manual mode.
-6. Keep Vortex discovery and the existing CLI/environment overrides compatible.
-7. Cancel the current catalogue job and rebuild against the exact saved MO2 instance/profile.
-8. Run the complete clean test/build/publish/archive-validation pipeline.
-9. Produce a Nexus-ready ZIP, concise user changelog, and push the exact scoped update to the existing GitHub repository.
+1. [x] Preserve 3.2.6 and establish a complete 3.2.7 sibling snapshot.
+2. [x] Add red/green tests for manual MO2 instance/profile selection and `%BASE_DIR%` paths.
+3. [x] Resolve base/mods/profiles/overwrite paths using MO2 path semantics.
+4. [x] Add a persisted GUI MO2 setup dialog with INI browse and profile selector.
+5. [x] Reject invalid manual choices without substituting another profile or manager.
+6. [x] Preserve Vortex and existing CLI/environment behavior; add `--mo2-profile`.
+7. [x] Cancel stale catalogue generations and re-index the saved selection safely.
+8. [x] Run complete tests, publish, boot, archive, metadata, and isolated fixture-index validation.
+9. [x] Produce the Nexus ZIP, checksum, and concise user changelog.
+10. [ ] Publish the scoped branch/PR to the existing GitHub repository and verify remote state.

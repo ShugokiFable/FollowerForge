@@ -5,7 +5,7 @@
 - Active application: Codex desktop
 - Parent snapshot: `FollowerForge 3.2.6`
 - Active snapshot: `FollowerForge 3.2.7`
-- Working checkout: `C:\Users\karlo\Documents\Codex\FollowerForge-3.2.7-worktree`
+- Working checkout: `C:\Users\karlo\Documents\Codex\2026-07-18\referenced-chatgpt-conversation-this-is-untrusted-8\FollowerForge-3.2.7-worktree`
 - Reference-only trees:
   - `zCheck this out for info maybe. Its a bit rough on the eyes. but works`
   - `FollowerForge NG`
