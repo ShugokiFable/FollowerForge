@@ -19,8 +19,22 @@ public sealed class EnvironmentDiscovery(ILogger log)
     public EnvironmentSnapshot Discover(
         string? gameRootOverride = null,
         string? mo2InstanceOverride = null,
-        bool? preferMo2 = null)
+        bool? preferMo2 = null,
+        string? mo2ProfileOverride = null,
+        bool strictMo2Override = false)
     {
+        var requireExactMo2 = strictMo2Override || !string.IsNullOrWhiteSpace(mo2ProfileOverride);
+        if (requireExactMo2)
+        {
+            return new Mo2Discovery(log).TryDiscover(
+                    mo2InstanceOverride,
+                    gameRootOverride,
+                    mo2ProfileOverride,
+                    strictOverride: true)
+                ?? throw new DirectoryNotFoundException(
+                    "The selected MO2 instance/profile could not be opened.");
+        }
+
         Exception? vortexError = null;
         Exception? mo2Error = null;
 
@@ -37,7 +51,8 @@ public sealed class EnvironmentDiscovery(ILogger log)
         {
             try
             {
-                var mo2 = new Mo2Discovery(log).TryDiscover(mo2InstanceOverride, gameRootOverride);
+                var mo2 = new Mo2Discovery(log).TryDiscover(
+                    mo2InstanceOverride, gameRootOverride, mo2ProfileOverride);
                 if (mo2 is not null) return mo2;
             }
             catch (Exception ex)
@@ -60,7 +75,8 @@ public sealed class EnvironmentDiscovery(ILogger log)
         // Vortex unavailable — fall back to MO2 (including SKYRIM_MO2_INSTANCE for real MO2 users).
         try
         {
-            var mo2 = new Mo2Discovery(log).TryDiscover(mo2InstanceOverride, gameRootOverride);
+            var mo2 = new Mo2Discovery(log).TryDiscover(
+                mo2InstanceOverride, gameRootOverride, mo2ProfileOverride);
             if (mo2 is not null) return mo2;
         }
         catch (Exception ex)

@@ -89,7 +89,7 @@ public static class Program
         // --face <ExportName> overrides the profile's CharGen appearance for a quick FaceGen build.
         if (opts.TryGetValue("face", out var faceName) && faceName.Length > 0)
             profile = profile with { Appearance = profile.Appearance with { CharGenExportName = faceName } };
-        var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var workspace = opts.GetValueOrDefault("out")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FollowerForge", "workspace");
 
@@ -141,7 +141,7 @@ public static class Program
         var profiles = BuildPipeline.BatchBuilder.LoadProfiles(profilesPath);
         if (profiles.Count == 0) { Console.Error.WriteLine("No profiles found."); return 4; }
 
-        var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var workspace = opts.GetValueOrDefault("out")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FollowerForge", "workspace");
         var dbPath = opts.GetValueOrDefault("db") ?? BuildPipeline.CatalogBuilder.DefaultDbPath;
@@ -170,7 +170,7 @@ public static class Program
 
         if (opts.ContainsKey("scan"))
         {
-            var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+            var env = DiscoverEnvironment(opts);
             var built = new BuildPipeline.LocationLibraryBuilder(Log.Logger)
                 .Build(env, libPath, opts.GetValueOrDefault("db"));
             Console.WriteLine($"Scanned {built.ScannedPlugins} plugins → {built.Locations.Count} spawn locations.");
@@ -235,7 +235,7 @@ public static class Program
     {
         if (opts.ContainsKey("scan"))
         {
-            var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+            var env = DiscoverEnvironment(opts);
             var plugins = new LoadOrderBuilder(Log.Logger).BuildEntryList(env).Entries
                 .Where(e => e.Enabled).Select(e => e.PluginFileName);
             var built = new VoiceCoverageScanner(Log.Logger).Scan(env.GameDataPath, plugins);
@@ -306,7 +306,7 @@ public static class Program
     /// <summary>faces — which RaceMenu exports the builder will actually accept, and why not.</summary>
     private static int CmdFaces(Dictionary<string, string> opts)
     {
-        var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var faces = new CharGenDiscovery(Log.Logger).Discover(env)
             .OrderBy(f => f.IsUsable ? 0 : 1)
             .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
@@ -370,7 +370,7 @@ public static class Program
 
     private static int CmdDetect(Dictionary<string, string> opts)
     {
-        var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var dbPath = opts.GetValueOrDefault("db") ?? BuildPipeline.CatalogBuilder.DefaultDbPath;
 
         var (entries, _) = new SkyrimRecords.LoadOrderBuilder(Log.Logger).BuildEntryList(env);
@@ -447,7 +447,7 @@ public static class Program
             Console.Error.WriteLine("--name <HubName> is required.");
             return 2;
         }
-        var env = new EnvironmentDiscovery(Log.Logger).Discover(opts.GetValueOrDefault("game-path"), opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var workspace = opts.GetValueOrDefault("out")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FollowerForge", "workspace");
 
@@ -487,10 +487,7 @@ public static class Program
 
     private static int CmdEnv(Dictionary<string, string> opts)
     {
-        var discovery = new EnvironmentDiscovery(Log.Logger);
-        var env = discovery.Discover(
-            opts.GetValueOrDefault("game-path"),
-            opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
 
         Console.WriteLine();
         Console.WriteLine("=== FollowerForge — Environment ===");
@@ -523,10 +520,7 @@ public static class Program
 
     private static int CmdIndex(Dictionary<string, string> opts)
     {
-        var discovery = new EnvironmentDiscovery(Log.Logger);
-        var env = discovery.Discover(
-            opts.GetValueOrDefault("game-path"),
-            opts.GetValueOrDefault("mo2-instance"));
+        var env = DiscoverEnvironment(opts);
         var dbPath = opts.GetValueOrDefault("db") ?? CatalogBuilder.DefaultDbPath;
 
         if (opts.ContainsKey("if-stale") && CatalogBuilder.IsFresh(env, dbPath))
@@ -608,6 +602,12 @@ public static class Program
         return ok;
     }
 
+    private static EnvironmentSnapshot DiscoverEnvironment(Dictionary<string, string> opts) =>
+        new EnvironmentDiscovery(Log.Logger).Discover(
+            opts.GetValueOrDefault("game-path"),
+            opts.GetValueOrDefault("mo2-instance"),
+            mo2ProfileOverride: opts.GetValueOrDefault("mo2-profile"));
+
     private static Dictionary<string, string> ParseOptions(IEnumerable<string> args)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -642,8 +642,8 @@ public static class Program
             FollowerForge.Cli — FollowerForge CLI
 
             Commands:
-              env     [--game-path DIR] [--mo2-instance DIR] [--json FILE]
-              index   [--game-path DIR] [--mo2-instance DIR] [--db FILE] [--if-stale]
+              env     [--game-path DIR] [--mo2-instance DIR] [--mo2-profile NAME] [--json FILE]
+              index   [--game-path DIR] [--mo2-instance DIR] [--mo2-profile NAME] [--db FILE] [--if-stale]
                                                         Build the modpack catalogue (records + assets)
               search  [--type TYPE] [--text QUERY] [--plugin NAME] [--limit N] [--db FILE]
                                                         Search the catalogue
