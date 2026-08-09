@@ -23,11 +23,17 @@ public sealed class EnvironmentDiscovery(ILogger log)
         string? mo2ProfileOverride = null,
         bool strictMo2Override = false)
     {
-        var requireExactMo2 = strictMo2Override || !string.IsNullOrWhiteSpace(mo2ProfileOverride);
+        var environmentInstance = Environment.GetEnvironmentVariable("FFORGE_MO2_INSTANCE");
+        var exactInstance = !string.IsNullOrWhiteSpace(mo2InstanceOverride)
+            ? mo2InstanceOverride
+            : environmentInstance;
+        var requireExactMo2 = strictMo2Override
+            || !string.IsNullOrWhiteSpace(exactInstance)
+            || !string.IsNullOrWhiteSpace(mo2ProfileOverride);
         if (requireExactMo2)
         {
             return new Mo2Discovery(log).TryDiscover(
-                    mo2InstanceOverride,
+                    exactInstance,
                     gameRootOverride,
                     mo2ProfileOverride,
                     strictOverride: true)

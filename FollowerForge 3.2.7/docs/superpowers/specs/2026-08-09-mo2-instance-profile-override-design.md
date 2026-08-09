@@ -1,7 +1,7 @@
 # FollowerForge 3.2.7: MO2 instance and profile override design
 
-Date: 2026-08-09  
-Parent: FollowerForge 3.2.6  
+Date: 2026-08-09
+Parent: FollowerForge 3.2.6
 Status: implemented and tool-validated in FollowerForge 3.2.7
 
 ## Problem and verified root cause

@@ -12,6 +12,7 @@ Fixed:
   - Manual profile selection validates modlist.txt plus plugins.txt or loadorder.txt before indexing.
   - Invalid manual choices no longer fall through to another MO2 instance, profile, or Vortex.
   - Saved selections cancel stale indexing and start one serialized re-index for the chosen profile.
+  - Catalogue freshness now keys the exact profile, instance, and staging path, preventing stale cross-profile reuse when timestamps match.
   - Added CLI --mo2-profile for deterministic command-line indexing.
 
 Safety:

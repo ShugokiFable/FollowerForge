@@ -265,20 +265,44 @@ public partial class WizardWindow : Window
     private async void OnMo2Setup(object? sender, RoutedEventArgs e)
     {
         if (!_ready) return;
-        await ShowMo2SetupDialogAsync();
+        try
+        {
+            await ShowMo2SetupDialogAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected MO2 setup failure");
+            SetStatus("Could not open MO2 setup: " + ex.Message);
+        }
     }
 
     private async Task<bool> ShowMo2SetupDialogAsync()
     {
         if (_mo2SetupOpen) return false;
+        Mo2SetupResult? result;
         _mo2SetupOpen = true;
         try
         {
             var current = Mo2UserSettings.Load(warning: message => Log.Warning("{Warning}", message));
             var dialog = new Mo2SetupWindow(current);
-            var result = await dialog.ShowDialog<Mo2SetupResult?>(this);
-            if (result is null) return false;
+            result = await dialog.ShowDialog<Mo2SetupResult?>(this);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not open MO2 setup dialog");
+            SetStatus("Could not open MO2 setup: " + ex.Message);
+            return false;
+        }
+        finally
+        {
+            // Release the modal guard before reload. If strict discovery fails, LoadEverythingAsync
+            // can immediately reopen setup with the saved values instead of dead-ending.
+            _mo2SetupOpen = false;
+        }
 
+        if (result is null) return false;
+        try
+        {
             if (result.ReturnToAutomatic)
             {
                 Mo2UserSettings.Clear();
@@ -294,24 +318,27 @@ public partial class WizardWindow : Window
             }
 
             ManagerPreference.SetPreferMo2(true);
-            _loadCts?.Cancel();
-            _coverage = null;
-            _library = null;
-            _faces = [];
-            _env = null;
-            LocationLibraryBuilder.Invalidate();
-            SetStatus(result.ReturnToAutomatic
-                ? "Returning to automatic MO2 detection..."
-                : "Switching to the selected MO2 profile and re-indexing...");
-
-            await Task.Delay(50);
-            await LoadEverythingAsync();
-            return true;
         }
-        finally
+        catch (Exception ex)
         {
-            _mo2SetupOpen = false;
+            Log.Error(ex, "Could not save MO2 setup");
+            SetStatus("Could not save MO2 setup: " + ex.Message);
+            return false;
         }
+
+        _loadCts?.Cancel();
+        _coverage = null;
+        _library = null;
+        _faces = [];
+        _env = null;
+        LocationLibraryBuilder.Invalidate();
+        SetStatus(result.ReturnToAutomatic
+            ? "Returning to automatic MO2 detection..."
+            : "Switching to the selected MO2 profile and re-indexing...");
+
+        await Task.Delay(50);
+        await LoadEverythingAsync();
+        return true;
     }
 
     private async void OnManagerSwitch(object? sender, RoutedEventArgs e)
@@ -323,7 +350,16 @@ public partial class WizardWindow : Window
             || (_env is null && ManagerPreference.PreferMo2);
         var wantMo2 = !currentlyMo2;
 
-        ManagerPreference.SetPreferMo2(wantMo2);
+        try
+        {
+            ManagerPreference.SetPreferMo2(wantMo2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not save manager preference");
+            SetStatus("Could not save the manager choice: " + ex.Message);
+            return;
+        }
         // Abort Vortex (or MO2) index so the user is not soft-locked for minutes.
         _loadCts?.Cancel();
         _coverage = null;

@@ -10,6 +10,7 @@ Fixed:
   - MO2 base_directory, %BASE_DIR%, environment-variable, absolute, and relative path resolution.
   - Strict manual validation with no silent instance/profile/manager fallback.
   - Persisted FollowerForge-owned selection and cancellation-safe re-indexing.
+  - Catalogue freshness includes the exact profile, instance, and staging path.
   - CLI --mo2-profile support.
 
 Vortex behavior and all Skyrim follower output formats are unchanged.

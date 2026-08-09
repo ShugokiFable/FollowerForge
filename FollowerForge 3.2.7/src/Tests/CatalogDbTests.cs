@@ -1,4 +1,5 @@
 using FollowerForge.AssetIndex;
+using FollowerForge.BuildPipeline;
 using FollowerForge.Domain;
 using Microsoft.Data.Sqlite;
 using Serilog;
@@ -71,6 +72,30 @@ public sealed class CatalogDbTests : IDisposable
         Assert.Equal("12345", db.GetMeta("deployment_time"));
         db.SetMeta("deployment_time", "999");
         Assert.Equal("999", db.GetMeta("deployment_time"));
+    }
+
+    [Fact]
+    public void CatalogueFreshness_RequiresSameMo2ProfileInstanceAndStagingPath()
+    {
+        var instance = Path.Combine(Path.GetTempPath(), "MO2-A");
+        var staging = Path.Combine(instance, "mods");
+        using (var db = new CatalogDb(_dbPath, _log))
+        {
+            db.SetMeta("manager", ModManagerKind.Mo2.ToString());
+            db.SetMeta("deployment_time", "12345");
+            db.SetMeta("profile_id", "Main");
+            db.SetMeta("instance_path", instance);
+            db.SetMeta("staging_path", staging);
+        }
+
+        var matching = EnvironmentFor("Main", instance, staging);
+        Assert.True(CatalogBuilder.IsFresh(matching, _dbPath));
+        Assert.False(CatalogBuilder.IsFresh(
+            EnvironmentFor("Testing", instance, staging), _dbPath));
+        Assert.False(CatalogBuilder.IsFresh(
+            EnvironmentFor("Main", Path.Combine(Path.GetTempPath(), "MO2-B"), staging), _dbPath));
+        Assert.False(CatalogBuilder.IsFresh(
+            EnvironmentFor("Main", instance, Path.Combine(instance, "custom-mods")), _dbPath));
     }
 
     [Fact]
@@ -172,4 +197,20 @@ public sealed class CatalogDbTests : IDisposable
             // Temp cleanup is best-effort; a locked WAL file must never fail the test.
         }
     }
+
+    private static EnvironmentSnapshot EnvironmentFor(string profile, string instance, string staging) =>
+        new()
+        {
+            Manager = ModManagerKind.Mo2,
+            ManagerLabel = "Mod Organizer 2",
+            GameRootPath = Path.Combine(Path.GetTempPath(), "game"),
+            GameDataPath = Path.Combine(Path.GetTempPath(), "game", "Data"),
+            PluginDataPath = Path.Combine(Path.GetTempPath(), "view"),
+            InstancePath = instance,
+            StagingPath = staging,
+            ProfilesPath = Path.Combine(instance, "profiles"),
+            RuntimePluginsTxtPath = Path.Combine(Path.GetTempPath(), "plugins.txt"),
+            ActiveProfileId = profile,
+            DeploymentTimeUtcMs = 12345,
+        };
 }

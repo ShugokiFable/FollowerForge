@@ -9,6 +9,7 @@ Highlights:
   - Saved selection under LocalAppData\FollowerForge only; MO2 and Skyrim remain read-only.
   - Correct %BASE_DIR%, environment-variable, absolute, and relative MO2 paths.
   - Manual profile selections never silently substitute another profile or manager.
+  - Catalogue freshness is keyed to the exact MO2 profile, instance, and staging root.
   - Automatic discovery and Vortex behavior remain available and unchanged.
 
 Rollback: reinstall 3.2.6. Remove the saved override with MO2 setup -> Return to automatic

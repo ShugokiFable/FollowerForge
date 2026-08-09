@@ -85,6 +85,8 @@ public sealed class CatalogBuilder(ILogger log)
         db.SetMeta("indexed_at_utc", DateTime.UtcNow.ToString("O"));
         db.SetMeta("profile_id", env.ActiveProfileId ?? "");
         db.SetMeta("manager", env.Manager.ToString());
+        db.SetMeta("instance_path", CanonicalPath(env.InstancePath));
+        db.SetMeta("staging_path", CanonicalPath(env.StagingPath));
         db.SetMeta("plugin_count", built.Entries.Count.ToString());
 
         sw.Stop();
@@ -93,7 +95,11 @@ public sealed class CatalogBuilder(ILogger log)
         return new CatalogSummary(built.Entries.Count, recordCount, assetCount, sw.Elapsed);
     }
 
-    /// <summary>True when the stored catalogue matches the current deployment state and manager.</summary>
+    /// <summary>
+    /// True when the stored catalogue matches the exact manager, profile, instance, staging root,
+    /// and deployment state. Profile/instance checks prevent two MO2 setups with matching file
+    /// timestamps from reusing each other's catalogue.
+    /// </summary>
     public static bool IsFresh(EnvironmentSnapshot env, string? dbPath = null)
     {
         dbPath ??= DefaultDbPath;
@@ -102,8 +108,22 @@ public sealed class CatalogBuilder(ILogger log)
         // Manager mismatch (e.g. a hung MO2/shim index after we switched back to Vortex) must rebuild.
         if (!string.Equals(db.GetMeta("manager"), env.Manager.ToString(), StringComparison.Ordinal))
             return false;
+        if (!string.Equals(
+                db.GetMeta("profile_id") ?? string.Empty,
+                env.ActiveProfileId ?? string.Empty,
+                StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (!PathsMatch(db.GetMeta("instance_path"), env.InstancePath)) return false;
+        if (!PathsMatch(db.GetMeta("staging_path"), env.StagingPath)) return false;
         return db.GetMeta("deployment_time") == env.DeploymentTimeUtcMs.ToString();
     }
+
+    private static bool PathsMatch(string? stored, string current) =>
+        !string.IsNullOrWhiteSpace(stored)
+        && string.Equals(CanonicalPath(stored), CanonicalPath(current), StringComparison.OrdinalIgnoreCase);
+
+    private static string CanonicalPath(string path) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
     private static bool IsPluginFile(string name) =>
         name.EndsWith(".esp", StringComparison.OrdinalIgnoreCase)

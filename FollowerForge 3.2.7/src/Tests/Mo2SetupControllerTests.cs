@@ -87,6 +87,21 @@ public sealed class Mo2SetupControllerTests : IDisposable
             "The old index generation must be cancelled before the manual MO2 re-index starts.");
     }
 
+    [Fact]
+    public void WizardSetup_HandlesSettingsWriteFailuresAndUnlocksDialogBeforeReload()
+    {
+        var source = ReadSource("Ui", "WizardWindow.axaml.cs");
+        var start = source.IndexOf("ShowMo2SetupDialogAsync", StringComparison.Ordinal);
+        var workflow = source.Substring(start);
+
+        Assert.Contains("Could not save MO2 setup", workflow, StringComparison.Ordinal);
+        Assert.Contains("catch (Exception ex)", workflow, StringComparison.Ordinal);
+        Assert.True(
+            workflow.IndexOf("_mo2SetupOpen = false", StringComparison.Ordinal)
+            < workflow.IndexOf("LoadEverythingAsync()", StringComparison.Ordinal),
+            "The modal guard must be released before a strict reload can reopen setup on failure.");
+    }
+
     private Fixture CreateFixture(bool createOverwrite)
     {
         var instance = Path.Combine(_root, "instance-" + Guid.NewGuid().ToString("N"));
