@@ -1,17 +1,14 @@
 # FollowerForge state
 
-- Date: 2026-08-05
-- Active: `FollowerForge 3.2.0` (parent 3.1.1)
-- Runtime target: Skyrim SSE 1.6.x, Vortex or MO2
+- Date: 2026-08-09
+- Active design snapshot: `FollowerForge 3.2.7` (parent 3.2.6)
+- Branch: `agent/mo2-manual-setup`
+- Runtime target: Windows 10/11, Skyrim SE/AE, Vortex or MO2 2.5.x
 
-## 3.2.0 validation (this session)
+## Current phase
 
-- xUnit: **283 passed**, 0 failed
-- MO2 discovery + path resolve unit-tested; live large-instance index is user-side
-- Share checklist + RSV helper unit-tested
-- No game Data / MO2 mods / Vortex staging writes
-- SSEEdit / Creation Kit: not launched
-
-## GitHub
-
-- Push 3.2.0 tree + release after publish
+- Root cause confirmed in 3.2.6 source: the backend has CLI/environment instance overrides, but the GUI has no instance path or profile override.
+- MO2's `%BASE_DIR%` path token is not expanded by the current parser, so valid custom mods/profiles/overwrite paths can resolve against FollowerForge's working directory instead of the MO2 base directory.
+- 3.2.7 design is documented; implementation is pending design review.
+- Vortex behavior remains out of scope and must remain unchanged.
+- No game Data, MO2 instance/profile/mod, Vortex staging/profile, or save write is authorized.
