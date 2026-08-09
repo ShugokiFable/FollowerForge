@@ -1,6 +1,27 @@
 # CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.2.7] - 2026-08-09 - deterministic MO2 instance/profile setup
+Agent: Codex
+Parent: FollowerForge 3.2.6
+
+Fixed:
+  - Added a GUI `MO2 setup...` dialog with an exact ModOrganizer.ini picker and profile selector.
+  - Added correct Settings/base_directory and case-insensitive %BASE_DIR% expansion.
+  - Relative mods/profiles/overwrite paths are now anchored to MO2's resolved base directory.
+  - Manual profile selection validates modlist.txt plus plugins.txt or loadorder.txt before indexing.
+  - Invalid manual choices no longer fall through to another MO2 instance, profile, or Vortex.
+  - Saved selections cancel stale indexing and start one serialized re-index for the chosen profile.
+  - Added CLI --mo2-profile for deterministic command-line indexing.
+
+Safety:
+  - Saved selection is FollowerForge-owned LocalAppData only.
+  - No MO2, Vortex, Skyrim Data, or save file is modified.
+  - Vortex discovery behavior is unchanged.
+
+Rollback:
+  - Reinstall 3.2.6 and optionally remove LocalAppData\FollowerForge\mo2-settings.json.
+================================================================================
 ## [3.2.4] - 2026-08-06 - MO2 switch during load; Export Head not false NO SCULPT
 Agent: Grok
 Parent: FollowerForge 3.2.3

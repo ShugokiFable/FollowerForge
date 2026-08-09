@@ -1,6 +1,20 @@
 ﻿# CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.2.7] - 2026-08-09 - deterministic MO2 instance/profile setup
+Agent: Codex
+Parent: FollowerForge 3.2.6
+
+Fixed:
+  - GUI ModOrganizer.ini picker and detected profile selector.
+  - MO2 base_directory, %BASE_DIR%, environment-variable, absolute, and relative path resolution.
+  - Strict manual validation with no silent instance/profile/manager fallback.
+  - Persisted FollowerForge-owned selection and cancellation-safe re-indexing.
+  - CLI --mo2-profile support.
+
+Vortex behavior and all Skyrim follower output formats are unchanged.
+Rollback: reinstall 3.2.6; optionally remove LocalAppData\FollowerForge\mo2-settings.json.
+================================================================================
 ## [3.2.7] - 2026-08-09 - planned: reliable MO2 instance and profile setup
 Agent: Codex
 Parent: FollowerForge 3.2.6

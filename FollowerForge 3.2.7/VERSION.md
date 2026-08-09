@@ -6,4 +6,4 @@
 - Change type: patch
 - Goal: reliable manual MO2 instance/profile selection and correct MO2 custom-path resolution
 - Previous snapshot untouched: YES
-- Runtime status: design only; implementation pending
+- Runtime status: implementation complete; automated verification pending final release gate

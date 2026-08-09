@@ -1,17 +1,17 @@
-FollowerForge 3.2.6
+FollowerForge 3.2.7
 
-Parent: FollowerForge 3.2.5
-Created: 2026-08-07
-Change: fix PlayerFaction FormID (0x0000DB -> 0x000DB1). Every follower built through
-        3.2.5 carried a dangling faction reference and was never in PlayerFaction.
+Parent: FollowerForge 3.2.6
+Created: 2026-08-09
+Change: deterministic Mod Organizer 2 instance/profile setup and correct MO2 custom-path resolution.
 
-Tests: 325 passed, 0 failed
-Final ZIP: FollowerForge-3.2.6-win-x64.zip
-Bytes: 99162233
-SHA-256: 09C0426E50C2C0FE9C2D76ACC98A1E240E4CC61FE5A393A3368609CFDB5ABD12
-EXE: FollowerForge.exe
+Highlights:
+  - GUI browse for the exact ModOrganizer.ini plus a detected profile selector.
+  - Saved selection under LocalAppData\FollowerForge only; MO2 and Skyrim remain read-only.
+  - Correct %BASE_DIR%, environment-variable, absolute, and relative MO2 paths.
+  - Manual profile selections never silently substitute another profile or manager.
+  - Automatic discovery and Vortex behavior remain available and unchanged.
 
-Evidence: houseCARL load-order integrity sweep on a built plugin.
-  before (3.2.5): 1 dangling ref  000800:FF_VeraForge.esp -> 0000DB:Skyrim.esm
-  after  (3.2.6): 0 dangling refs, 0 missing masters, 0 unscannable records
-  Intent confirmed against Lydia (HousecarlWhiterun 0A2C8E:Skyrim.esm), Factions[0] = 000DB1.
+Rollback: reinstall 3.2.6. Remove the saved override with MO2 setup -> Return to automatic
+detection, or delete %LOCALAPPDATA%\FollowerForge\mo2-settings.json while the app is closed.
+
+Automated test/build/package evidence is recorded in the workspace STATE.md and final checksum file.
