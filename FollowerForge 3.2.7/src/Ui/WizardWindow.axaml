@@ -145,6 +145,13 @@
                   HorizontalAlignment="Stretch"
                   IsVisible="True"
                   Click="OnManagerSwitch"/>
+          <Button x:Name="Mo2SetupButton"
+                  Content="MO2 setup..."
+                  FontSize="11"
+                  Padding="8,4"
+                  HorizontalAlignment="Stretch"
+                  IsVisible="True"
+                  Click="OnMo2Setup"/>
         </StackPanel>
       </DockPanel>
     </Border>

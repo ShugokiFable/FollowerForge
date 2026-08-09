@@ -87,6 +87,9 @@ public partial class WizardWindow : Window
     /// </summary>
     private readonly object _catalogGate = new();
 
+    private bool _mo2SetupOpen;
+    private bool _skipMo2SetupPromptOnce;
+
     public WizardWindow()
     {
         AvaloniaXamlLoader.Load(this);
@@ -126,11 +129,33 @@ public partial class WizardWindow : Window
                 ? "Starting with Mod Organizer 2…"
                 : "Starting with Vortex (use the button to pick MO2 instead)…");
 
-            // Respect GUI / LocalAppData prefer-mo2 marker (and env vars).
-            var discovered = await Task.Run(() => new EnvironmentDiscovery(Log).Discover(), ct);
+            // A FollowerForge environment override outranks the saved GUI selection. The saved
+            // selection is strict: never substitute another MO2 profile or fall back silently.
+            var savedMo2 = ManagerPreference.PreferMo2
+                && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FFORGE_MO2_INSTANCE"))
+                    ? Mo2UserSettings.Load(warning: message => Log.Warning("{Warning}", message))
+                    : null;
+            var discovered = await Task.Run(() => new EnvironmentDiscovery(Log).Discover(
+                mo2InstanceOverride: savedMo2?.InstanceRoot,
+                preferMo2: ManagerPreference.PreferMo2,
+                mo2ProfileOverride: savedMo2?.ProfileName,
+                strictMo2Override: savedMo2 is not null), ct);
             if (!StillCurrent()) return;
             _env = discovered;
             UpdateManagerSwitchButton();
+
+            if (ManagerPreference.PreferMo2 && discovered.Manager != ModManagerKind.Mo2)
+            {
+                if (_skipMo2SetupPromptOnce)
+                {
+                    _skipMo2SetupPromptOnce = false;
+                }
+                else
+                {
+                    SetStatus("Automatic MO2 detection could not find your instance. Choose it in MO2 setup.");
+                    if (await ShowMo2SetupDialogAsync()) return;
+                }
+            }
 
             try
             {
@@ -185,6 +210,8 @@ public partial class WizardWindow : Window
             // Keep the switch visible so MO2 users can recover without restarting.
             ShowManagerSwitchDuringLoad();
             SetStatus("Could not read your setup: " + ex.Message);
+            if (ManagerPreference.PreferMo2)
+                await ShowMo2SetupDialogAsync();
         }
     }
 
@@ -232,6 +259,58 @@ public partial class WizardWindow : Window
         {
             btn.Content = "Use Vortex instead";
             btn.IsVisible = true;
+        }
+    }
+
+    private async void OnMo2Setup(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        await ShowMo2SetupDialogAsync();
+    }
+
+    private async Task<bool> ShowMo2SetupDialogAsync()
+    {
+        if (_mo2SetupOpen) return false;
+        _mo2SetupOpen = true;
+        try
+        {
+            var current = Mo2UserSettings.Load(warning: message => Log.Warning("{Warning}", message));
+            var dialog = new Mo2SetupWindow(current);
+            var result = await dialog.ShowDialog<Mo2SetupResult?>(this);
+            if (result is null) return false;
+
+            if (result.ReturnToAutomatic)
+            {
+                Mo2UserSettings.Clear();
+                _skipMo2SetupPromptOnce = true;
+            }
+            else if (result.Selection is not null)
+            {
+                Mo2UserSettings.Save(result.Selection);
+            }
+            else
+            {
+                return false;
+            }
+
+            ManagerPreference.SetPreferMo2(true);
+            _loadCts?.Cancel();
+            _coverage = null;
+            _library = null;
+            _faces = [];
+            _env = null;
+            LocationLibraryBuilder.Invalidate();
+            SetStatus(result.ReturnToAutomatic
+                ? "Returning to automatic MO2 detection..."
+                : "Switching to the selected MO2 profile and re-indexing...");
+
+            await Task.Delay(50);
+            await LoadEverythingAsync();
+            return true;
+        }
+        finally
+        {
+            _mo2SetupOpen = false;
         }
     }
 

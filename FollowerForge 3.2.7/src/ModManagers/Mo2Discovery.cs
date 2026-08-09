@@ -20,7 +20,18 @@ public sealed class Mo2Discovery(ILogger log)
         bool strictOverride = false)
     {
         var warnings = new List<string>();
-        var instance = ResolveInstanceRoot(instanceOverride, warnings);
+        string? instance;
+        if (strictOverride && !string.IsNullOrWhiteSpace(instanceOverride))
+        {
+            instance = Path.GetFullPath(instanceOverride);
+            if (!File.Exists(Path.Combine(instance, "ModOrganizer.ini")))
+                throw new DirectoryNotFoundException(
+                    $"The selected MO2 instance does not contain ModOrganizer.ini: {instance}");
+        }
+        else
+        {
+            instance = ResolveInstanceRoot(instanceOverride, warnings);
+        }
         if (instance is null)
         {
             if (strictOverride)

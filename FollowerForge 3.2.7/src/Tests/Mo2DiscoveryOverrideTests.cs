@@ -104,6 +104,32 @@ public sealed class Mo2DiscoveryOverrideTests : IDisposable
     }
 
     [Fact]
+    public void TryDiscover_StrictInvalidInstanceDoesNotUseEnvironmentInstance()
+    {
+        var valid = CreateFixture(selectedProfile: "Main", profiles: ["Main"]);
+        var invalid = Path.Combine(_root, "chosen-but-invalid");
+        Directory.CreateDirectory(invalid);
+        var old = Environment.GetEnvironmentVariable("FFORGE_MO2_INSTANCE");
+        try
+        {
+            Environment.SetEnvironmentVariable("FFORGE_MO2_INSTANCE", valid.Instance);
+
+            var error = Assert.Throws<DirectoryNotFoundException>(() =>
+                new Mo2Discovery(_log).TryDiscover(
+                    invalid,
+                    valid.Game,
+                    profileOverride: "Main",
+                    strictOverride: true));
+
+            Assert.Contains(invalid, error.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FFORGE_MO2_INSTANCE", old);
+        }
+    }
+
+    [Fact]
     public void Cli_ExposesAndPassesMo2ProfileOverride()
     {
         var program = ReadSource("Cli", "Program.cs");
