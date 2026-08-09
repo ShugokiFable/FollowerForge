@@ -9,4 +9,4 @@
 7. [x] Cancel stale catalogue generations and re-index the saved selection safely.
 8. [x] Run complete tests, publish, boot, archive, metadata, and isolated fixture-index validation.
 9. [x] Produce the Nexus ZIP, checksum, and concise user changelog.
-10. [ ] Publish the scoped branch/PR to the existing GitHub repository and verify remote state.
+10. [x] Publish the scoped branch and draft PR #1 to the existing GitHub repository, then verify remote state.
