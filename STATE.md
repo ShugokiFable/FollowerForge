@@ -12,12 +12,12 @@
 - Published GUI hidden boot check: window remained alive for 12 seconds.
 - Extracted CLI usage boot: PASS, expected exit code 2.
 - Archive inventory: 5 intended files; no source, PDB, temporary, credential, or secret-shaped files.
-- App file version: 3.2.7.0; product version: `3.2.7+887cd9ae7e74dd900cbca43bf09fa90f61ab7a3d`.
+- App file version: 3.2.7.0; product version: `3.2.7+d217ffd5f461647cdb9b0699a07a73a90d964d37`.
 - Isolated MO2 fixture: exact `Custom Profile` selected over an invalid INI-selected profile.
 - Fixture path semantics: relative base directory and case-insensitive `%BASE_DIR%` paths resolved correctly.
 - Fixture catalogue index: 43,769 records from hardlinked `Skyrim.esm`; 0 failures.
-- Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,181,227 bytes.
-- ZIP SHA-256: `59E481BC6A204269317418207D3526FF54783B38828BE5D3E6C10B78B47062CB`.
+- Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,181,134 bytes.
+- ZIP SHA-256: `79766F2C352E2A9C85A53BCBA43EB5F4BDC0C0E3C195520A77116AA84699F86C`.
 
 ## Ship gate
 
