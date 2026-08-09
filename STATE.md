@@ -7,17 +7,17 @@
 
 ## Release evidence
 
-- Complete Release test suite: 346 passed, 0 failed, 0 skipped.
+- Complete Release test suite: 349 passed, 0 failed, 0 skipped.
 - Self-contained `win-x64` app and CLI publish: PASS.
 - Published GUI hidden boot check: window remained alive for 12 seconds.
 - Extracted CLI usage boot: PASS, expected exit code 2.
 - Archive inventory: 5 intended files; no source, PDB, temporary, credential, or secret-shaped files.
-- App file version: 3.2.7.0; product version: 3.2.7.
+- App file version: 3.2.7.0; product version: `3.2.7+887cd9ae7e74dd900cbca43bf09fa90f61ab7a3d`.
 - Isolated MO2 fixture: exact `Custom Profile` selected over an invalid INI-selected profile.
 - Fixture path semantics: relative base directory and case-insensitive `%BASE_DIR%` paths resolved correctly.
 - Fixture catalogue index: 43,769 records from hardlinked `Skyrim.esm`; 0 failures.
-- Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,180,448 bytes.
-- ZIP SHA-256: `6703F565A1D38A7984DDE6D43E161BBC1A1D90BA2153B0F9100F62222F6E1A24`.
+- Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,181,227 bytes.
+- ZIP SHA-256: `59E481BC6A204269317418207D3526FF54783B38828BE5D3E6C10B78B47062CB`.
 
 ## Ship gate
 
