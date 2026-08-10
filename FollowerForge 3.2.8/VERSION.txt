@@ -1,0 +1,14 @@
+FollowerForge 3.2.8
+
+Parent: FollowerForge 3.2.7
+Created: 2026-08-10
+Change: MO2 build master expansion and plugin reads use the FollowerForge hardlink plugin view, not bare Steam Data.
+
+Highlights:
+  - ExpandMasterChain masterRoot is PluginDataPath under MO2 (after Mo2DataView.Ensure).
+  - ValidateInstalledMasters resolves masters through MO2 mod priority, not only game Data.
+  - RecordResolver / CellSourceResolver open plugins from the same MO2 plugin view.
+  - CharGen discovery during build uses the MO2-aware scanner when Manager is Mo2.
+  - Vortex paths and behavior remain unchanged (PluginDataPath still equals GameDataPath).
+
+Rollback: reinstall 3.2.7. MO2 settings under LocalAppData\FollowerForge are unchanged.

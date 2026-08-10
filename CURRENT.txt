@@ -1,1 +1,1 @@
-﻿FollowerForge 3.2.7
+FollowerForge 3.2.9

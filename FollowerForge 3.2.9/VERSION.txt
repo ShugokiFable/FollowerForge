@@ -1,0 +1,16 @@
+FollowerForge 3.2.9
+
+Parent: FollowerForge 3.2.8
+Created: 2026-08-10
+Change: race name false-positives, manual exterior/cell placement, cell FormVersion 44.
+
+Highlights:
+  - Playable races with real head data are not forced to Creature just because EditorID contains
+    words like "horse" (BDHorseRace / anthro races).
+  - Manual Placement.Cell + X/Y/Z no longer hardcodes WhiterunWorld; uses the specified cell.
+  - Optional Placement.Worldspace for exterior worldspace top cells.
+  - Cell overrides DeepCopy always set FormVersion 44 so ship-gate passes.
+  - 3.2.8 MO2 master/plugin-view fixes retained.
+  - RaceMenu overlays (NiOverride.AddOverlays) remain a known gap — not silently claimed fixed.
+
+Rollback: reinstall 3.2.8.

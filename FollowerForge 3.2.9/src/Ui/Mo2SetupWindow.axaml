@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FollowerForge.Ui.Mo2SetupWindow"
+        Width="760" Height="650" MinWidth="640" MinHeight="540"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/appicon.ico"
+        Title="FollowerForge - Mod Organizer 2 setup"
+        Background="#16161b">
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0aa"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="Padding" Value="9,7"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="24" RowSpacing="12">
+    <StackPanel Grid.Row="0" Spacing="4">
+      <TextBlock Text="Mod Organizer 2 setup" FontSize="23" FontWeight="SemiBold" Foreground="#e8c877"/>
+      <TextBlock Classes="hint"
+                 Text="Choose the exact ModOrganizer.ini and profile FollowerForge should index. This does not modify MO2, your profile, Skyrim, or your saves."/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="6">
+      <TextBlock Classes="label" Text="ModOrganizer.ini"/>
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <TextBox x:Name="IniPathBox" Grid.Column="0"/>
+        <Button Grid.Column="1" Content="Browse..." Click="OnBrowse"/>
+        <Button Grid.Column="2" Content="Read profiles" Click="OnInspect"/>
+      </Grid>
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Spacing="6">
+      <TextBlock Classes="label" Text="Profile"/>
+      <ComboBox x:Name="ProfileBox" MinHeight="36" SelectionChanged="OnProfileChanged"/>
+    </StackPanel>
+
+    <Border Grid.Row="3" Background="#101015" BorderBrush="#2c2c36" BorderThickness="1" CornerRadius="4" Padding="12">
+      <TextBlock x:Name="ResolvedSummary" Classes="hint" Text="Choose ModOrganizer.ini to inspect the instance."/>
+    </Border>
+
+    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+      <TextBlock x:Name="ValidationText" TextWrapping="Wrap" Foreground="#d7dbe2"/>
+    </ScrollViewer>
+
+    <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+      <Button Grid.Column="0" Content="Return to automatic detection" Click="OnAutomatic"/>
+      <Button Grid.Column="2" Content="Cancel" Click="OnCancel"/>
+      <Button x:Name="UseButton" Grid.Column="3" Classes="primary"
+              Content="Use this profile and re-index" IsEnabled="False" Click="OnUse"/>
+    </Grid>
+  </Grid>
+</Window>

@@ -1,39 +1,34 @@
 # FollowerForge state
 
-- Date: 2026-08-09
-- Current snapshot: `FollowerForge 3.2.7` (parent 3.2.6 preserved)
-- Published branch: `main`
-- Release tag: `v3.2.7` (`d39ef3a54f0ca8641810a5862a8de716a36ae558`)
+- Date: 2026-08-10
+- Current snapshot: `FollowerForge 3.2.9` (parents 3.2.8 / 3.2.7 preserved)
 - Runtime target: Windows 10/11, Skyrim SE/AE, Vortex or Mod Organizer 2
 
-## Release evidence
+## Report triage (3.2.7 CLI + MO2 session)
 
-- Complete Release test suite: 349 passed, 0 failed, 0 skipped.
-- Self-contained `win-x64` app and CLI publish: PASS.
-- Published GUI hidden boot check: window remained alive for 12 seconds.
-- Extracted CLI usage boot: PASS, expected exit code 2.
-- Archive inventory: 5 intended files; no source, PDB, temporary, credential, or secret-shaped files.
-- App file version: 3.2.7.0; product version: `3.2.7+d217ffd5f461647cdb9b0699a07a73a90d964d37`.
-- Isolated MO2 fixture: exact `Custom Profile` selected over an invalid INI-selected profile.
-- Fixture path semantics: relative base directory and case-insensitive `%BASE_DIR%` paths resolved correctly.
-- Fixture catalogue index: 43,769 records from hardlinked `Skyrim.esm`; 0 failures.
-- Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,181,134 bytes.
-- ZIP SHA-256: `79766F2C352E2A9C85A53BCBA43EB5F4BDC0C0E3C195520A77116AA84699F86C`.
-- GitHub release: `https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.7` (published, Latest).
-- GitHub-hosted ZIP downloaded and re-hashed: PASS; SHA-256 matched the declared checksum.
+| Report | Status |
+|---|---|
+| MO2 master validator uses GameDataPath not PluginDataPath | **Fixed in 3.2.8** |
+| CharGen face-export ignores MO2 mods/overwrite | **Fixed in 3.2.8** (Discover(env)) |
+| Race classifier "horse" false-positive on BDHorseRace | **Fixed in 3.2.9** |
+| Manual Cell+XYZ hardcodes WhiterunWorld | **Fixed in 3.2.9** (+ optional Worldspace) |
+| Cell override FormVersion 40 vs ship-gate 44 | **Fixed in 3.2.9** |
+| RaceMenu overlays need NiOverride.AddOverlays | **Known gap** — not fixed; bake path TBD |
+
+## 3.2.9 evidence
+
+- Tests: 357 passed, 0 failed
+- Publish: PASS, boot window stayed up
+- ZIP: `FollowerForge 3.2.9\dist\FollowerForge-3.2.9-win-x64.zip` (99,184,193 bytes)
+- ZIP SHA-256: `C7EA9E121910700E4603FD832200CDA3A9C03E6DF8008698DD5CD85E50C0D49F`
+- Staged: `NEXUS-UPLOAD\FollowerForge-3.2.9-win-x64.zip`
 
 ## Ship gate
 
 - VERSION SNAPSHOT: PASS
-- SOURCE INVENTORY: PASS
 - BUILD: PASS
-- FRAMEWORK VALIDATION: N/A (standalone Windows application)
-- ASSET VALIDATION: PASS (package inventory and executable metadata)
-- DEPENDENCY GRAPH: PASS (clean restore/publish)
-- PACKAGE ROOTS: PASS
-- UPGRADE/UNINSTALL: PASS (portable replacement; saved override removable from the GUI or one FollowerForge-owned JSON file)
-- SAVE/MULTIPLAYER: N/A (application does not edit Skyrim saves or run in-game)
-- RUNTIME STATUS: tool-validated
-- UNRESOLVED: final confirmation on a real MO2 user's multi-instance/profile setup; GUI picker interaction was not human-driven in this environment.
+- RUNTIME STATUS: tool-validated; user MO2 runtime confirmation pending
+- SSEEDIT/CK: not launched
+- UNRESOLVED: overlays; user re-test on BD Ungulate / BD Cat / SOSVoices MO2 builds
 
-No game Data, MO2 instance/profile/mod, Vortex staging/profile, or save file was edited.
+No game Data, MO2, Vortex, or save paths were edited.

@@ -1,6 +1,48 @@
 ﻿# CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.2.9] - 2026-08-10 - race name false-positives, manual placement, cell FormVersion
+Agent: Grok
+Parent: FollowerForge 3.2.8
+
+Fixed:
+  - Playable races with real FaceGen head data are no longer forced to Creature just because the
+    EditorID contains a word like "horse" (BDHorseRace and other anthro races).
+  - Manual Placement.Cell + X/Y/Z no longer hardcodes WhiterunWorld; the specified cell is used.
+  - Optional Placement.Worldspace for exterior worldspace top cells.
+  - Cell override DeepCopy always sets FormVersion 44, so the ship gate no longer fails on copied
+    Skyrim.esm cells that still carried formVersion 40.
+
+Reported by: a long CLI + MO2 session building custom anthro followers (BD Ungulate / BD Cat).
+
+Known, not fixed:
+  - RaceMenu body overlays. The jslot data is parsed but nothing calls NiOverride.AddOverlays and
+    there is no bake path, so overlays stay invisible in game. Explicitly not claimed as fixed.
+
+Verify: 357 tests pass (checked on this machine before the GitHub push).
+  Published zip SHA-256 C7EA9E121910700E4603FD832200CDA3A9C03E6DF8008698DD5CD85E50C0D49F matches
+  NEXUS-UPLOAD/FollowerForge-3.2.9-win-x64-SHA256.txt.
+Nexus: YES
+================================================================================
+## [3.2.8] - 2026-08-10 - MO2 builds find their masters
+Agent: Grok
+Parent: FollowerForge 3.2.7
+
+Fixed:
+  - After 3.2.7 could browse ModOrganizer.ini and pick a profile, builds still looked for plugin
+    masters (e.g. SOSVoices.esm) only in the Steam game Data folder. MO2 never puts them there -
+    they live in enabled mod folders - so the build failed with "Required master ... is not
+    installed in ...\Skyrim Special Edition\Data".
+  - ExpandMasterChain now uses PluginDataPath (the FollowerForge hardlink plugin view) under MO2,
+    after Mo2DataView.Ensure.
+  - ValidateInstalledMasters resolves masters through MO2 mod priority, not only game Data.
+  - RecordResolver / CellSourceResolver open plugins from the same MO2 plugin view.
+  - CharGen discovery during a build uses the MO2-aware scanner when the manager is MO2.
+
+Vortex paths and behaviour are unchanged (PluginDataPath still equals GameDataPath).
+Rollback: reinstall 3.2.7; MO2 settings under LocalAppData\FollowerForge are unchanged.
+Nexus: YES
+================================================================================
 ## [3.2.7] - 2026-08-09 - deterministic MO2 instance/profile setup
 Agent: Codex
 Parent: FollowerForge 3.2.6
