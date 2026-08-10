@@ -2,7 +2,8 @@
 
 - Date: 2026-08-09
 - Current snapshot: `FollowerForge 3.2.7` (parent 3.2.6 preserved)
-- Branch: `agent/mo2-manual-setup`
+- Published branch: `main`
+- Release tag: `v3.2.7` (`d39ef3a54f0ca8641810a5862a8de716a36ae558`)
 - Runtime target: Windows 10/11, Skyrim SE/AE, Vortex or Mod Organizer 2
 
 ## Release evidence
@@ -18,6 +19,8 @@
 - Fixture catalogue index: 43,769 records from hardlinked `Skyrim.esm`; 0 failures.
 - Nexus ZIP: `FollowerForge-3.2.7-win-x64.zip`, 99,181,134 bytes.
 - ZIP SHA-256: `79766F2C352E2A9C85A53BCBA43EB5F4BDC0C0E3C195520A77116AA84699F86C`.
+- GitHub release: `https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.7` (published, Latest).
+- GitHub-hosted ZIP downloaded and re-hashed: PASS; SHA-256 matched the declared checksum.
 
 ## Ship gate
 
