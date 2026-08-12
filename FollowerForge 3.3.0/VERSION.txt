@@ -1,0 +1,18 @@
+FollowerForge 3.3.0
+
+Parent: FollowerForge 3.2.9
+Created: 2026-08-11
+Change: arrows and bolts, item stack counts, unencodable-name warning, self-healing CLI index.
+
+Tests: 367 passed, 0 failed
+Final ZIP: FollowerForge-3.3.0-win-x64.zip
+Bytes: 99186315
+SHA-256: B2A4D84FC953CC52F643E57D1CF30386E94801624301CA00C5235DFB3601F242
+EXE: FollowerForge.exe
+
+Runtime evidence (built with the published CLI, read back with houseCARL):
+  Items[2].Item.Item  = 01397F:Skyrim.esm (SteelArrow)   Count = 100
+  Items[0].Item.Count = 5 (stacked potion)
+  DefaultOutfit contains no ammo - matches Faendal (013480:Skyrim.esm), who carries
+  Steel Arrow in Items with a clothes-only outfit. No vanilla outfit references ammo.
+  check_errors: 0 dangling refs, 0 missing masters.

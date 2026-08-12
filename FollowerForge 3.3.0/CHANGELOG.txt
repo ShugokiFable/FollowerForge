@@ -1,93 +1,50 @@
-﻿# CHANGELOG — FollowerForge
+# CHANGELOG — FollowerForge
 
 ================================================================================
-## [3.3.0] - 2026-08-11 - arrows, stack counts, and honest names
-Agent: Claude
-Parent: FollowerForge 3.2.9
-
-Reported by users on 3.2.9:
-  1. "Can't add arrows for bows/crossbows"      - correct, and the cause was total.
-  2. "Can't change quantity of items"           - correct.
-  3. "Can't show non-English letters"           - HALF correct; see below.
-  4. "Body/face color mismatch in 3.2.9"        - NOT caused by 3.2.9; see below.
-
-Added:
-  - Ammo. IndexedRecordType had no Ammo member at all, so AMMO records were never indexed and
-    arrows could not be picked, validated or written. Now indexed, with an "Arrows & bolts" tab
-    in step 5 and a stack-count spinner (default 100).
-    Ammo goes in INVENTORY ONLY, deliberately: checked against Faendal (013480:Skyrim.esm), the
-    game's own archer follower, who carries Steel Arrow (01397F) in Items with a clothes-only
-    outfit. A query for vanilla outfits referencing that arrow returns zero, so an earlier
-    attempt to also write ammo into the generated outfit was removed rather than shipped.
-  - Item stack counts. RecordRef gained an optional Count (default 1), so older profile JSON
-    still loads unchanged. The compiler used a hardcoded Count = 1. Belongings get their own
-    count spinner; 0 or negative clamps to 1 rather than writing an empty stack.
-  - Catalogue index_version. A catalogue built by an earlier version is now treated as stale, so
-    existing users get the Ammo records automatically instead of opening an empty arrows list.
-
-Fixed:
-  - `fforge index` no longer dies on a damaged cache. It quarantined and rebuilt in the wizard
-    but threw SqliteException in the CLI, so the one command that repairs the catalogue was the
-    one command a corrupt catalogue could brick. Hit for real during this session's testing.
-  - Non-English names now say what will happen instead of silently mangling. Measured: "Ëlïna Ökÿ"
-    already writes correctly (cb 6c ef 6e 61 20 d6 6b ff - valid Windows-1252), but "Ζωή Аня"
-    becomes literal '?' bytes (3f 3f 3f). A plugin stores one single-byte codepage, so Cyrillic,
-    Greek and CJK cannot survive; writing cp1251 instead would just move the breakage onto
-    everyone whose game is not Russian. New NAME_CHARACTERS_LOST warning names the exact
-    characters that will be lost. Deliberately NOT adding per-language encoding support.
-
-Not a 3.2.9 regression - body/face colour:
-  Diffed 3.2.7 -> 3.2.9 across the whole source tree. The only compiler changes are cell
-  placement, worldspace and FormVersion 44. Nothing in the face, tint, QNAM/TextureLighting,
-  HeadTexture or skin path was touched. This is the pre-existing tone/seam behaviour: a preset
-  whose SkinTone is non-neutral tints the head while the body keeps whatever skin the player has
-  installed. Diagnosing it needs the reporter's preset and screenshot.
-
-Verify: 367 tests pass. Built with the published CLI and read back with houseCARL:
-  Steel Arrow Count = 100, stacked potion Count = 5, no ammo in the outfit,
-  check_errors 0 dangling refs / 0 missing masters.
-Nexus: YES
-================================================================================
-## [3.2.9] - 2026-08-10 - race name false-positives, manual placement, cell FormVersion
+## [3.2.9] - 2026-08-10 - race false-positives, manual placement, cell FormVersion
 Agent: Grok
 Parent: FollowerForge 3.2.8
 
-Fixed:
-  - Playable races with real FaceGen head data are no longer forced to Creature just because the
-    EditorID contains a word like "horse" (BDHorseRace and other anthro races).
-  - Manual Placement.Cell + X/Y/Z no longer hardcodes WhiterunWorld; the specified cell is used.
-  - Optional Placement.Worldspace for exterior worldspace top cells.
-  - Cell override DeepCopy always sets FormVersion 44, so the ship gate no longer fails on copied
-    Skyrim.esm cells that still carried formVersion 40.
+Fixed (from user/CLI MO2 session reports on 3.2.7, after 3.2.8 MO2 masters fix):
+  - RaceSuitability no longer force-flags a *playable* race with real head data as Creature
+    solely because the EditorID contains a blocklist word (e.g. "horse" → BDHorseRace).
+    Non-playable blocklist hits (Dremora, Elk, …) stay Creature.
+  - Manual Placement.Cell + X/Y/Z no longer ignores the cell and hardcodes WhiterunWorld.
+  - Optional Placement.Worldspace for exterior worldspace-persistent cells outside Whiterun.
+  - Cell overrides DeepCopy always set FormVersion 44 (source Skyrim cells are often 40);
+    ship-gate no longer rejects those CELL records.
+  - Placed ACHR also stamped FormVersion 44; cellSource resolved for manual Cell paths.
 
-Reported by: a long CLI + MO2 session building custom anthro followers (BD Ungulate / BD Cat).
+Known gap (not fixed in 3.2.9):
+  - RaceMenu body overlays still need NiOverride.AddOverlays (or a bake step) before node
+    overrides apply. jslot overlay data parses; runtime application path remains incomplete.
+    User baking experiments ongoing — do not claim overlays work yet.
 
-Known, not fixed:
-  - RaceMenu body overlays. The jslot data is parsed but nothing calls NiOverride.AddOverlays and
-    there is no bake path, so overlays stay invisible in game. Explicitly not claimed as fixed.
+Retained from 3.2.8:
+  - MO2 master expansion / ValidateInstalledMasters / CharGen via PluginDataPath + mod folders.
 
-Verify: 357 tests pass (checked on this machine before the GitHub push).
-  Published zip SHA-256 C7EA9E121910700E4603FD832200CDA3A9C03E6DF8008698DD5CD85E50C0D49F matches
-  NEXUS-UPLOAD/FollowerForge-3.2.9-win-x64-SHA256.txt.
+Verify: unit tests (race, location/FormVersion, MO2 masters) + full suite + publish.
 Nexus: YES
 ================================================================================
-## [3.2.8] - 2026-08-10 - MO2 builds find their masters
+## [3.2.8] - 2026-08-10 - MO2 master expansion uses plugin view, not Steam Data
 Agent: Grok
 Parent: FollowerForge 3.2.7
 
 Fixed:
-  - After 3.2.7 could browse ModOrganizer.ini and pick a profile, builds still looked for plugin
-    masters (e.g. SOSVoices.esm) only in the Steam game Data folder. MO2 never puts them there -
-    they live in enabled mod folders - so the build failed with "Required master ... is not
-    installed in ...\Skyrim Special Edition\Data".
-  - ExpandMasterChain now uses PluginDataPath (the FollowerForge hardlink plugin view) under MO2,
-    after Mo2DataView.Ensure.
-  - ValidateInstalledMasters resolves masters through MO2 mod priority, not only game Data.
-  - RecordResolver / CellSourceResolver open plugins from the same MO2 plugin view.
-  - CharGen discovery during a build uses the MO2-aware scanner when the manager is MO2.
+  - Build-time master chain expansion (PluginWriter ExpandMasterChain) now reads from the
+    MO2 hardlink plugin view (PluginDataPath) after Mo2DataView.Ensure, not bare Steam Data.
+  - This fixes "Required master 'SOSVoices.esm' is not installed in '...Skyrim Special Edition\\Data'".
+  - ValidateInstalledMasters resolves masters through MO2 mod priority / overwrite.
+  - RecordResolver and CellSourceResolver open plugins from the same plugin view.
+  - CharGen export lookup during build uses the MO2-aware scanner (mods + overwrite + Data).
+  - Face texture and own-hub asset copy fall back to MO2 loose files when not in Steam Data.
+  - Vortex behavior unchanged (PluginReadRoot still equals GameDataPath).
 
-Vortex paths and behaviour are unchanged (PluginDataPath still equals GameDataPath).
-Rollback: reinstall 3.2.7; MO2 settings under LocalAppData\FollowerForge are unchanged.
+Safety:
+  - Still read-only against game Data, MO2 instance/mods/profiles, and Vortex staging.
+  - No change to saved mo2-settings.json schema.
+
+Verify: unit tests including Mo2MasterRootTests; full test suite + publish when packaging.
 Nexus: YES
 ================================================================================
 ## [3.2.7] - 2026-08-09 - deterministic MO2 instance/profile setup
@@ -95,107 +52,22 @@ Agent: Codex
 Parent: FollowerForge 3.2.6
 
 Fixed:
-  - GUI ModOrganizer.ini picker and detected profile selector.
-  - MO2 base_directory, %BASE_DIR%, environment-variable, absolute, and relative path resolution.
-  - Strict manual validation with no silent instance/profile/manager fallback.
-  - Persisted FollowerForge-owned selection and cancellation-safe re-indexing.
-  - Catalogue freshness includes the exact profile, instance, and staging path.
-  - CLI --mo2-profile support.
+  - Added a GUI `MO2 setup...` dialog with an exact ModOrganizer.ini picker and profile selector.
+  - Added correct Settings/base_directory and case-insensitive %BASE_DIR% expansion.
+  - Relative mods/profiles/overwrite paths are now anchored to MO2's resolved base directory.
+  - Manual profile selection validates modlist.txt plus plugins.txt or loadorder.txt before indexing.
+  - Invalid manual choices no longer fall through to another MO2 instance, profile, or Vortex.
+  - Saved selections cancel stale indexing and start one serialized re-index for the chosen profile.
+  - Catalogue freshness now keys the exact profile, instance, and staging path, preventing stale cross-profile reuse when timestamps match.
+  - Added CLI --mo2-profile for deterministic command-line indexing.
 
-Vortex behavior and all Skyrim follower output formats are unchanged.
-Rollback: reinstall 3.2.6; optionally remove LocalAppData\FollowerForge\mo2-settings.json.
-================================================================================
-## [3.2.7] - 2026-08-09 - planned: reliable MO2 instance and profile setup
-Agent: Codex
-Parent: FollowerForge 3.2.6
+Safety:
+  - Saved selection is FollowerForge-owned LocalAppData only.
+  - No MO2, Vortex, Skyrim Data, or save file is modified.
+  - Vortex discovery behavior is unchanged.
 
-Reported:
-  - MO2 users can still fail to index in 3.2.6 and asked for a user-overridable MO2 path plus profile selector.
-
-Confirmed in 3.2.6 source:
-  - CLI/environment callers can force an MO2 instance, but the GUI only offers a manager toggle.
-  - The GUI cannot browse to ModOrganizer.ini or select an MO2 profile.
-  - A missing selected_profile silently falls back to the first directory under profiles.
-  - MO2 `%BASE_DIR%` paths are not expanded before mods/profiles/overwrite paths are canonicalized.
-
-Planned fix:
-  - Add a read-only MO2 Setup dialog with ModOrganizer.ini browse, validated profile dropdown,
-    saved manual selection, Save and Re-index, and Return to automatic detection.
-  - Resolve `%BASE_DIR%`, environment variables, absolute paths, and relative paths deterministically.
-  - In manual mode, fail clearly on a stale instance/profile instead of silently indexing another profile.
-  - Preserve Vortex behavior and existing CLI/environment override compatibility.
-
-Validation: pending implementation; design specification added.
-Runtime: untested.
-Nexus: pending.
-================================================================================
-## [3.2.6] - 2026-08-07 - fix a broken faction on every follower ever built
-Agent: Claude
-Parent: FollowerForge 3.2.5
-
-Fixed:
-  - PlayerFaction was 0x0000DB. The real FormID is 0x000DB1 - a transposition that has been in
-    VanillaForms since the faction code was written. Every follower FollowerForge has ever built
-    carries a link to a record that does not exist, and none of them are actually in PlayerFaction.
-    Found by sweeping a freshly built plugin with houseCARL's load-order integrity check, not by
-    reading the code: the value looks plausible and compiles fine.
-
-Evidence:
-  - Intent confirmed correct: Lydia (HousecarlWhiterun 0A2C8E:Skyrim.esm) has 000DB1 as
-    Factions[0], so vanilla followers do carry PlayerFaction. The design was right, the digits
-    were not.
-  - houseCARL check_errors on a built plugin, before: 1 dangling ref
-    (000800:FF_VeraForge.esp -> 0000DB:Skyrim.esm). After: 0 dangling, 0 missing masters.
-  - All 27 other hardcoded vanilla FormIDs were read back out of the installed Skyrim.esm and
-    matched to their EditorIDs. Only PlayerFaction was wrong.
-
-Added:
-  - src/Tests/VanillaFormIdTests.cs pins the verified ids so a typo cannot slip back in.
-
-Known, not fixed (cosmetic):
-  - A hand-written profile JSON can set Protected and Essential together; the compiler writes both
-    flags and the engine just lets Essential win. The wizard cannot produce it (one dropdown).
-
-Verify: 325 tests pass. Published zip boot-checked; rebuilt follower sweeps clean.
-Nexus: YES - worth shipping over 3.2.5.
-================================================================================
-## [3.2.5] - 2026-08-06 - choose her body; find the game and MO2 off drive C:
-Agent: Claude
-Parent: FollowerForge 3.2.4
-
-Added:
-  - Step 5 gains a "Body" tab: pick the skin ARMO she wears as her body, or leave it empty
-    (the default) so she uses whatever body the player installed - which is what OBody needs
-    in order to reshape her. Costs no storage: it is a FormID reference, so asset-hub bodies
-    and standalone follower skins work without copying a mesh.
-  - Skin records are identified by MajorFlags NonPlayable + torso slot. Verified against
-    Orimagen's Fauna: 00081A:Fauna.esp FaunaBody is NonPlayable over slots 30-33/37/40/55 and
-    is that follower's WornArmor.
-  - BODY_PINNED build note: pinning a body makes that mod a hard requirement for anyone who
-    installs her, and stops OBody reshaping her.
-
-Fixed (reported by users):
-  - "FollowerForge only uses the default paths (no one has Steam files on drive C:)" - correct.
-    ResolveGameRoot tried exactly one hardcoded path. New GameRootResolver searches every fixed
-    drive: known Steam roots, every library listed in each steamapps/libraryfolders.vdf, and a
-    bare "<drive>\Skyrim Special Edition". The old C: path is now the last resort, not the only
-    candidate. Used by BOTH the Vortex and MO2 paths.
-  - MO2 instances were only looked for under %LOCALAPPDATA%\ModOrganizer, so PORTABLE installs -
-    the common setup - were never found. Portable folder names are now probed on every drive.
-  - An MO2 instance whose ModOrganizer.ini gamePath is stale/missing now falls back to the same
-    drive-wide search instead of giving up.
-  - FaceGenSwapperTests no longer hardcodes a C: CharGen path (the same bug, inside a test, which
-    made it silently test nothing on other machines) and no longer fails the suite when one
-    export on the user's disk is not convertible.
-
-Known unresolved:
-  - Whether MO2's modlist.txt stores highest-priority-first or last is NOT confirmed. The code
-    consumes it as "last entry wins" and now says so in a comment. Settling it needs a real MO2
-    instance; if MO2 users report the wrong file winning a conflict, reverse ParseMo2ModList.
-
-Verify: 297 tests pass, 0 failed. Published zip boot-checked; `env` on this machine still
-  resolves Vortex + 2911 enabled plugins.
-Nexus: YES
+Rollback:
+  - Reinstall 3.2.6 and optionally remove LocalAppData\FollowerForge\mo2-settings.json.
 ================================================================================
 ## [3.2.4] - 2026-08-06 - MO2 switch during load; Export Head not false NO SCULPT
 Agent: Grok

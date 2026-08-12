@@ -1,0 +1,20 @@
+FollowerForge 3.2.9
+
+Builds on 3.2.8 (MO2 masters / plugin view). Fixes more issues reported from a long
+CLI+MO2 session building custom anthro followers (BD Ungulate / BD Cat Races):
+
+Fixed
+- Playable races with real FaceGen head data are no longer forced to "Creature" just
+  because the EditorID contains words like "horse" (e.g. BDHorseRace).
+- Manual Cell + X/Y/Z placement no longer ignores the cell and hardcodes Whiterun.
+  Optional Worldspace field for exterior worldspace-persistent cells.
+- Cell overrides now force FormVersion 44 so ship-gate no longer fails on copied
+  Skyrim.esm cells that still had formVersion 40.
+
+Still known / not fixed yet
+- RaceMenu body overlays: jslot data is parsed, but nothing calls NiOverride.AddOverlays
+  (or an official bake path) yet, so overlays stay invisible in-game. Baking experiments
+  are ongoing on the community side.
+
+Update: close FollowerForge, replace with this build, re-index MO2 if needed, rebuild.
+FollowerForge never writes into MO2 mods, profiles, or Skyrim Data.
