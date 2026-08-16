@@ -4,7 +4,7 @@
 2. [x] Snapshot 3.4.0 → 3.5.0.
 3. [x] Failing tests, then stop attaching WerewolfChangeFX, then rewrite FF_Transform.
 4. [x] Recompile PEX. 388 tests pass.
-5. [ ] Optional publish zip.
+5. [x] Publish zip built (boot check passed) and attached to the GitHub v3.5.0 release.
 
 # FollowerForge 3.4.0 plan
 
@@ -15,4 +15,4 @@
 5. [x] Show gear FormIDs (and search them) on armor/weapons/ammo/belongings/skins.
 6. [x] Tests for settings, locator, pronouns, FormID display, write-guard Allow, publishRoot.
 7. [x] 386 Release tests pass.
-8. [ ] Optional: `Publish-FollowerForge.ps1` zip + Nexus upload.
+8. [x] `Publish-FollowerForge.ps1` zip built (shipped inside the v3.5.0 GitHub release). Nexus upload stays manual.
