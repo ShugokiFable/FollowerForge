@@ -1,24 +1,33 @@
-# VALIDATION — FollowerForge 3.2.8
+# VALIDATION — FollowerForge 3.5.0
 
 ## Commands run
 
 ```text
-dotnet test Tests\FollowerForge.Tests.csproj
-  → 353 passed, 0 failed
-
-Publish-FollowerForge.ps1 -Version 3.2.8 -SkipTests
-  → PUBLISH SUCCEEDED; boot window stayed up
+dotnet test FollowerForge 3.5.0\src\Tests -c Release --nologo
+  → 388 passed, 0 failed
 ```
 
-## Targeted regression
+PEX compile (russo papyrus.exe, headers from Skyrim Data\Source\Scripts):
+  FF_Transform.psc → FF_Transform.pex (2340 bytes)
+  Disassembly confirms GetCombatState, originalRace, RestoreRace, OnLoad, OnUpdate, DispelSpell.
+  String table does not contain WerewolfChangeFX.
+
+SSEEdit/CK: not launched.
+
+## Targeted checks
 
 | Test | Intent | Result |
 |---|---|---|
-| PluginIsInstalled_FindsModOnlyMasterOutsideSteamData | MO2-only master not in Steam Data | PASS |
-| EnsurePluginReadRoot_LinksModOnlyMasterIntoPluginView | hardlink view exposes SOSVoices.esm | PASS |
-| PluginWriter_ExpandMasterChain_SucceedsFromMo2PluginView | Steam root fails; view root expands masters | PASS |
-| PluginReadRoot_Property_IsPluginDataPathForMo2 | property semantics Vortex vs MO2 | PASS |
+| Werewolf_UsesTheGamesOwnRace_WithoutWerewolfChangeFx | compiler must not attach the delayed-SetRace spell | PASS |
+| BundledTransformScript_DoesNotCastWerewolfChangeFx | shipped PSC has no that EditorID | PASS |
+| BundledTransformScript_AbortsIfTheFightAlreadyEnded | GetCombatState after wait | PASS |
 
 ## Package
 
-See STATE.md for SHA-256 after hash step in this session.
+Not published this session. Use:
+
+```text
+.\Publish-FollowerForge.ps1 -Version 3.5.0 -SkipTests
+```
+
+from `FollowerForge 3.5.0`.

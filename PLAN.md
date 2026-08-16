@@ -1,12 +1,18 @@
-# FollowerForge 3.2.7 plan
+# FollowerForge 3.5.0 plan
 
-1. [x] Preserve 3.2.6 and establish a complete 3.2.7 sibling snapshot.
-2. [x] Add red/green tests for manual MO2 instance/profile selection and `%BASE_DIR%` paths.
-3. [x] Resolve base/mods/profiles/overwrite paths using MO2 path semantics.
-4. [x] Add a persisted GUI MO2 setup dialog with INI browse and profile selector.
-5. [x] Reject invalid manual choices without substituting another profile or manager.
-6. [x] Preserve Vortex and existing CLI/environment behavior; add `--mo2-profile`.
-7. [x] Cancel stale catalogue generations and re-index the saved selection safely.
-8. [x] Run complete tests, publish, boot, archive, metadata, and isolated fixture-index validation.
-9. [x] Produce the Nexus ZIP, checksum, and concise user changelog.
-10. [x] Publish 3.2.7 directly to the existing repository's `main` branch and release `v3.2.7` with verified assets.
+1. [x] Prove werewolf non-revert from vanilla WerewolfTransformVisual + our Wait race.
+2. [x] Snapshot 3.4.0 → 3.5.0.
+3. [x] Failing tests, then stop attaching WerewolfChangeFX, then rewrite FF_Transform.
+4. [x] Recompile PEX. 388 tests pass.
+5. [ ] Optional publish zip.
+
+# FollowerForge 3.4.0 plan
+
+1. [x] Prove the three user requests are solvable in 3.3.0 before writing.
+2. [x] Snapshot 3.3.0 to 3.4.0; leave 3.3.0 untouched.
+3. [x] Persist xVASynth + output paths; scan Steam libraries; allow explicit Vortex/MO2 dest.
+4. [x] Gender-matched wizard pronouns from the existing Sex box.
+5. [x] Show gear FormIDs (and search them) on armor/weapons/ammo/belongings/skins.
+6. [x] Tests for settings, locator, pronouns, FormID display, write-guard Allow, publishRoot.
+7. [x] 386 Release tests pass.
+8. [ ] Optional: `Publish-FollowerForge.ps1` zip + Nexus upload.

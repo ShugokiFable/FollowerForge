@@ -1,0 +1,8 @@
+FollowerForge 3.4.0
+
+Parent: FollowerForge 3.3.0
+Created: 2026-08-16
+Change: manual xVASynth and output paths, gender-matched UI pronouns, gear FormIDs in pickers.
+
+Tests: 386 passed, 0 failed
+Final ZIP: pending (run Publish-FollowerForge.ps1 -Version 3.4.0 -SkipTests)

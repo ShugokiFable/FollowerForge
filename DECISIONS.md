@@ -1,5 +1,31 @@
 # FollowerForge decisions
 
+## 2026-08-16 - 3.5.0
+
+- Werewolf revert is a script bug, not a UI one. 3.4.0 is left untouched.
+- Do not cast WerewolfChangeFX on followers. houseCARL + vanilla
+  WerewolfTransformVisual.psc show it Wait(10) then SetRace(Werewolf) on any
+  non-player target. That is why revert "worked" then they became wolves again.
+- SetRace(WerewolfBeastRace) / SetRace() is the documented Actor API and is enough.
+- After DelaySeconds, abort if GetCombatState()==0 so a short fight cannot
+  transform them after the battle.
+- OnUpdate + OnLoad are backups, not the primary path.
+
+## 2026-08-16 - 3.4.0
+
+- Keep 3.3.0 untouched. Three independent UX requests in one minor release.
+- xVASynth: explicit path > FFORGE_XVASYNTH > saved settings > Steam library scan > default.
+  The previous default-only path is why a Steam install off C: was invisible.
+- Output: default stays LocalAppData\FollowerForge\workspace\builds\Name.
+  A user-chosen folder publishes to Folder\Name so Vortex/MO2 can enable it as a mod.
+  Staging always stays under LocalAppData. WriteGuard.Allow is only for that explicit dest.
+  Game Data and My Games\Skyrim Special Edition remain rejected.
+- Pronouns use named slots (subject/object/possessive). A her→him replace would break
+  "her look" vs "kill her" and would also hit "published".
+- Gear FormIDs use the catalogue key already stored (XXXXXX:Plugin.esp). That is the
+  base ID plus plugin, which is what tells Makeshift Eyeglasses variants apart.
+- Do not launch SSEEdit or Creation Kit GUI.
+
 ## 2026-07-28 - 2.1.3
 
 - Preserve 2.1.2 unchanged and use a patch release for the custom-skill visibility repair.

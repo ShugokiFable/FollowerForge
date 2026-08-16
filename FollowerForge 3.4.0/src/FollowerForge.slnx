@@ -1,0 +1,32 @@
+<Solution>
+  <Folder Name="/AssetIndex/">
+    <Project Path="AssetIndex/FollowerForge.AssetIndex.csproj" />
+  </Folder>
+  <Folder Name="/BuildPipeline/">
+    <Project Path="BuildPipeline/FollowerForge.BuildPipeline.csproj" />
+  </Folder>
+  <Folder Name="/Cli/">
+    <Project Path="Cli/FollowerForge.Cli.csproj" />
+  </Folder>
+  <Folder Name="/Domain/">
+    <Project Path="Domain/FollowerForge.Domain.csproj" />
+  </Folder>
+  <Folder Name="/FaceGen/">
+    <Project Path="FaceGen/FollowerForge.FaceGen.csproj" />
+  </Folder>
+  <Folder Name="/ModManagers/">
+    <Project Path="ModManagers/FollowerForge.ModManagers.csproj" />
+  </Folder>
+  <Folder Name="/SkyrimRecords/">
+    <Project Path="SkyrimRecords/FollowerForge.SkyrimRecords.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/FollowerForge.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Ui/">
+    <Project Path="Ui/FollowerForge.Ui.csproj" />
+  </Folder>
+  <Folder Name="/Validation/">
+    <Project Path="Validation/FollowerForge.Validation.csproj" />
+  </Folder>
+</Solution>

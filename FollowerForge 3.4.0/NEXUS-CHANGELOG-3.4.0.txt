@@ -1,0 +1,8 @@
+FollowerForge 3.4.0
+
+- Paths... in the sidebar: set the xVASynth folder and where built followers are saved.
+  Steam copies that are not on C: are now scanned automatically. You can still browse.
+  A Vortex or MO2 mods folder is a valid output destination. Game Data is not.
+- Pronouns in the wizard follow the Sex box (she/her or he/him).
+- Gear lists show each item's FormID so identically named variants can be told apart.
+  Search accepts the FormID or plugin name.

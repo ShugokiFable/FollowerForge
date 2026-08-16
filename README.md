@@ -1,4 +1,4 @@
-# FollowerForge 3.2.7 - Windows follower-building tool
+# FollowerForge 3.5.0 - Windows follower-building tool
 
 FollowerForge is an out-of-game application that reads your active Vortex or Mod Organizer 2 setup and creates an installable Skyrim follower mod (ESPFE plus assets).
 
@@ -6,7 +6,7 @@ FollowerForge itself is **not** a Skyrim mod. Do not install the application int
 
 ## Download
 
-Download the self-contained Windows x64 build from the [FollowerForge 3.2.7 release](https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.2.7). A separate .NET installation is not required.
+Download the self-contained Windows x64 build from the [FollowerForge 3.5.0 release](https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.5.0). A separate .NET installation is not required.
 
 ## Install and use
 
@@ -32,9 +32,11 @@ MO2 users can click **MO2 setup...** to:
 
 Version 3.2.7 supports portable and customized MO2 layouts, including relative paths, environment variables, and case-insensitive `%BASE_DIR%` expansion. An explicitly selected profile is never silently replaced with another profile.
 
+Click **Paths...** to set the xVASynth folder and where built followers are saved. Sex on step 1 updates she/her or he/him. Gear lists show FormIDs so identically named items can be told apart. Werewolf now reverts after combat (rebuild the follower).
+
 Saved GUI settings live under `%LOCALAPPDATA%\FollowerForge`. FollowerForge does not modify MO2 profile/INI files, Vortex deployment data, Skyrim `Data`, or saves.
 
-See [the detailed MO2 guide](FollowerForge%203.2.7/docs/MO2.md) for setup and troubleshooting.
+See [the detailed MO2 guide](FollowerForge%203.5.0/docs/MO2.md) for setup and troubleshooting.
 
 ## CLI and environment options
 
@@ -42,6 +44,8 @@ See [the detailed MO2 guide](FollowerForge%203.2.7/docs/MO2.md) for setup and tr
 |---|---|
 | GUI manager button | Prefer MO2 or Vortex |
 | GUI **MO2 setup...** | Select and persist the exact MO2 instance/profile |
+| GUI **Paths...** | Set xVASynth and the built-mod output folder |
+| `FFORGE_XVASYNTH` / `--xvasynth` | Override xVASynth discovery |
 | `FFORGE_PREFER_MO2=1` | Try MO2 before Vortex |
 | `FFORGE_MO2_INSTANCE=D:\path\to\instance` | Use that MO2 instance folder |
 | `--mo2-instance DIR` | Use an exact MO2 instance in the CLI |
@@ -68,4 +72,4 @@ Recommended face workflow: [FaceForge](https://github.com/ShugokiFable/FaceForge
 
 ## Version history
 
-See [CHANGELOG.txt](CHANGELOG.txt) for the complete history and [the 3.2.7 Nexus changelog](FollowerForge%203.2.7/NEXUS-CHANGELOG-3.2.7.txt) for the short user-facing update notes.
+See [CHANGELOG.txt](CHANGELOG.txt) for the complete history and [the 3.5.0 Nexus changelog](FollowerForge%203.5.0/NEXUS-CHANGELOG-3.5.0.txt) for the short user-facing update notes.

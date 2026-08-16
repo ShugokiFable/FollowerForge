@@ -1,6 +1,59 @@
 ﻿# CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.5.0] - 2026-08-16 - werewolf revert after combat
+Agent: Grok
+Parent: FollowerForge 3.4.0
+
+Reported: the werewolf option did not revert once the battle ended.
+
+Root cause (read from Skyrim.esm + vanilla source, not guessed):
+  WerewolfChangeFX (0F8208) is named "Beast Form". Its magic effect runs
+  WerewolfTransformVisual.psc, which Utility.Wait(10) then SetRace(Werewolf)
+  on the target. FF_Transform cast that spell AND SetRace itself, then
+  Revert() called SetRace() on combat end. Ten seconds later the vanilla
+  visual script set them back to werewolf. They stayed wolves after the fight.
+  A short fight also hit the 2s delay: Revert ran during Wait, then Transform
+  continued and changed form after combat.
+
+Fix:
+  - Werewolf no longer attaches WerewolfChangeFX. Race swap is SetRace only.
+  - After the delay, GetCombatState()==0 aborts so they cannot change after the fight.
+  - originalRace is stored; Revert uses that (and SetRace() as fallback).
+  - OnUpdate backup if the engine never delivers combat-state 0.
+  - OnLoad undoes a leftover beast form so a save mid-transform cannot stick.
+  - FF_Transform.pex recompiled from the new source.
+
+Verify: 388 tests pass (386 from 3.4.0 + 2 new; one old werewolf FX assertion inverted).
+Nexus: pending publish
+================================================================================
+## [3.4.0] - 2026-08-16 - paths, pronouns, gear FormIDs
+Agent: Grok
+Parent: FollowerForge 3.3.0
+
+Reported by a user who actually used the 3.3.0 wizard:
+
+  1. xVASynth installed via Steam was not found, and built mods only land in %LocalAppData%.
+  2. Sex is asked on step 1 but every label still says she/her.
+  3. Gear variants that share a display name (Makeshift Eyeglasses) cannot be told apart.
+
+Added:
+  - Paths dialog (sidebar "Paths..."). Manual xVASynth folder and a user-chosen output folder,
+    persisted in LocalAppData\FollowerForge\app-settings.json. Empty boxes keep automatic detection.
+    xVASynth discovery now scans every Steam library the same way the game-root finder does,
+    instead of only C:\Program Files (x86)\Steam\steamapps\common\xVASynth. Env FFORGE_XVASYNTH
+    and CLI --xvasynth still win.
+  - Custom output writes each follower as a subfolder of the chosen path (so a Vortex/MO2 mods
+    folder becomes one installable mod per follower). Staging stays under LocalAppData. Game Data
+    and saves stay blocked. Default layout is unchanged: workspace\builds\<name>.
+  - UI pronouns follow Sex. Female keeps the old she/her copy. Male switches she/he, her/him,
+    her/his, hers/his, herself/himself on the rail, headings, hints, combo items, and build log.
+  - Armor, weapons, ammo, belongings, and body-skin rows show the catalogue FormID
+    (XXXXXX:Plugin.esp) and EditorID when it differs from the name. Search matches the FormID.
+
+Verify: 386 tests pass (367 from 3.3.0 + 19 new).
+Nexus: pending publish
+================================================================================
 ## [3.3.0] - 2026-08-11 - arrows, stack counts, and honest names
 Agent: Claude
 Parent: FollowerForge 3.2.9

@@ -1,0 +1,8 @@
+FollowerForge 3.5.0
+
+Parent: FollowerForge 3.4.0
+Created: 2026-08-16
+Change: werewolf revert after combat — stop using WerewolfChangeFX's delayed SetRace.
+
+Tests: 388 passed, 0 failed
+PEX: FF_Transform.pex recompiled (russo papyrus.exe)
