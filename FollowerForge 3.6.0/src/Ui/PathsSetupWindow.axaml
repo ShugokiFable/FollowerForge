@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FollowerForge.Ui.PathsSetupWindow"
+        Width="760" Height="560" MinWidth="640" MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/appicon.ico"
+        Title="FollowerForge - Paths"
+        Background="#16161b">
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#d7dbe2"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0aa"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#101015"/>
+      <Setter Property="Foreground" Value="#dfe4ea"/>
+      <Setter Property="BorderBrush" Value="#2c2c36"/>
+      <Setter Property="Padding" Value="9,7"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#e8c877"/>
+      <Setter Property="Foreground" Value="#16161b"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="24" RowSpacing="14">
+    <StackPanel Grid.Row="0" Spacing="4">
+      <TextBlock Text="Paths" FontSize="23" FontWeight="SemiBold" Foreground="#e8c877"/>
+      <TextBlock Classes="hint"
+                 Text="Leave a box empty to keep automatic detection. A Steam xVASynth install that is not on C: is found by scanning every Steam library, or you can point at it yourself. Built followers can go to any folder you own — including a Vortex or MO2 mods folder."/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="6">
+      <TextBlock Classes="label" Text="xVASynth folder"/>
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox x:Name="XvaPathBox" Grid.Column="0"
+                 PlaceholderText="empty = search Steam libraries and the default Steam path"/>
+        <Button Grid.Column="1" Content="Browse..." Click="OnBrowseXva"/>
+      </Grid>
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Spacing="6">
+      <TextBlock Classes="label" Text="Save built followers in"/>
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox x:Name="OutputPathBox" Grid.Column="0"
+                 PlaceholderText="empty = %LocalAppData%\FollowerForge\workspace\builds"/>
+        <Button Grid.Column="1" Content="Browse..." Click="OnBrowseOutput"/>
+      </Grid>
+    </StackPanel>
+
+    <Border Grid.Row="3" Background="#101015" BorderBrush="#2c2c36" BorderThickness="1" CornerRadius="4" Padding="12">
+      <TextBlock x:Name="ResolvedSummary" Classes="hint" Text="Choose folders or leave them empty."/>
+    </Border>
+
+    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+      <TextBlock x:Name="ValidationText" TextWrapping="Wrap" Foreground="#d7dbe2"/>
+    </ScrollViewer>
+
+    <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+      <Button Grid.Column="0" Content="Use automatic paths" Click="OnAutomatic"/>
+      <Button Grid.Column="2" Content="Cancel" Click="OnCancel"/>
+      <Button x:Name="SaveButton" Grid.Column="3" Classes="primary"
+              Content="Save paths" IsEnabled="False" Click="OnSave"/>
+    </Grid>
+  </Grid>
+</Window>

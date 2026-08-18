@@ -1,4 +1,32 @@
-# VALIDATION — FollowerForge 3.5.0
+# VALIDATION — FollowerForge 3.6.0
+
+## Snapshot gate
+
+```text
+Parent: FollowerForge 3.5.0
+Active: FollowerForge 3.6.0
+Robocopy: 1,473 copied, 0 failed, 0 mismatched
+```
+
+## Design gate
+
+- User approved the Studio → Focus Cards → Expert Deck hybrid on 2026-08-18.
+- Five selectable palettes are planned: Obsidian Gold, Arcane Amethyst, Nordic Frost,
+  Forge Teal, and Light.
+- No application source has been changed yet.
+
+## Current build/test status
+
+- Exact 3.6.0 Release build: NOT RUN
+- Exact 3.6.0 tests: NOT RUN
+- UI smoke test: NOT RUN
+- Package: NOT BUILT
+- Runtime status: inherited 3.5.0 behavior only; 3.6.0 redesign UNTESTED
+- SSEEdit/CK: not launched
+
+---
+
+## Prior validation: FollowerForge 3.5.0
 
 ## Commands run
 

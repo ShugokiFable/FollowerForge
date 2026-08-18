@@ -1,3 +1,14 @@
+# FollowerForge 3.6.0 plan
+
+1. [x] Inspect 3.5.0 UI and preserve user-owned root changes.
+2. [x] Approve Studio → Focus Cards → Expert Deck architecture.
+3. [x] Snapshot 3.5.0 → 3.6.0; leave 3.5.0 untouched.
+4. [ ] Review and approve the written UI design specification.
+5. [ ] Produce an implementation plan with test-first milestones.
+6. [ ] Implement theme tokens, shell/navigation, cards, dedicated pickers, and Expert Deck.
+7. [ ] Run exact Release tests, UI smoke checks, encoding guard, and source-path scan.
+8. [ ] Build the self-contained Windows release, validate archive/hash, update docs, and publish.
+
 # FollowerForge 3.5.0 plan
 
 1. [x] Prove werewolf non-revert from vanilla WerewolfTransformVisual + our Wait race.

@@ -1,6 +1,22 @@
 ﻿# CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.6.0] - 2026-08-18 - complete frontend redesign
+Agent: Codex
+Parent: FollowerForge 3.5.0
+
+Planned:
+  - Replace the cramped seven-page control wall with the approved Studio → Focus Cards →
+    Expert Deck architecture.
+  - Add a persistent follower dossier, category readiness, searchable full-catalogue
+    workspaces, and a remembered Guided/Expert preference.
+  - Add selectable Obsidian Gold, Arcane Amethyst, Nordic Frost, Forge Teal, and Light
+    themes without changing application capability or saved follower data.
+  - Preserve all 3.5.0 build, indexing, MO2/Vortex, FaceGen, dialogue, transformation,
+    packaging, and CLI behavior.
+
+Status: design approved; implementation and validation pending.
+================================================================================
 ## [3.5.0] - 2026-08-16 - werewolf revert after combat
 Agent: Grok
 Parent: FollowerForge 3.4.0

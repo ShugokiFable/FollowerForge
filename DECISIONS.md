@@ -1,5 +1,22 @@
 # FollowerForge decisions
 
+## 2026-08-18 - 3.6.0
+
+- Preserve 3.5.0 unchanged and perform the UI modernization only in 3.6.0.
+- Use one adaptive product architecture: Studio is the home, Focus Cards are the normal
+  editing surface, and Expert Deck handles dense catalogues and FormID-level work.
+- Do not create separate beginner and expert applications. Both surfaces operate on the same
+  in-memory follower profile and validation/build pipeline.
+- Replace nested tabs and cramped inline list boxes with seven classified categories and
+  dedicated record-picker workspaces.
+- Keep a contextual “Browse full catalogue” action everywhere it is useful. Also remember a
+  global Guided/Expert preference; Expert changes defaults, not available capability.
+- Themes are token-driven and cosmetic. They must not alter navigation, validation, profile
+  serialization, or build results.
+- Preserve the existing public contracts: follower profile JSON, app/MO2 settings, CLI,
+  indexing, plugin generation, assets, output locations, and write guards.
+- Do not launch SSEEdit or Creation Kit GUI.
+
 ## 2026-08-16 - 3.5.0
 
 - Werewolf revert is a script bug, not a UI one. 3.4.0 is left untouched.

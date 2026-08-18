@@ -1,0 +1,8 @@
+FollowerForge 3.6.0
+
+Parent: FollowerForge 3.5.0
+Created: 2026-08-18
+Change: complete Avalonia frontend redesign — Studio dashboard, Focus Cards, Expert Deck, and selectable themes.
+
+Status: design specification in progress; implementation not started
+Runtime: inherited 3.5.0 behavior; redesigned UI not yet built or tested
