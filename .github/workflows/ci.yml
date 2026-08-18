@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: xunit suite (latest snapshot)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Locate newest FollowerForge snapshot directory
+        id: snap
+        shell: pwsh
+        run: |
+          $dir = Get-ChildItem -Directory |
+            Where-Object { $_.Name -match '^Follower ?Forge \d' } |
+            Sort-Object { [version](($_.Name -replace '[^0-9.]', '').Trim('.')) } |
+            Select-Object -Last 1
+          if (-not $dir) { throw "No 'FollowerForge <version>' directory found at repo root." }
+          Write-Host "Using snapshot: $($dir.Name)"
+          "path=$($dir.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: dotnet test (restore + build + xunit)
+        run: dotnet test "${{ steps.snap.outputs.path }}/src/Tests/FollowerForge.Tests.csproj" -c Release --nologo
