@@ -4,5 +4,5 @@ Parent: FollowerForge 3.5.0
 Created: 2026-08-18
 Change: complete Avalonia frontend redesign — Studio dashboard, Focus Cards, Expert Deck, and selectable themes.
 
-Status: implemented; Release build and automated regression gates passed
+Status: implemented; 461 Release tests pass; local zip rebuilt this session
 Runtime: tool-validated desktop boot; real-user Skyrim workflow not yet confirmed

@@ -1,9 +1,19 @@
 # CHANGELOG — FollowerForge
 
 ================================================================================
-## [3.6.0] - 2026-08-19 - complete frontend redesign - WIP - CRASH FIXED + UI POLISH PASSES 2-5 (1440P-VERIFIED: FULL-WIDTH PAGES, OPAQUE OVERLAY, TALLER LISTS) - USER RE-RATE PENDING
+## [3.6.0] - 2026-08-19 - complete frontend redesign - CRASH FIXED + UI POLISH PASSES 2-5 + RELEASE-READINESS
 Agent: Codex
 Parent: FollowerForge 3.5.0
+
+Release readiness (Agent: Grok, 2026-08-19):
+  Expert Deck Apply no longer wipes sibling armor/belongings slices: each deck commits only
+  the keys it offered. Empty drafts no longer paint Identity/Review as Error (missing name is
+  Needs attention; empty loadout is Optional; Review is Error only after a must-fix build or
+  a real setup failure). Command palette Enter runs the highlighted row instead of the first
+  hit; arrows do not refilter. Escape no longer swallows textbox cancel. Expert Deck EditorID
+  is the plugin EditorID (including races, not the display name). Palette also runs Build,
+  Paths, MO2 setup, and Switch manager. Multi-select Apply honours checkbox ticks. Ctrl
+  shortcuts do not drive the page behind a deck/palette overlay. 461 Release tests pass.
 
 Crash fix (Agent: Kimi, 2026-08-18, evidence: Windows Application event 1026, FollowerForge.exe 3.6.0.0):
   Opening any single-choice Expert Deck catalogue (race, face, voice, class, combat style,

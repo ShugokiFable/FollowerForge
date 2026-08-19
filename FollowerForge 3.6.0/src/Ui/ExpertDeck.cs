@@ -25,7 +25,7 @@ public sealed class DeckRecord(
     public string Plugin => Key.Contains(':', StringComparison.Ordinal)
         ? Key[(Key.IndexOf(':') + 1)..]
         : string.Empty;
-    public bool IsSelected { get; internal set; }
+    public bool IsSelected { get; set; }
 
     internal DeckRecord Copy() => new(Key, Display, Detail, Badge, EditorId, Source);
 }
@@ -53,6 +53,13 @@ public sealed class ExpertDeckSession
     public string Family { get; }
     public DeckSelectionMode Mode { get; }
     public IReadOnlyList<DeckRecord> Records => _records;
+
+    /// <summary>
+    /// Every key this deck put in front of the user — and therefore the ONLY scope Apply is
+    /// allowed to overwrite. A deck built from a filtered slice (the belongings deck shows one
+    /// of books/misc/food/ingredients at a time) must not clear the slices it never displayed.
+    /// </summary>
+    public IReadOnlyList<string> OfferedKeys => _records.Select(record => record.Key).ToList();
     public IReadOnlyList<DeckRecord> SelectionCart => _records
         .Where(record => _selected.Contains(record.Key))
         .OrderBy(record => record.Display, StringComparer.OrdinalIgnoreCase)
@@ -87,7 +94,21 @@ public sealed class ExpertDeckSession
         SyncSelectionFlags();
     }
 
-    public IReadOnlyList<string> Commit() => OrderedKeys(_selected);
+    public IReadOnlyList<string> Commit()
+    {
+        // The checkbox column writes IsSelected directly. Multi-select Apply must honour that
+        // instead of only the DataGrid SelectedItems stream, which misses checkbox-only clicks.
+        if (Mode == DeckSelectionMode.Multi)
+        {
+            foreach (var record in _records)
+            {
+                if (record.IsSelected) _selected.Add(record.Key);
+                else _selected.Remove(record.Key);
+            }
+        }
+
+        return OrderedKeys(_selected);
+    }
 
     public IReadOnlyList<string> Cancel()
     {

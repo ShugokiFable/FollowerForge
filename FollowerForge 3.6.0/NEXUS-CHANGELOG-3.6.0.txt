@@ -11,5 +11,9 @@ FollowerForge 3.6.0
 - Themes: warning/error colours are now visibly different per theme, and badge chips are tinted pills with colored text instead of solid yellow blocks.
 - Themes: fixed invisible buttons in the Light theme, overlays no longer let the page behind ghost through, sidebar statuses are tinted pills, and lists grow or shrink with their content instead of sitting in fixed boxes.
 - Layout: pages, sections and catalogue lists now fill the full window width on large displays (no more narrow strip with empty space beside it), overlays are fully opaque, and catalogue lists are taller so more records are visible at once.
+- Studio no longer marks an unfinished draft as broken: a missing name needs attention, loadout stays optional, and Review only turns red after a failed build or a real setup problem.
+- Expert Deck Apply no longer drops armor or belongings you picked in a different slot or category.
+- Expert Deck EditorID column shows the real plugin EditorID (including races). Search finds NordRace, not just Nord.
+- Command palette: Enter runs the highlighted command; Ctrl+K also reaches Build, Paths, MO2 setup, and Switch manager.
 
 Validation status: automated Release build, regression suite, migration ledger, archive inspection, and desktop boot gate. Real-user Skyrim gameplay remains user confirmation, not an automated claim.

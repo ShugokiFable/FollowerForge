@@ -30,6 +30,7 @@ public sealed class RaceSuitabilityTests
         var opt = RaceSuitability.Classify(Race("NordRace", "Nord"));
         Assert.Equal(RaceClass.Vanilla, opt.Class);
         Assert.Equal("Nord", opt.Name);
+        Assert.Equal("NordRace", opt.EditorId);
         Assert.Contains("no extra mods", opt.Note);
     }
 

@@ -100,6 +100,7 @@ public partial class WizardWindow : Window
     private Control? _deckOpener;
     private bool _syncingDeckSelection;
     private bool _indexing = true;
+    private bool _lastBuildHadMustFix;
     private IReadOnlyList<CommandOption> _commands = [];
 
     private sealed record CommandOption(string Title, string Detail, Action Run)
@@ -236,7 +237,7 @@ public partial class WizardWindow : Window
                 .Replace("he would be silent", $"{p.Subject} would be silent", StringComparison.Ordinal);
             return detail == v.Detail
                 ? v
-                : new PickerItem(v.Display, v.FormKey, detail, v.Tier, v.Badge, v.BadgeKind);
+                : new PickerItem(v.Display, v.FormKey, detail, v.Tier, v.Badge, v.BadgeKind, v.EditorId);
         }).ToList();
     }
 
@@ -625,7 +626,8 @@ public partial class WizardWindow : Window
                         ? RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), detail?.Invoke(r) ?? SourceOf(r))
                         : detail?.Invoke(r) ?? SourceOf(r),
                     badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
-                    badgeKind: IsBaseGame(r) ? "good" : "dim"))
+                    badgeKind: IsBaseGame(r) ? "good" : "dim",
+                    editorId: r.EditorId))
                 .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -656,7 +658,7 @@ public partial class WizardWindow : Window
         // Only LocType* keywords are useful here; the rest of the ~2000 are noise.
         _placeKeywords = db.SearchRecords(IndexedRecordType.Keyword, "LocType", AllPickerRecords)
             .Where(r => r.EditorId is { Length: > 0 } e && e.StartsWith("LocType", StringComparison.Ordinal))
-            .Select(r => new PickerItem(Friendly(r.EditorId!), r.FormKey, r.EditorId))
+            .Select(r => new PickerItem(Friendly(r.EditorId!), r.FormKey, r.EditorId, editorId: r.EditorId))
             .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
             .ToList();
         _perks = Grab(IndexedRecordType.Perk);
@@ -668,7 +670,8 @@ public partial class WizardWindow : Window
             .Select(r => new PickerItem(
                 Best(r)!, r.FormKey,
                 RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), $"body / skin • {SourceOf(r)}"),
-                badge: "SKIN", badgeKind: "dim"))
+                badge: "SKIN", badgeKind: "dim",
+                editorId: r.EditorId))
             .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var armor = armorRecords
@@ -677,7 +680,8 @@ public partial class WizardWindow : Window
                     Best(r)!, r.FormKey,
                     RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), ArmorLabel(r)),
                     badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
-                    badgeKind: IsBaseGame(r) ? "good" : "dim"),
+                    badgeKind: IsBaseGame(r) ? "good" : "dim",
+                    editorId: r.EditorId),
                 Group: ArmorGroup(r)))
             .OrderBy(pair => pair.Item.Display, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -767,7 +771,8 @@ public partial class WizardWindow : Window
             RaceClass.Vanilla => "good",
             RaceClass.Creature => "warn",
             _ => "dim",
-        });
+        },
+        editorId: r.EditorId);
 
     /// <summary>
     /// A skin ARMO — the record an NPC wears as its body rather than as gear: non-playable and
@@ -850,7 +855,8 @@ public partial class WizardWindow : Window
 
         return new PickerItem(
             r.EditorId!, r.FormKey, Join(what, CoverageLabel(r.FormKey)),
-            (int)tier, VoiceRanking.Badge(tier), VoiceRanking.BadgeKind(tier));
+            (int)tier, VoiceRanking.Badge(tier), VoiceRanking.BadgeKind(tier),
+            editorId: r.EditorId);
     }
 
     private static string? CapabilityJson(IndexedRecord r)
@@ -1524,7 +1530,7 @@ public partial class WizardWindow : Window
             SpellCount: _selectedSpells.Count,
             PerkCount: _selectedPerks.Count,
             HasPlacement: Ctl<ListBox>("PlaceList").SelectedItem is LocationItem,
-            HasBlockingBuildError: false);
+            HasBlockingBuildError: _lastBuildHadMustFix);
         var readiness = WorkspaceReadiness.Evaluate(draft);
         _nextRecommended = WorkspaceReadiness.NextRecommended(readiness);
 
@@ -1575,6 +1581,14 @@ public partial class WizardWindow : Window
             new("Open Loadout", "Equipment, belongings and magic", () => OpenSection(WorkspaceSection.Loadout)),
             new("Open Placement", "Starting location and routines", () => OpenSection(WorkspaceSection.PlacementRoutines)),
             new("Open Review", "Validation and build", () => OpenSection(WorkspaceSection.ReviewValidationBuild)),
+            new("Build follower", "Validate and write the follower package", () =>
+            {
+                OpenSection(WorkspaceSection.ReviewValidationBuild);
+                OnBuild(null, new RoutedEventArgs());
+            }),
+            new("Paths…", "xVASynth and output folders", () => OnPathsSetup(null, new RoutedEventArgs())),
+            new("MO2 setup…", "Choose ModOrganizer.ini and profile", () => OnMo2Setup(null, new RoutedEventArgs())),
+            new("Switch manager", "Flip Vortex / Mod Organizer 2", () => OnManagerSwitch(null, new RoutedEventArgs())),
             new("Toggle Guided / Expert", "Change workspace experience", ToggleExperience),
             new("Cycle theme", "Switch to the next visual theme", CycleTheme),
         ];
@@ -1587,7 +1601,7 @@ public partial class WizardWindow : Window
     {
         Ctl<Border>("CommandPaletteOverlay").IsVisible = true;
         Ctl<TextBox>("CommandSearch").Text = "";
-        Ctl<ListBox>("CommandList").ItemsSource = _commands;
+        ShowCommands(_commands);
         Ctl<TextBox>("CommandSearch").Focus();
     }
 
@@ -1597,13 +1611,49 @@ public partial class WizardWindow : Window
 
     private void OnCommandSearch(object? sender, KeyEventArgs e)
     {
+        // Arrows move the highlight while the caret stays in the search box. They never change
+        // the query, so they must not re-filter (which would snap the highlight back to the top).
+        if (e.Key is Key.Down or Key.Up)
+        {
+            var list = Ctl<ListBox>("CommandList");
+            if (list.ItemCount > 0)
+                list.SelectedIndex = Math.Clamp(
+                    list.SelectedIndex + (e.Key == Key.Down ? 1 : -1), 0, list.ItemCount - 1);
+            e.Handled = true;
+            return;
+        }
+
+        // Enter must run the highlighted row. Re-filtering here would reset SelectedIndex to 0
+        // and launch the first hit instead of the one the user arrowed to.
+        if (e.Key == Key.Enter)
+        {
+            RunSelectedCommand();
+            e.Handled = true;
+            return;
+        }
+
+        // Caret movement must not re-filter: ShowCommands would snap the highlight back to 0.
+        if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.Tab or Key.Escape)
+            return;
+
         var query = Ctl<TextBox>("CommandSearch").Text?.Trim();
         var filtered = string.IsNullOrWhiteSpace(query)
             ? _commands
             : _commands.Where(command => command.Title.Contains(query, StringComparison.OrdinalIgnoreCase)
                                          || command.Detail.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
-        Ctl<ListBox>("CommandList").ItemsSource = filtered;
-        if (e.Key == Key.Enter) RunSelectedCommand();
+        ShowCommands(filtered);
+    }
+
+    /// <summary>
+    /// Fills the palette and highlights the top hit. Focus stays in the search box, so without
+    /// this the list has no selection and Enter would do nothing at all — the whole point of a
+    /// type-and-run palette.
+    /// </summary>
+    private void ShowCommands(IReadOnlyList<CommandOption> commands)
+    {
+        var list = Ctl<ListBox>("CommandList");
+        list.ItemsSource = commands;
+        list.SelectedIndex = commands.Count > 0 ? 0 : -1;
     }
 
     private void OnCommandInvoked(object? sender, TappedEventArgs e) => RunSelectedCommand();
@@ -1619,14 +1669,30 @@ public partial class WizardWindow : Window
     {
         if (e.Key == Key.Escape)
         {
-            if (Ctl<Border>("DeckOverlay").IsVisible) CloseDeck(cancel: true);
-            else if (Ctl<Border>("CommandPaletteOverlay").IsVisible) CloseCommandPalette();
-            else Ctl<Border>("DossierDrawer").IsVisible = false;
-            e.Handled = true;
+            if (Ctl<Border>("DeckOverlay").IsVisible)
+            {
+                CloseDeck(cancel: true);
+                e.Handled = true;
+            }
+            else if (Ctl<Border>("CommandPaletteOverlay").IsVisible)
+            {
+                CloseCommandPalette();
+                e.Handled = true;
+            }
+            else if (Ctl<Border>("DossierDrawer").IsVisible)
+            {
+                Ctl<Border>("DossierDrawer").IsVisible = false;
+                e.Handled = true;
+            }
             return;
         }
 
         if ((e.KeyModifiers & KeyModifiers.Control) == 0) return;
+
+        // A modal overlay owns the keyboard. Do not navigate or rebuild behind it.
+        if (Ctl<Border>("DeckOverlay").IsVisible) return;
+        if (Ctl<Border>("CommandPaletteOverlay").IsVisible && e.Key != Key.K) return;
+
         if (e.Key == Key.K)
         {
             OpenCommandPalette();
@@ -1739,7 +1805,7 @@ public partial class WizardWindow : Window
     private DeckDefinition CreateDeckDefinition(string target)
     {
         static IReadOnlyList<DeckRecord> PickerRecords(IEnumerable<PickerItem> source) => source
-            .Select(item => new DeckRecord(item.FormKey, item.Display, item.Detail, item.Badge, item.Display, item))
+            .Select(item => new DeckRecord(item.FormKey, item.Display, item.Detail, item.Badge, item.EditorId, item))
             .ToList();
         static IReadOnlyList<string> SinglePicker(ListBox list) => list.SelectedItem is PickerItem item ? [item.FormKey] : [];
 
@@ -1857,9 +1923,22 @@ public partial class WizardWindow : Window
         _deckOpener = null;
     }
 
+    /// <summary>
+    /// Writes a deck's committed keys back into the canonical picker state.
+    ///
+    /// Every multi-choice family replaces ONLY the keys that deck actually offered. That scope
+    /// is what keeps the seven armor decks from clearing each other out of the one shared
+    /// _selectedArmor set — and what stops the belongings deck (which shows books OR misc OR
+    /// food OR ingredients, never all four) from silently dropping the kinds it never showed.
+    /// </summary>
     private void ApplyDeckSelection(string target, IReadOnlyList<string> keys)
     {
         var selected = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+        var offered = _deckSession?.OfferedKeys ?? [];
+
+        void ReplaceOffered(HashSet<string> destination) =>
+            DeckSelectionMerge.ReplaceFamily(destination, offered, selected);
+
         switch (target)
         {
             case "Race": SelectSingle("RaceList", _races, selected); break;
@@ -1870,18 +1949,18 @@ public partial class WizardWindow : Window
             case "Voice": SelectSingle("VoiceList", _voices, selected); break;
             case "Class": SelectSingle("ClassList", _classes, selected); break;
             case "CombatStyle": SelectSingle("CstyList", _styles, selected); break;
-            case "ArmorTorso": ReplaceArmorFamily(_armorTorso, selected); RestoreMulti("ArmorTorsoList", _armorTorso, _selectedArmor); break;
-            case "ArmorHead": ReplaceArmorFamily(_armorHead, selected); RestoreMulti("ArmorHeadList", _armorHead, _selectedArmor); break;
-            case "ArmorHands": ReplaceArmorFamily(_armorHands, selected); RestoreMulti("ArmorHandsList", _armorHands, _selectedArmor); break;
-            case "ArmorFeet": ReplaceArmorFamily(_armorFeet, selected); RestoreMulti("ArmorFeetList", _armorFeet, _selectedArmor); break;
-            case "ArmorShield": ReplaceArmorFamily(_armorShield, selected); RestoreMulti("ArmorShieldList", _armorShield, _selectedArmor); break;
-            case "ArmorAccessories": ReplaceArmorFamily(_armorAccessories, selected); RestoreMulti("ArmorAccessoriesList", _armorAccessories, _selectedArmor); break;
-            case "ArmorOther": ReplaceArmorFamily(_armorOther, selected); RestoreMulti("ArmorOtherList", _armorOther, _selectedArmor); break;
-            case "Weapon": ReplaceSelection(_selectedWeapons, selected); RestoreMulti("WeaponList", _weapons, _selectedWeapons); break;
-            case "Ammo": ReplaceSelection(_selectedAmmo, selected); RestoreMulti("AmmoList", _ammo, _selectedAmmo); break;
-            case "Lore": ReplaceSelection(_selectedLore, selected); RestoreMulti("LoreList", LoreSource(), _selectedLore); break;
-            case "Spell": ReplaceSelection(_selectedSpells, selected); RestoreMulti("SpellList", _spells, _selectedSpells); break;
-            case "Perk": ReplaceSelection(_selectedPerks, selected); RestoreMulti("PerkList", _perks, _selectedPerks); break;
+            case "ArmorTorso": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorTorsoList", _armorTorso, _selectedArmor); break;
+            case "ArmorHead": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorHeadList", _armorHead, _selectedArmor); break;
+            case "ArmorHands": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorHandsList", _armorHands, _selectedArmor); break;
+            case "ArmorFeet": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorFeetList", _armorFeet, _selectedArmor); break;
+            case "ArmorShield": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorShieldList", _armorShield, _selectedArmor); break;
+            case "ArmorAccessories": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorAccessoriesList", _armorAccessories, _selectedArmor); break;
+            case "ArmorOther": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorOtherList", _armorOther, _selectedArmor); break;
+            case "Weapon": ReplaceOffered(_selectedWeapons); RestoreMulti("WeaponList", _weapons, _selectedWeapons); break;
+            case "Ammo": ReplaceOffered(_selectedAmmo); RestoreMulti("AmmoList", _ammo, _selectedAmmo); break;
+            case "Lore": ReplaceOffered(_selectedLore); RestoreMulti("LoreList", LoreSource(), _selectedLore); break;
+            case "Spell": ReplaceOffered(_selectedSpells); RestoreMulti("SpellList", _spells, _selectedSpells); break;
+            case "Perk": ReplaceOffered(_selectedPerks); RestoreMulti("PerkList", _perks, _selectedPerks); break;
             case "Outfit": SelectSingle("OutfitList", _outfits, selected); break;
             case "Skin": SelectSingle("SkinList", _skins, selected); break;
             case "TransformRace": SelectSingle("TransformRaceList", _races, selected); break;
@@ -1900,15 +1979,6 @@ public partial class WizardWindow : Window
         list.ItemsSource = source;
         list.SelectedItem = source.FirstOrDefault(item => selected.Contains(item.FormKey));
     }
-
-    private static void ReplaceSelection(HashSet<string> destination, HashSet<string> source)
-    {
-        destination.Clear();
-        destination.UnionWith(source);
-    }
-
-    private void ReplaceArmorFamily(IReadOnlyList<PickerItem> family, HashSet<string> selected) =>
-        DeckSelectionMerge.ReplaceFamily(_selectedArmor, family.Select(item => item.FormKey), selected);
 
     private void RestoreMulti(string listName, IReadOnlyList<PickerItem> source, HashSet<string> selected)
     {
@@ -2275,14 +2345,17 @@ public partial class WizardWindow : Window
             Ctl<ItemsControl>("MustFixList").ItemsSource = groups.MustFix;
             Ctl<ItemsControl>("WarningList").ItemsSource = groups.CheckBeforeBuilding;
             Ctl<ItemsControl>("InformationList").ItemsSource = groups.Information;
+            _lastBuildHadMustFix = groups.MustFix.Count > 0;
         }
         catch (Exception ex)
         {
             log.Text = "Build failed: " + ex.Message;
+            _lastBuildHadMustFix = true;
         }
         finally
         {
             Ctl<Button>("BuildButton").IsEnabled = true;
+            RefreshWorkspaceChrome();
         }
     }
 

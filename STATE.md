@@ -2,8 +2,8 @@
 
 - Date: 2026-08-19
 - Current snapshot: `FollowerForge 3.6.0` (parent `FollowerForge 3.5.0` preserved)
-- Active owner application: Kimi (transferred from Codex for the crash fix)
-- Milestone: 3.6.0 Expert Deck crash fixed + UI polish passes 2-5 (density, tinted chips, per-theme status hues, overlay/Light-theme/de-blockify, full-width pages at 1440p + fully opaque overlay + taller lists — screenshot-verified); local release package rebuilt
+- Active owner application: Grok (continued 3.6.0 release-readiness after Kimi polish / Claude review)
+- Milestone: 3.6.0 Expert Deck crash fixed + UI polish passes 2-5 + release-readiness (deck apply, readiness colors, palette, EditorIDs); 461 Release tests pass; public push still waiting for explicit authorization
 - Runtime target: Windows 10/11, Skyrim SE/AE, Vortex or Mod Organizer 2
 
 ## 3.6.0
@@ -39,15 +39,25 @@ so pages/sections/lists now fill the full content column. Overlay raised to full
 (pixel-verified, zero pill ghosting). All 26 catalogue list MaxHeights raised ~1.5× so
 populated lists use tall windows while empty ones still collapse.
 
+Release readiness (2026-08-19, Grok): finished Claude's half-wired review fixes and remaining
+Kimi data-loss / palette / readiness bugs. Expert Deck Apply uses OfferedKeys so armor and
+belongings slices cannot wipe siblings. Readiness Error is reserved for setup/build failure.
+Command palette Enter/arrows, real EditorIDs (including races), checkbox Apply, overlay-safe
+Ctrl shortcuts, and palette commands for Build / Paths / MO2 / Switch manager. 461 Release
+tests passed. Public GitHub push still requires explicit authorization. NEXUS-UPLOAD dirt
+is unrelated and must not be committed with this work.
+
 ## Evidence
 
 - Parent copy: 1,473/1,473 files, 0 failed, 0 mismatched
-- Fresh 3.6.0 Release suite after fix+polish: 456 passed, 0 failed (441 + 4 deck regression + 11 theme/polish tests)
+- Fresh 3.6.0 Release suite after release-readiness: 461 passed, 0 failed
+- Prior polish suite: 456 passed (441 + 4 deck regression + 11 theme/polish tests)
 - Release build: 0 warnings, 0 errors (`Build-FollowerForge.ps1`, clean+build+tests+CLI boot)
 - Migration gate: all 158 named 3.5.0 controls preserved exactly once
 - Package boot gate: self-contained executable stayed alive for 12 seconds
 - Visual gate: 20 headless-rendered frames (5 themes × studio/appearance/deck/loadout-1440p) reviewed; overlay ring pixels verified exact (fully opaque); full-width page layout confirmed at 2560×1440
-- Final ZIP: 111,277,638 bytes; SHA-256 `A9D302602647D3479A04D47B3DCB20FFD277EAED8EAA85DF6653F63B1675F778`
+- Final ZIP (release-readiness rebuild): 99,245,718 bytes; SHA-256 `3EFA07D9FA98B2E955C8D67311E63D278626E72356797D56F2BF830AA7345CFD`
+- Prior polish ZIP (replaced): 111,277,638 bytes; SHA-256 `A9D302602647D3479A04D47B3DCB20FFD277EAED8EAA85DF6653F63B1675F778`
 - Runtime status: tool-validated; deck-open crash path now covered by real-control tests;
   no real-user click-through or Skyrim gameplay session in this run
 - SSEEdit/CK: not launched

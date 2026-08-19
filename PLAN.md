@@ -10,9 +10,10 @@
 6c. [x] UI polish pass: density/clarity rework + live-theme chips and setup windows (theme-leak fix) + ThemeCoverageTests; 454 tests. (Kimi)
 6d. [x] UI polish pass 3: per-theme distinct status hues + tinted pill chips (user: "still yellow"); 456 tests. (Kimi)
 6e. [x] UI polish pass 4: overlay opacity, Light-theme variant fix, sidebar pills, auto-sizing lists/cards; headless screenshot harness. (Kimi)
+6f. [x] Release-readiness: deck apply no longer wipes sibling slices; readiness not red on empty draft; palette Enter/arrows/Build/Paths/MO2; real EditorIDs including races; checkbox Apply; overlay-safe shortcuts. 461 tests. (Grok)
 7. [x] Run exact Release tests, UI smoke checks, encoding guard, and source-path scan.
 8. [x] Build the self-contained Windows release, validate archive/hash, and update docs.
-9. [ ] Push and publish the public GitHub release only after explicit publication authorization.
+9. [ ] Push main, wait for CI, then tag `v3.6.0` and attach the local zip. Nexus page paste is separate.
 
 # FollowerForge 3.5.0 plan
 

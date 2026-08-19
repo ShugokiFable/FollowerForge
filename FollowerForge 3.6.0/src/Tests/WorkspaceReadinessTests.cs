@@ -5,14 +5,17 @@ namespace FollowerForge.Tests;
 public sealed class WorkspaceReadinessTests
 {
     [Fact]
-    public void Missing_name_is_an_identity_error_and_the_first_recommendation()
+    public void Missing_name_is_attention_not_an_error_and_the_first_recommendation()
     {
         var result = WorkspaceReadiness.Evaluate(ReadyDraft() with { Name = "" });
 
         var identity = Assert.Single(result, x => x.Section == WorkspaceSection.IdentityProgression);
-        Assert.Equal(ReadinessLevel.Error, identity.Level);
+        Assert.Equal(ReadinessLevel.NeedsAttention, identity.Level);
         Assert.Contains("name", identity.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(WorkspaceSection.IdentityProgression, WorkspaceReadiness.NextRecommended(result).Section);
+
+        var review = Assert.Single(result, x => x.Section == WorkspaceSection.ReviewValidationBuild);
+        Assert.Equal(ReadinessLevel.NeedsAttention, review.Level);
     }
 
     [Fact]
@@ -44,8 +47,19 @@ public sealed class WorkspaceReadinessTests
         });
 
         var loadout = Assert.Single(result, x => x.Section == WorkspaceSection.Loadout);
-        Assert.Equal(ReadinessLevel.Complete, loadout.Level);
+        Assert.Equal(ReadinessLevel.Optional, loadout.Level);
         Assert.Contains("optional", loadout.Summary, StringComparison.OrdinalIgnoreCase);
+
+        var review = Assert.Single(result, x => x.Section == WorkspaceSection.ReviewValidationBuild);
+        Assert.Equal(ReadinessLevel.Complete, review.Level);
+    }
+
+    [Fact]
+    public void A_failed_build_marks_review_as_error_even_when_the_draft_is_otherwise_ready()
+    {
+        var result = WorkspaceReadiness.Evaluate(ReadyDraft() with { HasBlockingBuildError = true });
+        var review = Assert.Single(result, x => x.Section == WorkspaceSection.ReviewValidationBuild);
+        Assert.Equal(ReadinessLevel.Error, review.Level);
     }
 
     [Fact]

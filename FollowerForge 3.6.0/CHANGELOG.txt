@@ -1,9 +1,22 @@
 # CHANGELOG — FollowerForge
 
 ================================================================================
-## [3.6.0] - 2026-08-18 - Studio workspace and Expert Deck
+## [3.6.0] - 2026-08-19 - Studio workspace and Expert Deck
 Agent: Codex
 Parent: FollowerForge 3.5.0
+
+Release readiness (Agent: Grok, 2026-08-19):
+  - Expert Deck Apply commits only the keys that deck offered, so armor families and
+    belongings slices (books/misc/food/ingredients) no longer wipe each other.
+  - Empty drafts: missing name is Needs attention, empty loadout is Optional, Review is
+    Error only after a must-fix build or a real setup failure.
+  - Command palette: Enter runs the highlighted command; arrows/caret keys do not refilter;
+    palette also offers Build, Paths, MO2 setup, and Switch manager.
+  - Escape only dismisses an open overlay; it no longer eats textbox Escape.
+  - Expert Deck EditorID column uses the plugin EditorID, including races (NordRace, not Nord).
+  - Multi-select Apply honours DataGrid checkbox ticks, not only SelectedItems.
+  - Ctrl+K/E/0-7 do not navigate behind a deck or palette overlay.
+  - 461 Release tests pass.
 
 Crash fix (Agent: Kimi, 2026-08-18):
   - Opening any single-choice Expert Deck catalogue (race, face, voice, class, combat style,

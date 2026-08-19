@@ -26,7 +26,8 @@ public sealed record RaceOption(
     string Name,
     RaceClass Class,
     string Note,
-    string? SourcePlugin);
+    string? SourcePlugin,
+    string? EditorId);
 
 /// <summary>
 /// Decides which races the wizard should offer. Skyrim has hundreds of RACE records — most are
@@ -70,11 +71,11 @@ public static class RaceSuitability
 
         if (VanillaPlayable.TryGetValue(edid, out var friendly))
             return new RaceOption(race.FormKey, friendly, RaceClass.Vanilla,
-                "vanilla — works for everyone, no extra mods", plugin);
+                "vanilla — works for everyone, no extra mods", plugin, race.EditorId);
 
         // Children are excluded outright and are never offered by any option.
         if (edid.Contains("child", StringComparison.OrdinalIgnoreCase))
-            return new RaceOption(race.FormKey, display, RaceClass.Unsuitable, "not a follower race", plugin);
+            return new RaceOption(race.FormKey, display, RaceClass.Unsuitable, "not a follower race", plugin, race.EditorId);
 
         var (playable, hasHead) = ReadDetail(race);
         var nameLooksCreature = Disqualifying.Any(bad =>
@@ -83,7 +84,7 @@ public static class RaceSuitability
         // Creatures with no FaceGen head data can never get a built face (HSF Baby Dragon).
         if (!hasHead)
             return new RaceOption(race.FormKey, display, RaceClass.Creature,
-                "creature — no face at all, and no equipment", plugin);
+                "creature — no face at all, and no equipment", plugin, race.EditorId);
 
         // EditorID blocklist is a heuristic for vanilla/mod animal and construct races.
         // It must NOT override a playable race that actually has head data — BDHorseRace and
@@ -91,14 +92,14 @@ public static class RaceSuitability
         // Non-playable blocklist hits (Dremora, Elk, …) stay Creature so they stay hidden.
         if (nameLooksCreature && !playable)
             return new RaceOption(race.FormKey, display, RaceClass.Creature,
-                "creature race — gear may not fit; not flagged playable", plugin);
+                "creature race — gear may not fit; not flagged playable", plugin, race.EditorId);
 
         var sourceMod = race.SourceMod ?? plugin;
         return playable
             ? new RaceOption(race.FormKey, display, RaceClass.CustomPlayable,
-                $"custom race — everyone needs {sourceMod}", plugin)
+                $"custom race — everyone needs {sourceMod}", plugin, race.EditorId)
             : new RaceOption(race.FormKey, display, RaceClass.CustomOther,
-                $"custom, non-playable — needs {sourceMod}", plugin);
+                $"custom, non-playable — needs {sourceMod}", plugin, race.EditorId);
     }
 
     /// <summary>Reads the playable flag and head-part presence from the stored race analysis.</summary>

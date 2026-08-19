@@ -46,11 +46,14 @@ internal static class ChipClass
 /// </summary>
 public sealed class PickerItem(
     string display, string formKey, string? detail = null,
-    int tier = 0, string? badge = null, string? badgeKind = null) : IPickerRow
+    int tier = 0, string? badge = null, string? badgeKind = null,
+    string? editorId = null) : IPickerRow
 {
     public string Display { get; } = display;
     public string FormKey { get; } = formKey;
     public string? Detail { get; } = detail;
+    /// <summary>Plugin EditorID when it differs from the display name. Used by the Expert Deck.</summary>
+    public string? EditorId { get; } = editorId;
 
     /// <summary>Sort bucket — lower is more useful. Meaning is per-list; 0 for unranked lists.</summary>
     public int Tier { get; } = tier;

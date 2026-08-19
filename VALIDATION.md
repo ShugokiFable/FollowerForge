@@ -186,11 +186,41 @@ Earlier packages: 99,239,699 bytes D076092D…CABA18 (pass 3, replaced);
   99,738,273 bytes 296E6EA5…93A2895A (broken deck, deleted)
 ```
 
+## Release-readiness re-validation (2026-08-19, Grok)
+
+Scope: finish Claude's half-wired 3.6.0 review fixes and remaining Kimi data-loss / palette /
+readiness defects. No new product surface beyond the approved Studio / Deck / palette spec.
+
+```text
+dotnet test src/Tests -c Release --nologo --filter FullyQualifiedName~WorkspaceReadiness|FullyQualifiedName~ExpertDeck|FullyQualifiedName~RaceSuitability|FullyQualifiedName~WorkspaceLayout|FullyQualifiedName~ThemeCoverage
+  -> PASS, 52 passed, 0 failed
+
+dotnet test src/FollowerForge.slnx -c Release --nologo
+  -> PASS, 461 passed, 0 failed, 0 skipped
+```
+
+Pins added or updated: belongings/armor OfferedKeys merge, empty-draft readiness, failed-build
+review Error, palette command titles, race EditorID, multi-select checkbox Commit.
+
+Publish/hash for this exact tree is recorded after `Publish-FollowerForge.ps1` in this session.
+NEXUS-UPLOAD working-tree dirt was not included.
+
+```text
+.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
+  -> PASS, boot check "window stayed up"
+  -> zip: FollowerForge 3.6.0\dist\FollowerForge-3.6.0-win-x64.zip
+  -> 99,245,718 bytes
+  -> SHA-256 3EFA07D9FA98B2E955C8D67311E63D278626E72356797D56F2BF830AA7345CFD
+  -> 5 entries (FollowerForge.exe, cli\FollowerForge.Cli.exe, CHANGELOG.txt,
+     NEXUS-CHANGELOG-3.6.0.txt, README.md)
+  -> FollowerForge.exe FileVersion 3.6.0.0
+```
+
 ## Runtime status
 
 - Status: `tool-validated`
-- Confirmed: compile, 456 tests, XAML load/build, packaged desktop boot, archive inventory/version/hash,
-  real-control regression tests for the crashing deck-open path
+- Confirmed: compile, 461 tests, XAML load/build, packaged desktop boot, archive inventory/version/hash,
+  real-control regression tests for the crashing deck-open path, OfferedKeys apply, readiness, palette titles
 - Not confirmed: real-user visual walkthrough, follower generation on the active mod setup, Skyrim gameplay
 - Publication: not pushed or released remotely in this run
 - SSEEdit/CK: not launched

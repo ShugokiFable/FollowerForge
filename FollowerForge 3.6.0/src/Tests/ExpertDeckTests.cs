@@ -76,6 +76,15 @@ public sealed class ExpertDeckTests
     }
 
     [Fact]
+    public void OfferedKeys_are_every_record_in_the_session_not_the_search_slice()
+    {
+        var deck = new ExpertDeckSession("Weapons", Records, DeckSelectionMode.Multi, []);
+        Assert.Equal(3, deck.OfferedKeys.Count);
+        Assert.Single(deck.Filter("Moonlit"));
+        Assert.Equal(3, deck.OfferedKeys.Count);
+    }
+
+    [Fact]
     public void Record_exposes_plugin_and_keeps_the_real_source_object()
     {
         var source = new object();
@@ -84,6 +93,36 @@ public sealed class ExpertDeckTests
 
         Assert.Equal("Example.esp", record.Plugin);
         Assert.Same(source, record.Source);
+    }
+
+    [Fact]
+    public void Multi_commit_honours_checkbox_IsSelected_without_grid_selection()
+    {
+        var deck = new ExpertDeckSession("Weapons", Records, DeckSelectionMode.Multi, []);
+        var record = Assert.Single(deck.Records, item => item.Key == "0010FAF2:ExampleWeapons.esp");
+        record.IsSelected = true;
+
+        Assert.Equal(["0010FAF2:ExampleWeapons.esp"], deck.Commit());
+    }
+
+    [Fact]
+    public void Belongings_deck_apply_does_not_wipe_slices_it_never_showed()
+    {
+        // The belongings deck is built from LoreSource() — one of books/misc/food/ingredients.
+        // OfferedKeys is that slice. Apply must not clear the other three.
+        var remembered = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "book-keep:Skyrim.esm",
+            "misc-old:Example.esp",
+            "food-keep:Skyrim.esm",
+        };
+        var offered = new[] { "misc-old:Example.esp", "misc-new:Example.esp" };
+
+        DeckSelectionMerge.ReplaceFamily(remembered, offered, ["misc-new:Example.esp"]);
+
+        Assert.Equal(
+            ["book-keep:Skyrim.esm", "food-keep:Skyrim.esm", "misc-new:Example.esp"],
+            remembered.OrderBy(key => key, StringComparer.OrdinalIgnoreCase));
     }
 
     [Fact]

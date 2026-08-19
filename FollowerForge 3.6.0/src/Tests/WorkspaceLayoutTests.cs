@@ -41,6 +41,15 @@ public sealed class WorkspaceLayoutTests
     }
 
     [Fact]
+    public void Command_palette_wires_manager_paths_and_build()
+    {
+        var src = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        var code = File.ReadAllText(Path.Combine(src, "Ui", "WizardWindow.axaml.cs"));
+        foreach (var title in new[] { "Build follower", "Paths…", "MO2 setup…", "Switch manager" })
+            Assert.Contains($"new(\"{title}\"", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Categories_do_not_contain_nested_tab_navigation()
     {
         Assert.DoesNotContain(Document.Descendants(), element => element.Name.LocalName == "TabControl");

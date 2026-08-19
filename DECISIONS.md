@@ -1,5 +1,17 @@
 # FollowerForge decisions
 
+## 2026-08-19 - 3.6.0 release-readiness: deck apply, readiness colors, palette (Grok)
+
+- Stay on snapshot 3.6.0. It was never a public release; 3.5.0 remains the rollback.
+- Expert Deck Apply must replace only OfferedKeys (the session catalogue), never the search
+  slice and never an entire shared HashSet. That is what keeps the seven armor decks and the
+  four belongings slices from deleting each other.
+- Readiness Error means something is broken (setup or a must-fix build). Unfinished work is
+  Needs attention. Unused optional work is Optional. A red badge on an unnamed draft is a lie.
+- Command palette filters on KeyUp (Avalonia Text is stale on KeyDown). Enter/arrows must not
+  refilter. Escape is Handled only when an overlay is actually open.
+- Race rows must carry the plugin EditorID. Friendly names like "Nord" are not NordRace.
+
 ## 2026-08-19 - 3.6.0 UI polish pass 4: verify visually, fix variant + overlay (Kimi)
 
 - Never ship UI changes unrendered again: three passes of "polish" read fine in XAML but the
