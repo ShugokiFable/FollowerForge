@@ -1,6 +1,94 @@
 # CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.6.0] - 2026-08-18 - Studio workspace and Expert Deck
+Agent: Codex
+Parent: FollowerForge 3.5.0
+
+Crash fix (Agent: Kimi, 2026-08-18):
+  - Opening any single-choice Expert Deck catalogue (race, face, voice, class, combat style,
+    outfit, body records, transform race/spell, location) crashed the app with
+    InvalidOperationException "Can only change SelectedItems collection in Extended selection
+    mode" (Windows Application event 1026, FollowerForge.exe 3.6.0.0).
+  - Root cause: WizardWindow.RefreshDeck always mutated the DataGrid SelectedItems collection;
+    Avalonia only allows that in Extended mode and single-choice decks run the grid in Single.
+  - Fix: DeckGridSelection.SyncSelected applies selection mode-aware (SelectedItems only in
+    Extended, SelectedItem in Single). Four regression tests pin the behavior.
+
+UI polish (Agent: Kimi, 2026-08-18):
+  - Density and clarity pass across the Studio: roomier cards (20px padding, 12px radius),
+    taller list rows (46px) and grid rows (40px), 38px buttons with hover/pressed feedback,
+    larger catalogue lists, wider sidebar (256px), and a 13px/19 hint type tier, following
+    Raycast/Linear-style token guidance (8pt spacing grid, rationed accent, hairline borders).
+  - Theme leak fixes: badge chips (Good/Caution/Warning/etc.) now bind to chip class styles
+    via DynamicResource and repaint live on theme switch; the MO2 setup and first-run paths
+    setup windows are converted from hardcoded dark/gold hex to theme tokens.
+  - ThemePalette gains Info and OnStatus (ink on colored chips) slots across all five themes.
+  - New ThemeCoverageTests pin palette completeness, contrast sanity, zero hardcoded brushes
+    in Ui XAML, and chip-class wiring. Suite now 454 tests.
+
+UI polish pass 3 (Agent: Kimi, 2026-08-18; user feedback: "no differences, error still yellow"):
+  - Root cause of the still-frozen look: pass 2 fixed the plumbing (chips follow theme
+    tokens), but every theme's Warning/Danger tokens held nearly the same amber/red hex, so
+    a theme switch visibly repainted nothing. Warning and Danger hues are now distinct per
+    theme (gold / peach / straw / lime-amber / dark-amber warnings; red / rose / coral /
+    vermilion / brick dangers).
+  - Badge chips redesigned Raycast/Linear-style: translucent tinted fill with colored text
+    (new SuccessSoft/InfoSoft/WarningSoft/DangerSoft tokens) instead of solid color blocks;
+    pills (radius 999), 11px semibold labels.
+  - New tests pin per-theme status distinctness and soft-fill alpha range. Suite now 456 tests.
+
+UI polish pass 4 (Agent: Kimi, 2026-08-19; screenshot-verified via new headless render harness):
+  - Fixed overlay bleed: deck/palette dim was only 80% opaque, so bright sidebar status
+    labels ghosted through (the user's "chips overlay the yellow labels"). Now ~95% opaque.
+  - Fixed Light-theme invisible buttons: App.axaml hardcoded RequestedThemeVariant=Dark, so
+    Fluent kept button text white-on-cream. ThemeResources.Apply now switches the Fluent
+    variant with the palette, and default Button/ComboBox styles draw from tokens.
+  - Sidebar readiness labels are tinted pills (same chip system as catalogue rows) instead of
+    bare yellow text, driven by ReadinessLevel.
+  - De-blockify: studio cards auto-height (no fixed 280x172 blocks), picker lists use
+    MaxHeight instead of fixed Height so empty lists collapse and populated lists breathe,
+    deck family/inspector panels flattened, DataGrid gets a hairline border + rounded corners.
+  - New tools/UiScreenshots harness renders the real WizardWindow headlessly (Avalonia
+    Headless + Skia) to PNG per theme; UI changes are now screenshot-verified before shipping.
+
+UI polish pass 5 (Agent: Kimi, 2026-08-19; user feedback: "space allocation is trash, overlay
+still happening" — verified at the user's 2560x1440 resolution):
+  - Root cause of the wasted right half of wide windows: the category host was a plain Panel
+    (arranges children at desired size, never stretches), every page ScrollViewer allowed
+    unconstrained horizontal measure, and the Fluent Expander theme left-aligns by default.
+    Fixed all three: host is now a Grid, all eight page ScrollViewers disable horizontal
+    scrolling, and the Expander style sets HorizontalAlignment/HorizontalContentAlignment
+    to Stretch. Pages, expanders, search boxes and lists now fill the full content column.
+  - Overlay dim is now FULLY opaque (FF alpha) per theme: even 95% still let bright sidebar
+    pills faintly ghost through on the user's display. Pixel-verified: ring pixels render
+    exactly the overlay token, zero bleed.
+  - Cramped lists raised ~1.5x (weapons 230 to 380, ammo 220 to 360, armor slots 170-190 to
+    280-320, race/face/voice 260-280 to 400-420, places 300 to 440, etc.) — still MaxHeight,
+    so empty lists collapse and populated ones use the tall window.
+  - Harness now also renders the Loadout category at 2560x1440 with populated lists so
+    wide-screen regressions are caught by the screenshot gate.
+
+Changed:
+  - Replaced the seven-step tab wizard with a Studio dashboard, seven Focus categories,
+    persistent dossier, bottom action bar, and responsive narrow-window drawer.
+  - Added Guided and Expert experiences. Expert category entry opens the primary installed-
+    record Deck while the complete Focus category remains available.
+  - Added reusable Expert Deck search, inspector, selection cart, single/multi selection,
+    cancel rollback, and commit back to the existing canonical picker controls.
+  - Added Ctrl+K command palette, Ctrl+0..7 navigation, Ctrl+E experience toggle, and Escape
+    overlay dismissal.
+  - Added five semantic themes and atomic UI-only preferences under LocalAppData.
+  - Grouped actual build findings into Must fix, Check before building, and Information.
+
+Compatibility and safety:
+  - All 158 named 3.5.0 controls are preserved exactly once and covered by a migration ledger.
+  - UI navigation, themes, experience, and Deck state do not alter serialized follower data.
+  - Existing Vortex/MO2 discovery, catalogue, profile construction, build, packaging, and
+    no-write boundaries are unchanged.
+  - FollowerForge 3.5.0 remains the immutable rollback snapshot.
+
+================================================================================
 ## [3.4.0] - 2026-08-16 - paths, pronouns, gear FormIDs
 Agent: Grok
 Parent: FollowerForge 3.3.0

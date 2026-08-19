@@ -7,7 +7,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '3.5.0',
+    [string]$Version = '3.6.0',
     [switch]$SkipTests
 )
 $ErrorActionPreference = 'Stop'
@@ -63,7 +63,7 @@ if ($LASTEXITCODE -ne 0) { throw "cli publish failed ($LASTEXITCODE)" }
 Get-ChildItem $stage -Recurse -Filter *.pdb | Remove-Item -Force
 
 # Docs the user actually needs next to the exe.
-foreach ($doc in 'README.md', 'NEXUS-CHANGELOG-3.5.0.txt') {
+foreach ($doc in 'README.md', 'NEXUS-CHANGELOG-3.6.0.txt') {
     $p = Join-Path $root $doc
     if (Test-Path $p) { Copy-Item $p $stage }
 }

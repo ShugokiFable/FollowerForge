@@ -1,7 +1,9 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using FollowerForge.AssetIndex;
 using FollowerForge.BuildPipeline;
 using FollowerForge.Domain;
@@ -90,16 +92,43 @@ public partial class WizardWindow : Window
 
     private bool _mo2SetupOpen;
     private bool _skipMo2SetupPromptOnce;
+    private UiPreferences _preferences;
+    private readonly WorkspaceNavigator _navigator = new();
+    private CategoryReadiness? _nextRecommended;
+    private ExpertDeckSession? _deckSession;
+    private string? _deckTarget;
+    private Control? _deckOpener;
+    private bool _syncingDeckSelection;
+    private bool _indexing = true;
+    private IReadOnlyList<CommandOption> _commands = [];
 
-    public WizardWindow()
+    private sealed record CommandOption(string Title, string Detail, Action Run)
     {
+        public override string ToString() => $"{Title}  —  {Detail}";
+    }
+
+    public WizardWindow() : this(UiPreferences.Default)
+    {
+    }
+
+    public WizardWindow(UiPreferences preferences)
+    {
+        _preferences = preferences;
         AvaloniaXamlLoader.Load(this);
+        Width = preferences.Window.Width;
+        Height = preferences.Window.Height;
+        if (preferences.Window.Maximized) WindowState = WindowState.Maximized;
+        if (Application.Current is { } app) ThemeResources.Apply(app, preferences.Theme);
+        Ctl<ComboBox>("ThemeBox").SelectedIndex = (int)preferences.Theme;
+        Ctl<Button>("ExperienceButton").Content = preferences.Experience == ExperienceMode.Expert ? "Expert" : "Guided";
+        InitializeCommands();
         BuildSkillEditor();
         ApplyStatPreset(FollowerStatPreset.BlankSlate);
         _ready = true;
         ApplyPronouns();
         UpdateVoiceSynthStatus();
-        ShowStep(0);
+        RenderCurrentSection();
+        RefreshWorkspaceChrome();
         // MO2 users must be able to switch BEFORE a long Vortex index soft-locks the UI.
         ShowManagerSwitchDuringLoad();
         _ = LoadEverythingAsync();
@@ -241,6 +270,8 @@ public partial class WizardWindow : Window
     {
         var env = Ctl<TextBlock>("EnvLine");
         var gen = Interlocked.Increment(ref _loadGeneration);
+        _indexing = true;
+        RefreshWorkspaceChrome();
 
         _loadCts?.Cancel();
         _loadCts?.Dispose();
@@ -325,6 +356,7 @@ public partial class WizardWindow : Window
             env.Text =
                 $"{_env!.ManagerLabel}\n{_env.EnabledPluginCount} plugins\n{_library.Locations.Count} known places\n{_faces.Count} exported faces";
             UpdateManagerSwitchButton();
+            _indexing = false;
             SetStatus("Ready.");
         }
         catch (OperationCanceledException)
@@ -336,6 +368,7 @@ public partial class WizardWindow : Window
         catch (Exception ex)
         {
             if (!StillCurrent()) return;
+            _indexing = false;
             env.Text = "Setup problem";
             // Keep the switch visible so MO2 users can recover without restarting.
             ShowManagerSwitchDuringLoad();
@@ -1323,7 +1356,11 @@ public partial class WizardWindow : Window
     private void OnPerkSelectionChanged(object? s, SelectionChangedEventArgs e) =>
         UpdateRememberedSelection(_selectedPerks, e);
 
-    private void OnNameTyped(object? s, RoutedEventArgs e) => SyncPluginName();
+    private void OnNameTyped(object? s, RoutedEventArgs e)
+    {
+        SyncPluginName();
+        RefreshWorkspaceChrome();
+    }
 
     /// <summary>The hub name and the declaration only matter when copying assets.</summary>
     private void OnHubModeChanged(object? s, SelectionChangedEventArgs e)
@@ -1383,34 +1420,65 @@ public partial class WizardWindow : Window
         if (int.TryParse(tag.ToString(), out var step)) ShowStep(step);
     }
 
-    private void OnBack(object? s, RoutedEventArgs e) => ShowStep(_step - 1);
+    private void OnBack(object? s, RoutedEventArgs e)
+    {
+        if (_navigator.Back()) RenderCurrentSection();
+    }
 
     private void OnNext(object? s, RoutedEventArgs e)
     {
+        if (_navigator.Current == WorkspaceSection.Studio)
+        {
+            OpenSection(_nextRecommended?.Section ?? WorkspaceSection.IdentityProgression);
+            return;
+        }
         if (_step == 0 && string.IsNullOrWhiteSpace(Ctl<TextBox>("NameBox").Text))
         {
             SetStatus(WizardCopy.NeedsName(CurrentPronouns));
             return;
         }
-        ShowStep(_step + 1);
+        if (_navigator.Current < WorkspaceSection.ReviewValidationBuild)
+            OpenSection(_navigator.Current + 1);
     }
 
-    private void ShowStep(int step)
+    private void ShowStep(int step) => OpenSection((WorkspaceSection)(Math.Clamp(step, 0, StepCount - 1) + 1));
+
+    private void OpenSection(WorkspaceSection section)
     {
-        _step = Math.Clamp(step, 0, StepCount - 1);
+        _navigator.Open(section);
+        RenderCurrentSection();
+        var surface = FocusRouting.DefaultSurface(section, _preferences.Experience);
+        var deck = surface switch
+        {
+            DensePickerFamily.Race => "Race",
+            DensePickerFamily.Voice => "Voice",
+            DensePickerFamily.Class => "Class",
+            DensePickerFamily.Armor => "ArmorTorso",
+            DensePickerFamily.Location => "Location",
+            _ => null,
+        };
+        if (deck is not null) OpenDeck(deck);
+    }
+
+    private void RenderCurrentSection()
+    {
+        var section = _navigator.Current;
+        Ctl<Control>("StudioPage").IsVisible = section == WorkspaceSection.Studio;
+        _step = Math.Clamp((int)section - 1, 0, StepCount - 1);
         for (var i = 0; i < StepCount; i++)
         {
-            // Pages are a mix of StackPanel and Grid; both are Panels.
-            Ctl<Panel>($"Page{i}").IsVisible = i == _step;
+            Ctl<Control>($"Page{i}").IsVisible = section != WorkspaceSection.Studio && i == _step;
             var tab = Ctl<TextBlock>($"Step{i}");
-            tab.Classes.Set("active", i == _step);
+            tab.Classes.Set("active", section != WorkspaceSection.Studio && i == _step);
         }
-        Ctl<Button>("BackButton").IsEnabled = _step > 0;
-        Ctl<Button>("NextButton").IsEnabled = _step < StepCount - 1;
+        Ctl<Button>("BackButton").IsEnabled = section != WorkspaceSection.Studio;
+        Ctl<Button>("NextButton").IsEnabled = section != WorkspaceSection.ReviewValidationBuild;
+        Ctl<Button>("NextButton").Content = section == WorkspaceSection.Studio ? "Open next action" : "Continue";
 
-        if (_step == 0) SyncPluginName();
-        if (_step == StepCount - 1) Ctl<TextBlock>("SummaryText").Text = Summary();
-        SetStatus($"Step {_step + 1} of {StepCount}");
+        if (section == WorkspaceSection.IdentityProgression) SyncPluginName();
+        if (section == WorkspaceSection.ReviewValidationBuild) Ctl<TextBlock>("SummaryText").Text = Summary();
+        SetStatus(section == WorkspaceSection.Studio ? "Studio overview" : section.DisplayName());
+        RefreshWorkspaceChrome();
     }
 
     private void SyncPluginName()
@@ -1418,6 +1486,442 @@ public partial class WizardWindow : Window
         var name = Ctl<TextBox>("NameBox").Text ?? "";
         var safe = new string(name.Where(char.IsLetterOrDigit).ToArray());
         Ctl<TextBox>("PluginBox").Text = safe.Length == 0 ? "" : $"FF_{safe}.esp";
+    }
+
+    // ---------- 3.6 workspace shell ----------
+
+    private void OnNavClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: { } tag }
+            && int.TryParse(tag.ToString(), out var value)
+            && value is >= 0 and <= 7)
+            OpenSection((WorkspaceSection)value);
+    }
+
+    private void OnNextRecommended(object? sender, RoutedEventArgs e) =>
+        OpenSection(_nextRecommended?.Section ?? WorkspaceSection.IdentityProgression);
+
+    private void RefreshWorkspaceChrome()
+    {
+        if (!_ready) return;
+
+        var name = Ctl<TextBox>("NameBox").Text?.Trim() ?? "";
+        var plugin = Ctl<TextBox>("PluginBox").Text?.Trim() ?? "";
+        var draft = new WorkspaceDraftSummary(
+            EnvironmentReady: _env is not null,
+            CatalogueReady: _env is not null && !_indexing,
+            IsIndexing: _indexing,
+            Name: name,
+            PluginName: plugin,
+            HasRace: Picked("RaceList") is not null,
+            HasFace: Ctl<ListBox>("FaceList").SelectedItem is FaceItem,
+            HasVoice: Picked("VoiceList") is not null,
+            CustomLineCount: _lines.Count,
+            HasClass: Picked("ClassList") is not null,
+            HasCombatStyle: Picked("CstyList") is not null,
+            ArmorCount: _selectedArmor.Count,
+            WeaponCount: _selectedWeapons.Count,
+            SpellCount: _selectedSpells.Count,
+            PerkCount: _selectedPerks.Count,
+            HasPlacement: Ctl<ListBox>("PlaceList").SelectedItem is LocationItem,
+            HasBlockingBuildError: false);
+        var readiness = WorkspaceReadiness.Evaluate(draft);
+        _nextRecommended = WorkspaceReadiness.NextRecommended(readiness);
+
+        for (var i = 0; i < readiness.Count; i++)
+        {
+            Ctl<TextBlock>($"NavStatus{i}").Text = readiness[i].Status;
+            var pill = Ctl<Border>($"NavStatusPill{i}");
+            pill.Classes.Set("chip-good", readiness[i].Level == ReadinessLevel.Complete);
+            pill.Classes.Set("chip-ok", readiness[i].Level == ReadinessLevel.InProgress);
+            pill.Classes.Set("chip-warn", readiness[i].Level == ReadinessLevel.NeedsAttention);
+            pill.Classes.Set("chip-bad", readiness[i].Level == ReadinessLevel.Error);
+            pill.Classes.Set("chip-dim", readiness[i].Level is not (ReadinessLevel.Complete
+                or ReadinessLevel.InProgress or ReadinessLevel.NeedsAttention or ReadinessLevel.Error));
+            Ctl<TextBlock>($"StudioSummary{i}").Text = readiness[i].Summary;
+        }
+
+        Ctl<TextBlock>("NextActionTitle").Text = _nextRecommended.Action;
+        Ctl<TextBlock>("NextActionDetail").Text = _nextRecommended.Summary;
+        Ctl<TextBlock>("TopFollowerName").Text = name.Length == 0 ? "New follower" : name;
+        Ctl<TextBlock>("DossierName").Text = name.Length == 0 ? "Unnamed follower" : name;
+        Ctl<TextBlock>("DossierPlugin").Text = plugin.Length == 0 ? "No plugin name yet" : plugin;
+        Ctl<TextBlock>("DossierIdentity").Text = readiness[0].Summary;
+        Ctl<TextBlock>("DossierAppearance").Text = readiness[1].Summary;
+        Ctl<TextBlock>("DossierVoice").Text = readiness[2].Summary;
+        Ctl<TextBlock>("DossierCombat").Text = readiness[3].Summary;
+        Ctl<TextBlock>("DossierLoadout").Text = readiness[4].Summary;
+        Ctl<TextBlock>("DossierPlacement").Text = readiness[5].Summary;
+        Ctl<TextBlock>("DossierDrawerText").Text = string.Join(Environment.NewLine + Environment.NewLine,
+            readiness.Select(item => $"{item.Section.DisplayName()}: {item.Summary}"));
+
+        Ctl<TextBlock>("EnvironmentState").Text = _env is null
+            ? (_indexing ? "Discovering installed environment…" : "Environment needs attention")
+            : $"{_env.ManagerLabel} ready";
+        Ctl<TextBlock>("StudioEnvironmentDetail").Text = _env is null
+            ? "Manager, catalogue and installed content are still being resolved."
+            : $"{_env.EnabledPluginCount:N0} enabled plugins · {(_indexing ? "catalogue indexing" : "catalogue ready")}";
+    }
+
+    private void InitializeCommands()
+    {
+        _commands =
+        [
+            new("Open Studio", "Workspace overview", () => OpenSection(WorkspaceSection.Studio)),
+            new("Open Identity", "Name, relationship and progression", () => OpenSection(WorkspaceSection.IdentityProgression)),
+            new("Open Appearance", "Race and RaceMenu face", () => OpenSection(WorkspaceSection.Appearance)),
+            new("Open Voice", "Voice coverage and custom dialogue", () => OpenSection(WorkspaceSection.VoiceDialogue)),
+            new("Open Combat", "Class, skills and transformation", () => OpenSection(WorkspaceSection.CombatSkillsTransformation)),
+            new("Open Loadout", "Equipment, belongings and magic", () => OpenSection(WorkspaceSection.Loadout)),
+            new("Open Placement", "Starting location and routines", () => OpenSection(WorkspaceSection.PlacementRoutines)),
+            new("Open Review", "Validation and build", () => OpenSection(WorkspaceSection.ReviewValidationBuild)),
+            new("Toggle Guided / Expert", "Change workspace experience", ToggleExperience),
+            new("Cycle theme", "Switch to the next visual theme", CycleTheme),
+        ];
+        Ctl<ListBox>("CommandList").ItemsSource = _commands;
+    }
+
+    private void OnOpenCommandPalette(object? sender, RoutedEventArgs e) => OpenCommandPalette();
+
+    private void OpenCommandPalette()
+    {
+        Ctl<Border>("CommandPaletteOverlay").IsVisible = true;
+        Ctl<TextBox>("CommandSearch").Text = "";
+        Ctl<ListBox>("CommandList").ItemsSource = _commands;
+        Ctl<TextBox>("CommandSearch").Focus();
+    }
+
+    private void OnCloseCommandPalette(object? sender, RoutedEventArgs e) => CloseCommandPalette();
+
+    private void CloseCommandPalette() => Ctl<Border>("CommandPaletteOverlay").IsVisible = false;
+
+    private void OnCommandSearch(object? sender, KeyEventArgs e)
+    {
+        var query = Ctl<TextBox>("CommandSearch").Text?.Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? _commands
+            : _commands.Where(command => command.Title.Contains(query, StringComparison.OrdinalIgnoreCase)
+                                         || command.Detail.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        Ctl<ListBox>("CommandList").ItemsSource = filtered;
+        if (e.Key == Key.Enter) RunSelectedCommand();
+    }
+
+    private void OnCommandInvoked(object? sender, TappedEventArgs e) => RunSelectedCommand();
+
+    private void RunSelectedCommand()
+    {
+        if (Ctl<ListBox>("CommandList").SelectedItem is not CommandOption command) return;
+        CloseCommandPalette();
+        command.Run();
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            if (Ctl<Border>("DeckOverlay").IsVisible) CloseDeck(cancel: true);
+            else if (Ctl<Border>("CommandPaletteOverlay").IsVisible) CloseCommandPalette();
+            else Ctl<Border>("DossierDrawer").IsVisible = false;
+            e.Handled = true;
+            return;
+        }
+
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0) return;
+        if (e.Key == Key.K)
+        {
+            OpenCommandPalette();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.E)
+        {
+            ToggleExperience();
+            e.Handled = true;
+        }
+        else if (e.Key is >= Key.D0 and <= Key.D7)
+        {
+            OpenSection((WorkspaceSection)(e.Key - Key.D0));
+            e.Handled = true;
+        }
+    }
+
+    private void OnToggleExperience(object? sender, RoutedEventArgs e) => ToggleExperience();
+
+    private void ToggleExperience()
+    {
+        var mode = _preferences.Experience == ExperienceMode.Guided ? ExperienceMode.Expert : ExperienceMode.Guided;
+        _preferences = _preferences with { Experience = mode, ExpertIntroductionSeen = true };
+        Ctl<Button>("ExperienceButton").Content = mode == ExperienceMode.Expert ? "Expert" : "Guided";
+        SaveUiPreferences();
+    }
+
+    private void CycleTheme() => Ctl<ComboBox>("ThemeBox").SelectedIndex =
+        (Ctl<ComboBox>("ThemeBox").SelectedIndex + 1) % Enum.GetValues<UiTheme>().Length;
+
+    private void OnThemeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        var index = Math.Clamp(Ctl<ComboBox>("ThemeBox").SelectedIndex, 0, Enum.GetValues<UiTheme>().Length - 1);
+        var theme = (UiTheme)index;
+        _preferences = _preferences with { Theme = theme };
+        if (Application.Current is { } app) ThemeResources.Apply(app, theme);
+        SaveUiPreferences();
+    }
+
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (!_ready) return;
+        var narrow = e.NewSize.Width < 1180;
+        Ctl<Border>("DossierPanel").IsVisible = !narrow;
+        Ctl<Button>("DossierToggleButton").IsVisible = narrow;
+        if (!narrow) Ctl<Border>("DossierDrawer").IsVisible = false;
+    }
+
+    private void OnOpenDossier(object? sender, RoutedEventArgs e) =>
+        Ctl<Border>("DossierDrawer").IsVisible = true;
+
+    private void OnCloseDossier(object? sender, RoutedEventArgs e) =>
+        Ctl<Border>("DossierDrawer").IsVisible = false;
+
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e) => SaveUiPreferences();
+
+    private void SaveUiPreferences()
+    {
+        var size = WindowState == WindowState.Maximized
+            ? _preferences.Window
+            : new WindowPlacement(Math.Max(1040, Width), Math.Max(700, Height), false);
+        _preferences = _preferences with
+        {
+            Window = size with { Maximized = WindowState == WindowState.Maximized },
+        };
+        try
+        {
+            UiPreferencesStore.Save(_preferences);
+            if (_ready) Ctl<TextBlock>("AutosaveState").Text = "● UI preferences saved";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (_ready) Ctl<TextBlock>("AutosaveState").Text = "UI preferences could not be saved";
+            Log.Warning(ex, "Could not save UI preferences");
+        }
+    }
+
+    // ---------- Expert Deck ----------
+
+    private void OnOpenDeck(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { Tag: { } tag }) return;
+        OpenDeck(tag.ToString() ?? "");
+    }
+
+    private void OpenDeck(string target)
+    {
+        var definition = CreateDeckDefinition(target);
+        _deckTarget = target;
+        _deckOpener = FocusManager?.GetFocusedElement() as Control;
+        _deckSession = new ExpertDeckSession(definition.Family, definition.Records, definition.Mode, definition.SelectedKeys);
+        Ctl<TextBlock>("DeckTitle").Text = $"Browse {definition.Family}";
+        Ctl<TextBlock>("DeckFamily").Text = definition.Family;
+        Ctl<TextBox>("DeckSearch").Text = "";
+        Ctl<DataGrid>("DeckGrid").SelectionMode = definition.Mode == DeckSelectionMode.Multi
+            ? DataGridSelectionMode.Extended
+            : DataGridSelectionMode.Single;
+        Ctl<Border>("DeckOverlay").IsVisible = true;
+        RefreshDeck();
+        Ctl<TextBox>("DeckSearch").Focus();
+    }
+
+    private sealed record DeckDefinition(
+        string Family,
+        IReadOnlyList<DeckRecord> Records,
+        DeckSelectionMode Mode,
+        IReadOnlyList<string> SelectedKeys);
+
+    private DeckDefinition CreateDeckDefinition(string target)
+    {
+        static IReadOnlyList<DeckRecord> PickerRecords(IEnumerable<PickerItem> source) => source
+            .Select(item => new DeckRecord(item.FormKey, item.Display, item.Detail, item.Badge, item.Display, item))
+            .ToList();
+        static IReadOnlyList<string> SinglePicker(ListBox list) => list.SelectedItem is PickerItem item ? [item.FormKey] : [];
+
+        return target switch
+        {
+            "Race" => new("races", PickerRecords(_races), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("RaceList"))),
+            "Face" => new("faces", _faces.Select(face => new DeckRecord(face.Export.Name, face.Display, face.Detail, face.Badge, face.Export.Name, face)).ToList(), DeckSelectionMode.Single,
+                Ctl<ListBox>("FaceList").SelectedItem is FaceItem face ? [face.Export.Name] : []),
+            "Voice" => new("voices", PickerRecords(_voices), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("VoiceList"))),
+            "Class" => new("classes", PickerRecords(_classes), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("ClassList"))),
+            "CombatStyle" => new("combat styles", PickerRecords(_styles), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("CstyList"))),
+            "ArmorTorso" => Multi("torso armor", _armorTorso, _selectedArmor),
+            "ArmorHead" => Multi("helmets", _armorHead, _selectedArmor),
+            "ArmorHands" => Multi("gauntlets", _armorHands, _selectedArmor),
+            "ArmorFeet" => Multi("boots", _armorFeet, _selectedArmor),
+            "ArmorShield" => Multi("shields", _armorShield, _selectedArmor),
+            "ArmorAccessories" => Multi("accessories", _armorAccessories, _selectedArmor),
+            "ArmorOther" => Multi("other armor", _armorOther, _selectedArmor),
+            "Weapon" => Multi("weapons", _weapons, _selectedWeapons),
+            "Ammo" => Multi("ammunition", _ammo, _selectedAmmo),
+            "Lore" => Multi("belongings", LoreSource(), _selectedLore),
+            "Spell" => Multi("spells", _spells, _selectedSpells),
+            "Perk" => Multi("perks", _perks, _selectedPerks),
+            "Outfit" => new("outfits", PickerRecords(_outfits), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("OutfitList"))),
+            "Skin" => new("body records", PickerRecords(_skins), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("SkinList"))),
+            "TransformRace" => new("transform races", PickerRecords(_races), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("TransformRaceList"))),
+            "TransformSpell" => new("transform spells", PickerRecords(_spells), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("TransformSpellList"))),
+            "Location" => LocationDeck(),
+            _ => new("records", [], DeckSelectionMode.Single, []),
+        };
+
+        DeckDefinition Multi(string family, IReadOnlyList<PickerItem> source, HashSet<string> selected) =>
+            new(family, PickerRecords(source), DeckSelectionMode.Multi, selected.ToList());
+
+        DeckDefinition LocationDeck()
+        {
+            var records = (_library?.Locations ?? [])
+                .Where(location => location.Placeable)
+                .Select(location =>
+                {
+                    var item = new LocationItem(location);
+                    return new DeckRecord(location.Id, item.Display, item.Detail, item.Badge, location.CellEditorId, item);
+                }).ToList();
+            var selected = Ctl<ListBox>("PlaceList").SelectedItem is LocationItem item ? new[] { item.Location.Id } : [];
+            return new("locations", records, DeckSelectionMode.Single, selected);
+        }
+    }
+
+    private void OnDeckSearch(object? sender, KeyEventArgs e) => RefreshDeck();
+
+    private void OnClearDeckFilter(object? sender, RoutedEventArgs e)
+    {
+        Ctl<TextBox>("DeckSearch").Text = "";
+        RefreshDeck();
+    }
+
+    private void RefreshDeck()
+    {
+        if (_deckSession is null) return;
+        var records = _deckSession.Filter(Ctl<TextBox>("DeckSearch").Text);
+        var grid = Ctl<DataGrid>("DeckGrid");
+        _syncingDeckSelection = true;
+        try
+        {
+            grid.ItemsSource = records;
+            DeckGridSelection.SyncSelected(grid, records);
+        }
+        finally { _syncingDeckSelection = false; }
+
+        Ctl<TextBlock>("DeckSelectedCount").Text = $"{_deckSession.SelectionCart.Count:N0} selected";
+        Ctl<ListBox>("DeckCart").ItemsSource = _deckSession.SelectionCart.Select(record => record.Display).ToList();
+        Ctl<TextBlock>("DeckEmptyState").IsVisible = records.Count == 0;
+        Ctl<TextBlock>("DeckEmptyState").Text = records.Count == 0
+            ? _deckSession.EmptyStateMessage(Ctl<TextBox>("DeckSearch").Text)
+            : "";
+        RefreshDeckInspector(grid.SelectedItem as DeckRecord);
+    }
+
+    private void OnDeckSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingDeckSelection || _deckSession is null) return;
+        foreach (var removed in e.RemovedItems.OfType<DeckRecord>()) _deckSession.SetSelected(removed.Key, false);
+        foreach (var added in e.AddedItems.OfType<DeckRecord>()) _deckSession.SetSelected(added.Key, true);
+        Ctl<TextBlock>("DeckSelectedCount").Text = $"{_deckSession.SelectionCart.Count:N0} selected";
+        Ctl<ListBox>("DeckCart").ItemsSource = _deckSession.SelectionCart.Select(record => record.Display).ToList();
+        RefreshDeckInspector(Ctl<DataGrid>("DeckGrid").SelectedItem as DeckRecord);
+    }
+
+    private void RefreshDeckInspector(DeckRecord? record)
+    {
+        Ctl<TextBlock>("DeckInspectorName").Text = record?.Display ?? "Select a record";
+        Ctl<TextBlock>("DeckInspectorType").Text = record?.Badge ?? _deckSession?.Family ?? "";
+        Ctl<TextBlock>("DeckInspectorDetail").Text = record is null
+            ? "Choose a row to inspect its plugin and identity."
+            : string.Join(Environment.NewLine, new[] { record.Detail, record.Key, record.EditorId }.Where(value => !string.IsNullOrWhiteSpace(value))!);
+    }
+
+    private void OnCancelDeck(object? sender, RoutedEventArgs e) => CloseDeck(cancel: true);
+
+    private void OnApplyDeck(object? sender, RoutedEventArgs e)
+    {
+        if (_deckSession is null || _deckTarget is null) return;
+        ApplyDeckSelection(_deckTarget, _deckSession.Commit());
+        CloseDeck(cancel: false);
+        RefreshWorkspaceChrome();
+    }
+
+    private void CloseDeck(bool cancel)
+    {
+        if (cancel) _deckSession?.Cancel();
+        Ctl<Border>("DeckOverlay").IsVisible = false;
+        _deckSession = null;
+        _deckTarget = null;
+        _deckOpener?.Focus();
+        _deckOpener = null;
+    }
+
+    private void ApplyDeckSelection(string target, IReadOnlyList<string> keys)
+    {
+        var selected = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+        switch (target)
+        {
+            case "Race": SelectSingle("RaceList", _races, selected); break;
+            case "Face":
+                Ctl<ListBox>("FaceList").ItemsSource = _faces;
+                Ctl<ListBox>("FaceList").SelectedItem = _faces.FirstOrDefault(face => selected.Contains(face.Export.Name));
+                break;
+            case "Voice": SelectSingle("VoiceList", _voices, selected); break;
+            case "Class": SelectSingle("ClassList", _classes, selected); break;
+            case "CombatStyle": SelectSingle("CstyList", _styles, selected); break;
+            case "ArmorTorso": ReplaceArmorFamily(_armorTorso, selected); RestoreMulti("ArmorTorsoList", _armorTorso, _selectedArmor); break;
+            case "ArmorHead": ReplaceArmorFamily(_armorHead, selected); RestoreMulti("ArmorHeadList", _armorHead, _selectedArmor); break;
+            case "ArmorHands": ReplaceArmorFamily(_armorHands, selected); RestoreMulti("ArmorHandsList", _armorHands, _selectedArmor); break;
+            case "ArmorFeet": ReplaceArmorFamily(_armorFeet, selected); RestoreMulti("ArmorFeetList", _armorFeet, _selectedArmor); break;
+            case "ArmorShield": ReplaceArmorFamily(_armorShield, selected); RestoreMulti("ArmorShieldList", _armorShield, _selectedArmor); break;
+            case "ArmorAccessories": ReplaceArmorFamily(_armorAccessories, selected); RestoreMulti("ArmorAccessoriesList", _armorAccessories, _selectedArmor); break;
+            case "ArmorOther": ReplaceArmorFamily(_armorOther, selected); RestoreMulti("ArmorOtherList", _armorOther, _selectedArmor); break;
+            case "Weapon": ReplaceSelection(_selectedWeapons, selected); RestoreMulti("WeaponList", _weapons, _selectedWeapons); break;
+            case "Ammo": ReplaceSelection(_selectedAmmo, selected); RestoreMulti("AmmoList", _ammo, _selectedAmmo); break;
+            case "Lore": ReplaceSelection(_selectedLore, selected); RestoreMulti("LoreList", LoreSource(), _selectedLore); break;
+            case "Spell": ReplaceSelection(_selectedSpells, selected); RestoreMulti("SpellList", _spells, _selectedSpells); break;
+            case "Perk": ReplaceSelection(_selectedPerks, selected); RestoreMulti("PerkList", _perks, _selectedPerks); break;
+            case "Outfit": SelectSingle("OutfitList", _outfits, selected); break;
+            case "Skin": SelectSingle("SkinList", _skins, selected); break;
+            case "TransformRace": SelectSingle("TransformRaceList", _races, selected); break;
+            case "TransformSpell": SelectSingle("TransformSpellList", _spells, selected); break;
+            case "Location":
+                var places = (_library?.Locations ?? []).Where(location => location.Placeable).Select(location => new LocationItem(location)).ToList();
+                Ctl<ListBox>("PlaceList").ItemsSource = places;
+                Ctl<ListBox>("PlaceList").SelectedItem = places.FirstOrDefault(item => selected.Contains(item.Location.Id));
+                break;
+        }
+    }
+
+    private void SelectSingle(string listName, IReadOnlyList<PickerItem> source, HashSet<string> selected)
+    {
+        var list = Ctl<ListBox>(listName);
+        list.ItemsSource = source;
+        list.SelectedItem = source.FirstOrDefault(item => selected.Contains(item.FormKey));
+    }
+
+    private static void ReplaceSelection(HashSet<string> destination, HashSet<string> source)
+    {
+        destination.Clear();
+        destination.UnionWith(source);
+    }
+
+    private void ReplaceArmorFamily(IReadOnlyList<PickerItem> family, HashSet<string> selected) =>
+        DeckSelectionMerge.ReplaceFamily(_selectedArmor, family.Select(item => item.FormKey), selected);
+
+    private void RestoreMulti(string listName, IReadOnlyList<PickerItem> source, HashSet<string> selected)
+    {
+        var list = Ctl<ListBox>(listName);
+        _restoringMultiSelection = true;
+        try
+        {
+            list.ItemsSource = source;
+            list.SelectedItems?.Clear();
+            if (list.SelectedItems is { } choices)
+                foreach (var item in source.Where(item => selected.Contains(item.FormKey))) choices.Add(item);
+        }
+        finally { _restoringMultiSelection = false; }
     }
 
     // ---------- building ----------
@@ -1764,10 +2268,13 @@ public partial class WizardWindow : Window
 
         try
         {
-            var (text, dir) = await Task.Run(() => RunBuild(profile, wantZip));
+            var (text, dir, groups) = await Task.Run(() => RunBuild(profile, wantZip));
             log.Text = text;
             _lastOutputDir = dir;
             Ctl<Button>("OpenFolderButton").IsEnabled = dir is not null;
+            Ctl<ItemsControl>("MustFixList").ItemsSource = groups.MustFix;
+            Ctl<ItemsControl>("WarningList").ItemsSource = groups.CheckBeforeBuilding;
+            Ctl<ItemsControl>("InformationList").ItemsSource = groups.Information;
         }
         catch (Exception ex)
         {
@@ -1779,7 +2286,7 @@ public partial class WizardWindow : Window
         }
     }
 
-    private (string Text, string? Dir) RunBuild(FollowerProfile profile, bool zip)
+    private (string Text, string? Dir, ReviewFindingGroups Groups) RunBuild(FollowerProfile profile, bool zip)
     {
         var workspace = AppUserSettings.DefaultWorkspaceRoot;
         var publishRoot = AppUserSettings.Load(warning: message => Log.Warning("{Warning}", message)).WorkspaceRoot;
@@ -1850,7 +2357,8 @@ public partial class WizardWindow : Window
             }
             sb.AppendLine();
             sb.AppendLine(WizardCopy.FindHer(p));
-            return (sb.ToString(), result.Success ? result.OutputDirectory : null);
+            return (sb.ToString(), result.Success ? result.OutputDirectory : null,
+                ReviewFindingGroups.From(result.Validation.Findings));
         }
         finally { catalog?.Dispose(); }
     }
@@ -1873,5 +2381,9 @@ public partial class WizardWindow : Window
         });
     }
 
-    private void SetStatus(string text) => Ctl<TextBlock>("StatusLine").Text = text;
+    private void SetStatus(string text)
+    {
+        Ctl<TextBlock>("StatusLine").Text = text;
+        RefreshWorkspaceChrome();
+    }
 }

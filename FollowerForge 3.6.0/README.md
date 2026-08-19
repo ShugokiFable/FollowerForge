@@ -1,4 +1,4 @@
-# FollowerForge 3.5.0 - Windows tool (not a Skyrim mod)
+# FollowerForge 3.6.0 - Windows tool (not a Skyrim mod)
 
 FollowerForge is an out-of-game follower builder. It reads your Vortex or Mod Organizer 2 setup, then creates an installable follower mod (ESPFE plus assets) that you install afterward.
 
@@ -8,10 +8,20 @@ Do not install FollowerForge itself into Skyrim `Data`, Vortex, or MO2 as game c
 
 1. Extract the ZIP anywhere outside Skyrim `Data`.
 2. Run `FollowerForge.exe`.
-3. Build your follower in the wizard.
+3. Build your follower in the Studio workspace.
 4. Install the generated follower package with Vortex or MO2.
 
 The Windows x64 release is self-contained and does not require a separate .NET installation.
+
+## New workspace in 3.6.0
+
+- Start from the Studio dashboard and follow the next recommended action.
+- Work in seven focused categories without nested tabs.
+- Switch between Guided and Expert modes without changing follower data.
+- Use Expert Deck for full installed-record browsing, filtering, inspection, and multi-selection.
+- Press `Ctrl+K` for the command palette, `Ctrl+0` through `Ctrl+7` for workspace navigation, and `Ctrl+E` to toggle Guided/Expert.
+- Choose Obsidian Gold, Arcane Amethyst, Nordic Frost, Forge Teal, or Light; theme, experience, and window size are stored separately from follower profiles.
+- Keep the responsive dossier visible on wide windows or open it as a drawer on narrower ones.
 
 ## Vortex and MO2
 
@@ -34,7 +44,7 @@ Click `Paths...` in the left sidebar to:
 
 Empty path boxes keep automatic detection. Game `Data` and the Skyrim saves folder are still refused as output. Saved GUI settings live under `%LOCALAPPDATA%\FollowerForge`. FollowerForge does not modify MO2 INI/profile files, Vortex deployment data, Skyrim `Data`, or saves.
 
-The Sex choice on step 1 updates she/her or he/him throughout the wizard. Gear lists show each item's FormID (`XXXXXX:Plugin.esp`) so identically named variants can be told apart.
+The Sex choice in Identity updates she/her or he/him throughout the workspace. Gear lists show each item's FormID (`XXXXXX:Plugin.esp`) so identically named variants can be told apart.
 
 Detailed MO2 instructions are in `docs/MO2.md` in the source repository.
 

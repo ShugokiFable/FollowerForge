@@ -35,6 +35,7 @@ public sealed class SourceEncodingTests
     {
         var root = RepositoryRoot();
         var offenders = new List<string>();
+        var strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
         foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
         {
@@ -42,7 +43,13 @@ public sealed class SourceEncodingTests
             if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
                 || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")) continue;
 
-            var text = File.ReadAllText(file, Encoding.UTF8);
+            string text;
+            try { text = File.ReadAllText(file, strictUtf8); }
+            catch (DecoderFallbackException)
+            {
+                offenders.Add($"{Path.GetRelativePath(root, file)} (invalid UTF-8)");
+                continue;
+            }
             for (var i = 0; i < MojibakeMarkers.Length; i++)
             {
                 if (!text.Contains(MojibakeMarkers[i], StringComparison.Ordinal)) continue;

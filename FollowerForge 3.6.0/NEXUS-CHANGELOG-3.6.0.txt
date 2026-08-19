@@ -1,0 +1,15 @@
+FollowerForge 3.6.0
+
+- Replaces the old seven-step tab wizard with a Studio dashboard and seven focused work areas.
+- Adds Guided and Expert modes. Expert mode opens full installed-record catalogues without hiding advanced controls.
+- Adds reusable Expert Deck search, record inspection, selection cart, and safe cancel/apply behavior.
+- Adds five themes, a responsive follower dossier, Ctrl+K command palette, and Ctrl+0..7 navigation.
+- Keeps UI preferences separate from follower profiles and existing MO2/Vortex settings.
+- Preserves every 3.5.0 follower-building field and the existing ESPFE/build pipeline.
+- Fix: opening a single-choice catalogue (race, voice, class, locations, and friends) no longer crashes the app.
+- Polish: roomier cards and lists, clearer type hierarchy, button hover states; badge chips and setup windows now follow the selected theme live.
+- Themes: warning/error colours are now visibly different per theme, and badge chips are tinted pills with colored text instead of solid yellow blocks.
+- Themes: fixed invisible buttons in the Light theme, overlays no longer let the page behind ghost through, sidebar statuses are tinted pills, and lists grow or shrink with their content instead of sitting in fixed boxes.
+- Layout: pages, sections and catalogue lists now fill the full window width on large displays (no more narrow strip with empty space beside it), overlays are fully opaque, and catalogue lists are taller so more records are visible at once.
+
+Validation status: automated Release build, regression suite, migration ledger, archive inspection, and desktop boot gate. Real-user Skyrim gameplay remains user confirmation, not an automated claim.

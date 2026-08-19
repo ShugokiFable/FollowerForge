@@ -1,5 +1,69 @@
 # FollowerForge decisions
 
+## 2026-08-19 - 3.6.0 UI polish pass 4: verify visually, fix variant + overlay (Kimi)
+
+- Never ship UI changes unrendered again: three passes of "polish" read fine in XAML but the
+  user saw no difference. tools/UiScreenshots (Avalonia.Headless + UseSkia,
+  UseHeadlessDrawing=false, CaptureRenderedFrame) renders the real WizardWindow to PNG per
+  theme; the pass-4 fixes were found AND verified from those frames. Harness stays out of
+  the solution and the shipped package.
+- RequestedThemeVariant must follow the palette: App.axaml hardcoded Dark, so Fluent
+  internals (button/glyph colors) stayed white-on-cream in the Light theme — buttons were
+  literally invisible. ThemeResources.Apply now sets the Light/Dark variant with the theme,
+  plus token-driven default Button/ComboBox styles as belt-and-braces.
+- Overlay dim alpha 80% -> 95%: bright status text ghosted through the deck/palette dim and
+  read as overlapping labels. A modal dim must be effectively opaque over saturated content.
+- Fixed-height ListBoxes were both the "compressed scroll menus" and the empty black pits;
+  MaxHeight everywhere now (empty collapses, populated grows). Studio cards dropped their
+  fixed 280x172 sizing. Sidebar statuses use the same tinted-pill chip system as rows.
+
+## 2026-08-18 - 3.6.0 UI polish pass 3: status colors must differ per theme (Kimi)
+
+- User feedback on pass 2 ("no differences, error still yellow no matter the theme") exposed
+  a semantic miss: chips followed theme tokens, but every theme's Warning/Danger hex was
+  nearly identical amber/red, so switching themes visibly repainted nothing. A theme system
+  whose status colors never change reads as broken to users even when the plumbing is right.
+- Warning/Danger hues are now distinct per theme (gold/peach/straw/lime-amber/dark-amber;
+  red/rose/coral/vermilion/brick); a test pins per-theme distinctness so nobody re-merges them.
+- Badge chips moved to the Raycast/Linear badge idiom: translucent tinted fill (new
+  SuccessSoft/InfoSoft/WarningSoft/DangerSoft tokens, ~15-18% alpha) + colored text, pill
+  radius. Solid status blocks read as "stuck yellow boxes" the moment a theme looks off.
+- Phase6Tests MoveDirectory flake: intermittent full-suite-only failure at FollowerBuilder's
+  publish move; passes isolated and on retry; UI-only diff cannot cause it. If it recurs,
+  harden the builder's delete+move with a short retry instead of blaming new work.
+
+## 2026-08-18 - 3.6.0 UI polish pass (Kimi)
+
+- Badge/chip theming uses Avalonia class styles + `Classes.chip-warn="{Binding ChipWarn}"`-style
+  bindings on DynamicResource brushes instead of code-held IBrush fields. Static brushes cannot
+  follow a runtime theme switch; the old `Chips` holder was deleted and `IPickerRow` now exposes
+  ChipGood/ChipOk/ChipWarn/ChipBad/ChipDim as plain properties on every row class (default
+  interface members did not resolve through the template binding path).
+- Setup windows (MO2 + first-run paths) moved from hardcoded dark/gold hex to theme tokens;
+  ThemeCoverageTests keep a zero-hex scan over src/Ui/*.axaml so the leak cannot return.
+- Density/type values follow Raycast/Linear-style token guidance from web research: 8pt spacing
+  grid, 40-46px rows, 12px card radius, rationed accent with hover/pressed states.
+- The user asked for Firecrawl for the UI research; it is not installed on this machine (no MCP
+  tool visible), so kimi_search_v2 was used instead. Install a Firecrawl MCP server if repeated
+  design-site scraping is wanted.
+
+## 2026-08-18 - 3.6.0 crash fix (Kimi)
+
+- Fix inside the existing 3.6.0 WIP snapshot instead of cutting 3.6.1: 3.6.0 was never pushed
+  or released anywhere, so its local archive is replaceable; 3.5.0 remains the untouched
+  rollback. Version strings stay 3.6.0.
+- Fix the crash at the source (`RefreshDeck` selection sync), not by catching the exception:
+  Avalonia only allows `DataGrid.SelectedItems` mutation in Extended mode; single-choice decks
+  now apply selection through `SelectedItem` via `DeckGridSelection.SyncSelected`.
+- Cover the fix with real-control tests (a bare `DataGrid` works in the plain xunit host; no
+  headless package needed). One test pins that Single-mode `SelectedItems.Clear()` throws, so
+  the regression guard cannot silently rot.
+- Kimi shell note: this agent's process tree strips `ProgramFiles`/`ProgramFiles(x86)`/
+  `ProgramData`/`CommonProgramFiles`, which makes NuGet fail with `Value cannot be null.
+  (Parameter 'path1')`. Inject them with `env` per invocation; also run
+  `dotnet build-server shutdown` once so reused MSBuild nodes from a stripped-environment
+  run stop flaking the restore graph.
+
 ## 2026-08-18 - 3.6.0
 
 - Preserve 3.5.0 unchanged and perform the UI modernization only in 3.6.0.
@@ -15,6 +79,15 @@
   serialization, or build results.
 - Preserve the existing public contracts: follower profile JSON, app/MO2 settings, CLI,
   indexing, plugin generation, assets, output locations, and write guards.
+- Keep every legacy named input/action as the canonical editable control. Studio readiness and
+  dossier fields are summaries; Expert Deck applies back to those controls instead of creating
+  a second follower-data model.
+- Store schema-1 UI preferences atomically in a separate LocalAppData file. A preference failure
+  can affect presentation only and must never mutate the follower draft.
+- Classify actual validation results into Must fix, Check before building, and Information while
+  preserving the full existing build log and output-directory behavior.
+- Treat the hidden packaged desktop boot as tool validation, not Skyrim runtime confirmation.
+- Stop after the validated local archive; remote push/release requires separate publication authority.
 - Do not launch SSEEdit or Creation Kit GUI.
 
 ## 2026-08-16 - 3.5.0

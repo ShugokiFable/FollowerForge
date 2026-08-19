@@ -1,4 +1,3 @@
-using Avalonia.Media;
 using FollowerForge.Domain;
 
 namespace FollowerForge.Ui;
@@ -6,45 +5,38 @@ namespace FollowerForge.Ui;
 /// <summary>
 /// What every wizard row shows: a name, one line of why it matters, and an optional chip.
 /// One DataTemplate is written against this, so faces, places and records all read the same.
+///
+/// Chip colours are theme-driven: the row only reports a BadgeKind and the XAML template maps
+/// it to Border.chip-* class styles that pull DynamicResource brushes. That is what lets a live
+/// theme switch repaint every visible chip; code-resolved static brushes could not.
 /// </summary>
 public interface IPickerRow
 {
     string Display { get; }
     string? Detail { get; }
     string? Badge { get; }
-    IBrush BadgeBrush { get; }
-    IBrush BadgeText { get; }
+    /// <summary>"good", "ok", "warn", "bad" or anything else for a quiet dim chip.</summary>
+    string BadgeKind { get; }
     bool HasBadge { get; }
     bool HasDetail { get; }
+
+    // Reflection bindings resolve on the concrete class, so these stay plain properties on
+    // every row type instead of default interface members.
+    bool ChipGood { get; }
+    bool ChipOk { get; }
+    bool ChipWarn { get; }
+    bool ChipBad { get; }
+    bool ChipDim { get; }
 }
 
-/// <summary>Chip palette, kept beside the rows that use it so the two never drift apart.</summary>
-internal static class Chips
+/// <summary>Shared chip-class helpers so every row type agrees on the mapping.</summary>
+internal static class ChipClass
 {
-    internal static readonly IBrush Good = new SolidColorBrush(Color.Parse("#8fd694"));
-    internal static readonly IBrush Ok = new SolidColorBrush(Color.Parse("#7fc4e8"));
-    internal static readonly IBrush Warn = new SolidColorBrush(Color.Parse("#e8b96a"));
-    internal static readonly IBrush Bad = new SolidColorBrush(Color.Parse("#e88b7f"));
-    internal static readonly IBrush Dim = new SolidColorBrush(Color.Parse("#2e2e38"));
-    internal static readonly IBrush OnLight = new SolidColorBrush(Color.Parse("#12121a"));
-    internal static readonly IBrush OnDark = new SolidColorBrush(Color.Parse("#9aa0aa"));
-
-    /// <summary>
-    /// Chips are resolved in code, not XAML: a style selector cannot key off a data value, and
-    /// binding a colour string to a brush leans on an implicit conversion that fails quietly.
-    /// </summary>
-    internal static IBrush Fill(string kind) => kind switch
-    {
-        "good" => Good,
-        "ok" => Ok,
-        "warn" => Warn,
-        "bad" => Bad,
-        _ => Dim,
-    };
-
-    internal static IBrush Ink(string kind) => kind is "good" or "ok" or "warn" or "bad"
-        ? OnLight
-        : OnDark;
+    internal static bool Good(string kind) => kind == "good";
+    internal static bool Ok(string kind) => kind == "ok";
+    internal static bool Warn(string kind) => kind == "warn";
+    internal static bool Bad(string kind) => kind == "bad";
+    internal static bool Dim(string kind) => kind is not ("good" or "ok" or "warn" or "bad");
 }
 
 /// <summary>
@@ -66,13 +58,16 @@ public sealed class PickerItem(
     /// <summary>Short chip at the right of the row, e.g. "VANILLA". Null hides the chip.</summary>
     public string? Badge { get; } = badge;
 
-    /// <summary>"good", "ok", "warn", "bad" or "dim" — see <see cref="Chips"/>.</summary>
+    /// <summary>"good", "ok", "warn", "bad" or "dim".</summary>
     public string BadgeKind { get; } = badgeKind ?? "dim";
 
     public bool HasBadge => Badge is { Length: > 0 };
     public bool HasDetail => Detail is { Length: > 0 };
-    public IBrush BadgeBrush => Chips.Fill(BadgeKind);
-    public IBrush BadgeText => Chips.Ink(BadgeKind);
+    public bool ChipGood => ChipClass.Good(BadgeKind);
+    public bool ChipOk => ChipClass.Ok(BadgeKind);
+    public bool ChipWarn => ChipClass.Warn(BadgeKind);
+    public bool ChipBad => ChipClass.Bad(BadgeKind);
+    public bool ChipDim => ChipClass.Dim(BadgeKind);
 
     public override string ToString() => Detail is { Length: > 0 } d ? $"{Display}   —   {d}" : Display;
 }
@@ -89,10 +84,14 @@ public sealed class KinItem(
     public string Display => DisplayName;
     public string? Detail => WizardCopy.KinTreats(Pronouns, Relationship.Rank.ToString());
     public string? Badge => Relationship.Rank.ToString();
+    public string BadgeKind => "dim";
     public bool HasBadge => true;
     public bool HasDetail => true;
-    public IBrush BadgeBrush => Chips.Fill("dim");
-    public IBrush BadgeText => Chips.Ink("dim");
+    public bool ChipGood => false;
+    public bool ChipOk => false;
+    public bool ChipWarn => false;
+    public bool ChipBad => false;
+    public bool ChipDim => true;
 
     public override string ToString() => WizardCopy.KinRank(Pronouns, DisplayName, Relationship.Rank.ToString());
 }
@@ -117,10 +116,14 @@ public sealed class LineItem(DialogueLine line) : IPickerRow
         ? When
         : $"{When} · {Line.Emotion.ToString().ToLowerInvariant()}";
     public string? Badge => Line.Trigger.ToString();
+    public string BadgeKind => "dim";
     public bool HasBadge => true;
     public bool HasDetail => true;
-    public IBrush BadgeBrush => Chips.Fill("dim");
-    public IBrush BadgeText => Chips.Ink("dim");
+    public bool ChipGood => false;
+    public bool ChipOk => false;
+    public bool ChipWarn => false;
+    public bool ChipBad => false;
+    public bool ChipDim => true;
 
     public override string ToString() => $"[{Detail}]   {Line.Text}";
 }
@@ -148,10 +151,14 @@ public sealed class LocationItem(SpawnLocation location) : IPickerRow
 
     // A place that costs the downloader nothing is the one worth spotting at a glance.
     public string? Badge => NeedsNothing ? "BASE GAME" : "NEEDS A MOD";
+    public string BadgeKind => NeedsNothing ? "good" : "dim";
     public bool HasBadge => true;
     public bool HasDetail => true;
-    public IBrush BadgeBrush => Chips.Fill(NeedsNothing ? "good" : "dim");
-    public IBrush BadgeText => Chips.Ink(NeedsNothing ? "good" : "dim");
+    public bool ChipGood => NeedsNothing;
+    public bool ChipOk => false;
+    public bool ChipWarn => false;
+    public bool ChipBad => false;
+    public bool ChipDim => !NeedsNothing;
 
     public override string ToString() => $"{Display}   —   {Detail}";
 }
@@ -205,11 +212,15 @@ public sealed class FaceItem(CharGenExport export) : IPickerRow
     public bool HasBadge => true;
     public bool HasDetail => true;
 
-    private string Kind => Blocker is not null ? "bad"
+    public string BadgeKind => Blocker is not null ? "bad"
         : Export.TintDdsPath is null || SliderOnly ? "warn"
         : "good";
-    public IBrush BadgeBrush => Chips.Fill(Kind);
-    public IBrush BadgeText => Chips.Ink(Kind);
+
+    public bool ChipGood => ChipClass.Good(BadgeKind);
+    public bool ChipOk => false;
+    public bool ChipWarn => ChipClass.Warn(BadgeKind);
+    public bool ChipBad => ChipClass.Bad(BadgeKind);
+    public bool ChipDim => false;
 
     public override string ToString() => $"{Display}   —   {Badge}: {Detail}";
 }

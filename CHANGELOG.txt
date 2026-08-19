@@ -1,21 +1,89 @@
-﻿# CHANGELOG — FollowerForge
+# CHANGELOG — FollowerForge
 
 ================================================================================
-## [3.6.0] - 2026-08-18 - complete frontend redesign
+## [3.6.0] - 2026-08-19 - complete frontend redesign - WIP - CRASH FIXED + UI POLISH PASSES 2-5 (1440P-VERIFIED: FULL-WIDTH PAGES, OPAQUE OVERLAY, TALLER LISTS) - USER RE-RATE PENDING
 Agent: Codex
 Parent: FollowerForge 3.5.0
 
-Planned:
-  - Replace the cramped seven-page control wall with the approved Studio → Focus Cards →
-    Expert Deck architecture.
-  - Add a persistent follower dossier, category readiness, searchable full-catalogue
-    workspaces, and a remembered Guided/Expert preference.
-  - Add selectable Obsidian Gold, Arcane Amethyst, Nordic Frost, Forge Teal, and Light
-    themes without changing application capability or saved follower data.
-  - Preserve all 3.5.0 build, indexing, MO2/Vortex, FaceGen, dialogue, transformation,
-    packaging, and CLI behavior.
+Crash fix (Agent: Kimi, 2026-08-18, evidence: Windows Application event 1026, FollowerForge.exe 3.6.0.0):
+  Opening any single-choice Expert Deck catalogue (race, face, voice, class, combat style,
+  outfit, body, transform race/spell, location) crashed the whole app:
+  InvalidOperationException "Can only change SelectedItems collection in Extended selection
+  mode" from WizardWindow.RefreshDeck. Root cause: RefreshDeck always mutated the DataGrid
+  SelectedItems collection, which Avalonia only allows in Extended mode; single-choice decks
+  run the grid in Single mode. Fix: selection sync is mode-aware (SelectedItems only in
+  Extended; SelectedItem otherwise), regression-pinned by tests.
+  Scroll-menu compression addressed in the UI polish pass below; user re-rating pending.
 
-Status: design approved; implementation and validation pending.
+UI polish (Agent: Kimi, 2026-08-18):
+  - Density and clarity pass: roomier cards, taller list/grid rows, 8pt spacing, clearer
+    type hierarchy, hover/pressed buttons, larger catalogue lists (Raycast/Linear-style
+    token guidance; research via kimi_search_v2 — Firecrawl not installed on this machine).
+  - Theme leaks fixed: badge chips bind DynamicResource class styles and repaint live on
+    theme switch; MO2/paths setup windows moved off hardcoded dark/gold hex onto tokens.
+  - ThemePalette gains Info + OnStatus slots on all five themes; ThemeCoverageTests pin
+    palette completeness, zero hardcoded brushes in Ui XAML, and chip-class wiring.
+
+UI polish pass 3 (Agent: Kimi, 2026-08-18; user feedback: "no differences, error still yellow"):
+  - Root cause of the still-frozen look: pass 2 fixed the plumbing (chips follow theme
+    tokens), but every theme's Warning/Danger tokens held nearly the same amber/red hex, so
+    a theme switch visibly repainted nothing. Warning and Danger hues are now distinct per
+    theme (gold / peach / straw / lime-amber / dark-amber warnings; red / rose / coral /
+    vermilion / brick dangers), pinned by a per-theme distinctness test.
+  - Badge chips redesigned Raycast/Linear-style: translucent tinted fill with colored text
+    (new SuccessSoft/InfoSoft/WarningSoft/DangerSoft tokens) instead of solid color blocks;
+    pill radius, 11px semibold labels. Suite now 456 tests.
+  - Flake note: two Phase6 build-pipeline tests fail intermittently under full-suite IO load
+    (Directory.Move publish step); green isolated and on retry; unrelated to the UI diff.
+
+UI polish pass 4 (Agent: Kimi, 2026-08-19; screenshot-verified with new headless harness):
+  - Overlay dim raised 80%→95% opaque: sidebar status labels no longer ghost through the
+    deck/palette overlay (the user's "chips overlay the yellow labels").
+  - Light theme fixed: App.axaml hardcoded RequestedThemeVariant=Dark, leaving Fluent
+    buttons white-on-cream; the variant now follows the palette and default Button/ComboBox
+    styles draw from tokens.
+  - Sidebar statuses are tinted pills; studio cards auto-height; picker lists use MaxHeight
+    (collapse when empty, grow with content); deck family/inspector panels flattened.
+  - tools/UiScreenshots renders the real window headlessly to PNG per theme — UI changes
+    are screenshot-verified before shipping from now on.
+
+UI polish pass 5 (Agent: Kimi, 2026-08-19; user 2560x1440 screenshots: "space allocation is
+trash, overlay still happening"):
+  - Wasted-space root cause, three layers deep: category host was a plain Panel (arranges
+    children at desired size, never stretches), page ScrollViewers allowed unconstrained
+    horizontal measure, and the Fluent Expander defaults to left alignment. Fixed: host is
+    now a Grid, all eight page ScrollViewers set HorizontalScrollBarVisibility=Disabled, and
+    the Expander style sets HorizontalAlignment/HorizontalContentAlignment=Stretch. Pages,
+    sections, search boxes and lists now fill the full content column at any window size.
+    Diagnosed via a container-painting diagnostic render (StackPanel provably stretched;
+    Expanders were the narrow element), then pixel-verified in the 1440p harness frame.
+  - Overlay dim is now FULLY opaque (FF) per theme — 95% still ghosted bright pills on the
+    user's display. Pixel-verified: ring pixels render exactly the overlay token (9,10,12).
+  - All 26 catalogue/picker list MaxHeights raised ~1.5x (armor 170-190→280-320, weapons
+    230→380, ammo 220→360, race/face/voice 260-280→400-420, spells/perks/lore 260→400,
+    outfit/skin 210→340, places 300→440, alternates 150→240, kin 160-200→260-320, classes
+    220→340, lines 240→360, transform 190→300). Still MaxHeight: empty lists collapse.
+  - Harness gained a 2560x1440 Loadout shot with populated lists to catch wide-screen
+    regressions; 20 frames reviewed across 5 themes.
+
+Shipped locally:
+  - Replaced the seven-page control wall with Studio → Focus Cards → Expert Deck.
+  - Added persistent dossier, readiness summaries, searchable installed-record catalogues,
+    selection cart, command palette, keyboard navigation, and Guided/Expert preference.
+  - Added Obsidian Gold, Arcane Amethyst, Nordic Frost, Forge Teal, and Light themes.
+  - Preserved all 158 named 3.5.0 controls and existing profile/build contracts.
+  - Added atomic UI-only preferences and grouped actual validation findings on Review.
+
+Verify: 456 Release tests pass (441 + 4 deck regression + 11 theme/polish tests); build 0
+  warnings/errors; packaged desktop boot passed ("window stayed up"); 20 headless frames
+  reviewed (5 themes x studio/appearance/deck/loadout-1440p); overlay ring pixels exact;
+  archive rebuilt with pass-5 notes.
+Archive: 111,277,638 bytes; SHA-256 A9D302602647D3479A04D47B3DCB20FFD277EAED8EAA85DF6653F63B1675F778
+  (flat root layout from Publish-FollowerForge.ps1; supersedes pass-4 99,240,266-byte archive
+  4E0EF712…E6688F, replaced; earlier D076092D…CABA18, 318B7F6A…, A182E8EE… and broken
+  296E6EA5… also replaced/deleted)
+Runtime: tool-validated; real-user Skyrim confirmation pending.
+GitHub release: not published in this run.
 ================================================================================
 ## [3.5.0] - 2026-08-16 - werewolf revert after combat
 Agent: Grok
