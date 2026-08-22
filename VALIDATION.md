@@ -39,17 +39,20 @@ plugins      : 2,921 enabled of 3,001
 
 ```text
 ZIP    : FollowerForge 3.6.1/dist/FollowerForge-3.6.1-win-x64.zip
-Bytes  : 99,249,316
-SHA-256: 56DF307872208BFA21C282C07A4CE475897EB0DEBD9D1E2683C2D738B5A695C7
+Bytes  : 99,249,351
+SHA-256: EB48F7867CA19167E2A6720BECED21DF6B32DC5D58AF8860B3AF81F8F60695C6
 FileVersion   : 3.6.1.0
-ProductVersion: 3.6.1+6bc9c2465cb094c7609593da8707c648c7596fd0
+ProductVersion: 3.6.1+f009a21156e5e3ca6cb5764703acaf338f6caee2
 Entries: 5 — FollowerForge.exe, cli/FollowerForge.Cli.exe, README.md, CHANGELOG.txt,
          NEXUS-CHANGELOG-3.6.1.txt.  No .pdb, source, or secret files.
 ```
 
-The first 3.6.1 publish stamped `3.6.1+431f9552…` — the *3.6.0* commit — because the snapshot
-was not committed yet. It was rebuilt after committing so the binary names the commit that
-actually contains its source.
+The stamped commit must exist in the pushed history, which constrains the order of operations:
+**publish from the commit you are going to push, then record the hash in a NEW commit.** Two
+earlier attempts in this session got it wrong and were corrected — the first publish stamped
+`3.6.1+431f9552…` (the *3.6.0* commit, because 3.6.1 was not committed yet), and a later one
+stamped `6bc9c246…`, which an `--amend` then orphaned. Amending after publishing always
+invalidates the stamp; that is why the artifact record below is a separate commit.
 
 End-to-end from the SHIPPED binary (not the dev build): `cli/FollowerForge.Cli.exe build`
 produced `FF_AriaForge.esp`, 926 bytes, HEDR 1.71, numRecords 11, formVersion 44, ESL=True.
