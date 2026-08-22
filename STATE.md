@@ -18,6 +18,13 @@ round-trip before any work could start. Rendering is pure and unit-tested; the w
 gathers. Home directories are tokenised so a report pasted publicly does not carry the
 reporter's Windows account name.
 
+User-reported blocker fixed in the same snapshot: there was no way to unselect anything. Only
+Kin and custom lines had "Remove selected", which taught people a button exists; 18 other
+pickers had none, the deck's checkbox column was a read-only status light headed "Selected",
+and click-again-to-deselect (which did work on the multi lists) was never stated. Added Clear
+to every optional picker, Clear selection to the deck, honest column labelling, and the
+instruction. A structural test now fails if any browsable optional picker loses its Clear.
+
 Two UI bugs found by the new screenshot gate, not by reading code: the workspace grid never
 reclaimed the hidden dossier's 312px column, so every page was measured 312px narrower than the
 window and clipped on the right below 1180px; and the build action row could push a button off

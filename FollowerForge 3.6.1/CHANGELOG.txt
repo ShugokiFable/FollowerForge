@@ -15,6 +15,23 @@ Added:
   - Home paths are written as %USERPROFILE% / %LOCALAPPDATA%, so a report pasted in a public
     Nexus comment does not publish the reporter's Windows account name.
 
+Fixed (user report: "how do you unselect items? … all of my selections were stuck in place
+with no button to delete them, nor any instruction on how to unselect them"):
+  - Every optional picker now has a "Clear" button beside its Browse button — all seven armor
+    slots, weapons, ammo, belongings, spells, perks, and the single-choice face, combat style,
+    legacy outfit, body, and transform pickers. Race, voice, class and location deliberately
+    have none; they always need a value.
+  - Clearing one armor slot no longer touches the others. The seven slots share one remembered
+    set, so this uses the same offered-keys scoping the deck's Apply uses.
+  - The Expert Deck has a "Clear selection" button, and its hint now states how selection
+    actually works: click a row to select, Ctrl+click to add or remove.
+  - The deck's checkbox column was headed "Selected" inside a read-only grid, so it looked like
+    the control for selection and could not be clicked. Renamed to "In cart" and marked
+    read-only explicitly — it reports state, it does not set it.
+  - Root cause of the confusion: "Remove selected" buttons existed on Kin and custom lines and
+    nowhere else, so the app taught people to look for a button that 18 other pickers lacked.
+    Click-again-to-deselect worked on the multi lists all along but was never stated anywhere.
+
 Fixed:
   - Narrow windows were clipped on the right. Below 1180px the follower dossier hides itself,
     but its 312px grid column did not shrink, so every page kept being measured 312px narrower

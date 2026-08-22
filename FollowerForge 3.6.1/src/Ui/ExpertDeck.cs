@@ -94,10 +94,21 @@ public sealed class ExpertDeckSession
         SyncSelectionFlags();
     }
 
+    /// <summary>
+    /// Empties the cart. Cancel still restores whatever the user arrived with, so this only
+    /// becomes permanent once they press Apply.
+    /// </summary>
+    public void ClearSelection()
+    {
+        _selected.Clear();
+        SyncSelectionFlags();
+    }
+
     public IReadOnlyList<string> Commit()
     {
-        // The checkbox column writes IsSelected directly. Multi-select Apply must honour that
-        // instead of only the DataGrid SelectedItems stream, which misses checkbox-only clicks.
+        // Belt and braces: re-read the per-record flags before committing, so the cart can never
+        // disagree with what the rows show. (The "In cart" column is read-only — it reports this
+        // flag, it does not write it — so today this only ever confirms what SetSelected did.)
         if (Mode == DeckSelectionMode.Multi)
         {
             foreach (var record in _records)

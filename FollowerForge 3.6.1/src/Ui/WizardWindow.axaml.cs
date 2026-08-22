@@ -1930,6 +1930,58 @@ public partial class WizardWindow : Window
         RefreshDeck();
     }
 
+    private void OnClearDeckSelection(object? sender, RoutedEventArgs e)
+    {
+        _deckSession?.ClearSelection();
+        RefreshDeck();
+    }
+
+    /// <summary>
+    /// Unselects a whole picker. Reported by a user who added the wrong clothing, hit a
+    /// must-fix build, went back to undo it and found no way to: click-again-to-deselect is
+    /// invisible, and the deck's checkbox column is a read-only status light. Kin and custom
+    /// lines already had "Remove selected", which taught people to look for a button.
+    /// </summary>
+    private void OnClearPicks(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { Tag: { } tag }) return;
+
+        switch (tag.ToString())
+        {
+            case "ArmorTorso": ClearFamily(_selectedArmor, _armorTorso, "ArmorTorsoList"); break;
+            case "ArmorHead": ClearFamily(_selectedArmor, _armorHead, "ArmorHeadList"); break;
+            case "ArmorHands": ClearFamily(_selectedArmor, _armorHands, "ArmorHandsList"); break;
+            case "ArmorFeet": ClearFamily(_selectedArmor, _armorFeet, "ArmorFeetList"); break;
+            case "ArmorShield": ClearFamily(_selectedArmor, _armorShield, "ArmorShieldList"); break;
+            case "ArmorAccessories": ClearFamily(_selectedArmor, _armorAccessories, "ArmorAccessoriesList"); break;
+            case "ArmorOther": ClearFamily(_selectedArmor, _armorOther, "ArmorOtherList"); break;
+            case "Weapon": ClearFamily(_selectedWeapons, _weapons, "WeaponList"); break;
+            case "Ammo": ClearFamily(_selectedAmmo, _ammo, "AmmoList"); break;
+            case "Lore": ClearFamily(_selectedLore, LoreSource(), "LoreList"); break;
+            case "Spell": ClearFamily(_selectedSpells, _spells, "SpellList"); break;
+            case "Perk": ClearFamily(_selectedPerks, _perks, "PerkList"); break;
+            // Single-choice optionals: once set they could never be unset either.
+            case "Face": Ctl<ListBox>("FaceList").SelectedItem = null; break;
+            case "CombatStyle": Ctl<ListBox>("CstyList").SelectedItem = null; break;
+            case "Outfit": Ctl<ListBox>("OutfitList").SelectedItem = null; break;
+            case "Skin": Ctl<ListBox>("SkinList").SelectedItem = null; break;
+            case "TransformRace": Ctl<ListBox>("TransformRaceList").SelectedItem = null; break;
+            case "TransformSpell": Ctl<ListBox>("TransformSpellList").SelectedItem = null; break;
+        }
+
+        RefreshWorkspaceChrome();
+    }
+
+    /// <summary>
+    /// Clears only the keys this picker offers. Same scoping rule the deck uses: the seven
+    /// armor slots share one remembered set, so clearing torso must not drop the helmet.
+    /// </summary>
+    private void ClearFamily(HashSet<string> remembered, IReadOnlyList<PickerItem> family, string listName)
+    {
+        DeckSelectionMerge.ReplaceFamily(remembered, family.Select(item => item.FormKey), []);
+        RestoreMulti(listName, family, remembered);
+    }
+
     private void RefreshDeck()
     {
         if (_deckSession is null) return;

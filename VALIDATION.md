@@ -12,7 +12,7 @@ Robocopy: 235 copied, 0 failed, 0 mismatched (bin/obj/dist excluded — disposab
 
 ```text
 dotnet build src/FollowerForge.slnx -c Release      -> PASS, 0 warnings, 0 errors
-dotnet test  src/FollowerForge.slnx -c Release      -> 472 passed, 0 failed (461 + 11 diagnostics)
+dotnet test  src/FollowerForge.slnx -c Release      -> 478 passed, 0 failed (461 + 11 diagnostics + 6 deselection)
 Publish-FollowerForge.ps1 -Version 3.6.1            -> PASS, boot check "window stayed up"
 ```
 
@@ -39,10 +39,10 @@ plugins      : 2,921 enabled of 3,001
 
 ```text
 ZIP    : FollowerForge 3.6.1/dist/FollowerForge-3.6.1-win-x64.zip
-Bytes  : 99,247,996
-SHA-256: 713AB52095D134890FF71C04E4D8F481FC748079FA4A80BE8DAF67F6EB5777E1
+Bytes  : 99,249,316
+SHA-256: 56DF307872208BFA21C282C07A4CE475897EB0DEBD9D1E2683C2D738B5A695C7
 FileVersion   : 3.6.1.0
-ProductVersion: 3.6.1+16d6b7f4ea5de74a5795ac8a593189a9019880ca
+ProductVersion: 3.6.1+6bc9c2465cb094c7609593da8707c648c7596fd0
 Entries: 5 — FollowerForge.exe, cli/FollowerForge.Cli.exe, README.md, CHANGELOG.txt,
          NEXUS-CHANGELOG-3.6.1.txt.  No .pdb, source, or secret files.
 ```
