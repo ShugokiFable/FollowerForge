@@ -1,0 +1,9 @@
+FollowerForge 3.6.1
+
+Parent: FollowerForge 3.6.0 (released: GitHub v3.6.0, Nexus 187479)
+Created: 2026-08-22
+Change: Copy diagnostics — one button that turns a vague bug report into a fixable one.
+        Plus release-hygiene cleanups (CI SDK, stale artifacts, docs that lagged reality).
+
+Status: implemented; Release build and full regression suite pass
+Runtime: tool-validated desktop boot + CLI end-to-end build; real-user Skyrim workflow not re-confirmed

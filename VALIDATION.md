@@ -1,3 +1,83 @@
+# VALIDATION — FollowerForge 3.6.1
+
+## Snapshot gate
+
+```text
+Parent: FollowerForge 3.6.0 (released, untouched)
+Active: FollowerForge 3.6.1
+Robocopy: 235 copied, 0 failed, 0 mismatched (bin/obj/dist excluded — disposable, regenerated)
+```
+
+## Commands and results
+
+```text
+dotnet build src/FollowerForge.slnx -c Release      -> PASS, 0 warnings, 0 errors
+dotnet test  src/FollowerForge.slnx -c Release      -> 472 passed, 0 failed (461 + 11 diagnostics)
+Publish-FollowerForge.ps1 -Version 3.6.1            -> PASS, boot check "window stayed up"
+```
+
+## Diagnostics report gate
+
+Unit tests cover redaction and content. Fixtures alone would not prove redaction works on a
+real machine, so the report was also rendered through the live `EnvironmentDiscovery`:
+
+```text
+manager      : Vortex
+profile      : LEWs7W0Rj  [closest match (100%); deployment pending]
+game root    : C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition
+instance     : %APPDATA%\Vortex\skyrimse
+plugins      : 2,921 enabled of 3,001
+```
+
+- No occurrence of the Windows account name anywhere in the output (also asserted by
+  `A_pasted_report_does_not_publish_the_windows_account_name`).
+- Paths outside the home folder (the Steam install) are deliberately left readable.
+- The run surfaced a real live warning — the Vortex profile has undeployed changes — which is
+  exactly the class of fact these reports exist to carry.
+
+## Shipped artifact
+
+```text
+ZIP    : FollowerForge 3.6.1/dist/FollowerForge-3.6.1-win-x64.zip
+Bytes  : 99,247,996
+SHA-256: 713AB52095D134890FF71C04E4D8F481FC748079FA4A80BE8DAF67F6EB5777E1
+FileVersion   : 3.6.1.0
+ProductVersion: 3.6.1+16d6b7f4ea5de74a5795ac8a593189a9019880ca
+Entries: 5 — FollowerForge.exe, cli/FollowerForge.Cli.exe, README.md, CHANGELOG.txt,
+         NEXUS-CHANGELOG-3.6.1.txt.  No .pdb, source, or secret files.
+```
+
+The first 3.6.1 publish stamped `3.6.1+431f9552…` — the *3.6.0* commit — because the snapshot
+was not committed yet. It was rebuilt after committing so the binary names the commit that
+actually contains its source.
+
+End-to-end from the SHIPPED binary (not the dev build): `cli/FollowerForge.Cli.exe build`
+produced `FF_AriaForge.esp`, 926 bytes, HEDR 1.71, numRecords 11, formVersion 44, ESL=True.
+houseCARL integrity sweep on that output: **0 dangling refs, 0 missing masters, 0 unscannable**.
+
+## 3.6.0 artifact discrepancy (recorded, then removed)
+
+`FollowerForge 3.6.0/dist` held a ZIP that did **not** match the one users downloaded, built
+from the same commit three minutes after the release upload:
+
+```text
+shipped (GitHub v3.6.0 asset): 99,245,718 B  SHA-256 3EFA07D9FA98B2E955C8D67311E63D278626E72356797D56F2BF830AA7345CFD
+local rebuild (deleted):       99,209,827 B  SHA-256 dbec86e8158df423843da0f237819630b1209496115967c951274d41cba2cdcd
+```
+
+`Deterministic=true` and `PathMap` are set, but the self-contained single-file publish is not
+byte-reproducible, so a hash recorded from one local build cannot be re-derived from another.
+The local copy was deleted so no later check verifies a file nobody downloaded. The fix is to
+publish from CI on tag; not done in 3.6.1.
+
+## Not confirmed in 3.6.1
+
+- Real-user click-through of the new button on someone else's machine
+- In-game behaviour (unchanged by this patch, but not re-tested)
+- SSEEdit / Creation Kit: not launched
+
+---
+
 # VALIDATION — FollowerForge 3.6.0
 
 ## Snapshot gate

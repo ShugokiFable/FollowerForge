@@ -1,0 +1,20 @@
+FollowerForge 3.6.1
+
+New
+- "Copy diagnostics" button on the Review page (also in the Ctrl+K palette). One click puts a
+  short plain-text report on your clipboard: which mod manager and profile you use, how many
+  plugins were indexed, what you picked for the follower, and what the last build reported.
+  If something goes wrong, paste that into your bug report or comment and it can usually be
+  answered without a back-and-forth first.
+- Your Windows account name is not in it. Home folders are written as %USERPROFILE% and
+  %LOCALAPPDATA%, so the report is safe to paste in a public comment.
+
+Housekeeping
+- Build/CI cleanup and corrected release notes. No change to how followers are built.
+
+Known, and not fixed in this version
+- RaceMenu OVERLAYS (tattoos, warpaint, body paint) still do not carry over to a built
+  follower. Sculpt, tint and head shape do. A warning for this is the next thing on the list.
+
+Upgrading: unzip over your existing copy, or into a new folder. Your settings, catalogue and
+saved followers are untouched.

@@ -1,10 +1,48 @@
 # FollowerForge state
 
-- Date: 2026-08-19
-- Current snapshot: `FollowerForge 3.6.0` (parent `FollowerForge 3.5.0` preserved)
-- Active owner application: Grok (continued 3.6.0 release-readiness after Kimi polish / Claude review)
-- Milestone: 3.6.0 Expert Deck crash fixed + UI polish passes 2-5 + release-readiness (deck apply, readiness colors, palette, EditorIDs); 461 Release tests pass; public push still waiting for explicit authorization
+- Date: 2026-08-22
+- Current snapshot: `FollowerForge 3.6.1` (parent `FollowerForge 3.6.0` preserved)
+- Active owner application: Claude Code (Opus 5)
+- Milestone: 3.6.1 — Copy diagnostics, plus release hygiene (CI SDK, stale artifact, docs)
 - Runtime target: Windows 10/11, Skyrim SE/AE, Vortex or Mod Organizer 2
+
+## 3.6.1
+
+3.6.0 SHIPPED on 2026-08-19 — GitHub `v3.6.0` (Latest) and Nexus 187479. The earlier note here
+that the push was "waiting for authorization" was three days stale; corrected.
+
+Added `DiagnosticsReport` + a "Copy diagnostics" button on the Review page and in the Ctrl+K
+palette. Rationale: every 3.x fix this year started from a report too vague to act on — "body
+and face colour mismatch", "can't add arrows", "MO2 can't find my mods" — and each cost a
+round-trip before any work could start. Rendering is pure and unit-tested; the window only
+gathers. Home directories are tokenised so a report pasted publicly does not carry the
+reporter's Windows account name.
+
+Two UI bugs found by the new screenshot gate, not by reading code: the workspace grid never
+reclaimed the hidden dossier's 312px column, so every page was measured 312px narrower than the
+window and clipped on the right below 1180px; and the build action row could push a button off
+the edge with no horizontal scroll to reach it. Both fixed and re-rendered.
+
+Release hygiene in the same pass:
+- CI requested the .NET 9 SDK for net10.0 projects (green only because the windows-latest image
+  preinstalls .NET 10, and a 298 MB download wasted every run). Now 10.0.x.
+- Deleted `FollowerForge 3.6.0/dist`. It was rebuilt three minutes AFTER the release upload from
+  the same commit and did not match it, so a later hash check would have verified a file nobody
+  downloaded. Both hashes are in VALIDATION.md.
+
+### Evidence
+
+- Snapshot copy: 235 files, 0 failed, 0 mismatched (bin/obj/dist excluded as disposable)
+- `dotnet test src/FollowerForge.slnx -c Release` → 472 passed, 0 failed
+- Live-machine render through `EnvironmentDiscovery`: redaction held (`%APPDATA%\Vortex\…`,
+  no account name), and the report surfaced a real Vortex "undeployed changes" warning
+
+### Unresolved
+
+- RaceMenu body/face OVERLAYS still do not transfer; 3.6.1 does not yet warn about it
+- MO2 `modlist.txt` priority direction still UNVERIFIED (PluginLists.cs:69, open since 3.2.5)
+- The publish ZIP is not byte-reproducible; publishing from CI on tag would settle it
+- Real-user click-through and in-game behaviour not re-confirmed for this patch
 
 ## 3.6.0
 

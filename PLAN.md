@@ -1,3 +1,28 @@
+# FollowerForge 3.6.1 plan
+
+1. [x] Snapshot 3.6.0 → 3.6.1 (3.6.0 is released and immutable: GitHub v3.6.0, Nexus 187479).
+2. [x] Add "Copy diagnostics" — Review page button + Ctrl+K command. Pure `DiagnosticsReport`
+       renders; the window only gathers. Home paths become %USERPROFILE% / %LOCALAPPDATA% so a
+       report pasted into a public Nexus comment does not publish the reporter's account name.
+3. [x] 11 tests, including one that asserts the rendered report never contains
+       `Environment.UserName`. Suite 461 → 472.
+4. [x] Verified against the live machine, not just fixtures: rendered a real report through
+       `EnvironmentDiscovery` (Vortex, 2,921/3,001 plugins) — redaction held, and it surfaced a
+       genuine live warning about undeployed Vortex changes.
+5. [x] CI asked for the .NET 9 SDK for net10.0 projects; green only because the runner image
+       preinstalls .NET 10. Now 10.0.x.
+6. [x] Deleted `FollowerForge 3.6.0/dist` — rebuilt 3 minutes after the release upload from the
+       same commit and did NOT match it. Both hashes recorded in VALIDATION.md.
+7. [x] Docs caught up: 3.6.0 shipped to GitHub and Nexus on 2026-08-19; PLAN/STATE said otherwise.
+8. [ ] Publish 3.6.1 zip, refresh NEXUS-UPLOAD, push, tag `v3.6.1`.
+
+Next, deliberately NOT in 3.6.1:
+  - RaceMenu overlays (tattoos/warpaint) do not transfer. Ship the build-time WARNING first;
+    treat actually solving it as a separate project, not a rider on a patch release.
+  - MO2 `modlist.txt` priority direction is still UNVERIFIED (PluginLists.cs:69, open since
+    3.2.5). Needs a real MO2 instance or a reporter's modlist.txt + a screenshot of MO2's order.
+  - Publish from CI on tag, so the shipped zip is provably the one the tests ran against.
+
 # FollowerForge 3.6.0 plan
 
 1. [x] Inspect 3.5.0 UI and preserve user-owned root changes.
@@ -13,7 +38,8 @@
 6f. [x] Release-readiness: deck apply no longer wipes sibling slices; readiness not red on empty draft; palette Enter/arrows/Build/Paths/MO2; real EditorIDs including races; checkbox Apply; overlay-safe shortcuts. 461 tests. (Grok)
 7. [x] Run exact Release tests, UI smoke checks, encoding guard, and source-path scan.
 8. [x] Build the self-contained Windows release, validate archive/hash, and update docs.
-9. [ ] Push main, wait for CI, then tag `v3.6.0` and attach the local zip. Nexus page paste is separate.
+9. [x] Pushed, CI green, tagged `v3.6.0`, zip attached (99,245,718 B, SHA-256 3EFA07D9…),
+       and the Nexus page updated to 3.6.0 on 2026-08-19.
 
 # FollowerForge 3.5.0 plan
 

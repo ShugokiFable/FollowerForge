@@ -1,1 +1,1 @@
-FollowerForge 3.6.0
+FollowerForge 3.6.1
