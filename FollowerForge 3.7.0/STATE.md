@@ -60,7 +60,9 @@ of which 86 are shaped, so counting all of them would warn on every build.
   names overlays as a known limitation without claiming to detect them.
 - MO2 `modlist.txt` priority direction still UNVERIFIED (PluginLists.cs:69, open since 3.2.5)
 - The publish ZIP is not byte-reproducible; publishing from CI on tag would settle it
-- 3.7.0 has not been published, pushed or tagged. Nexus still serves 3.6.0.
+- 3.7.0 IS released on GitHub (v3.7.0, Latest, built from eb4c2de, CI green on that commit).
+  The Nexus upload is staged in NEXUS-UPLOAD/ and remains the author's step; the page still
+  serves 3.6.0, and 3.6.1 was never uploaded, so that one upload delivers both.
 
 ## 3.6.1
 
