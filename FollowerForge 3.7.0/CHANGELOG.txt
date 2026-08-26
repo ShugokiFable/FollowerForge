@@ -1,0 +1,1396 @@
+# CHANGELOG — FollowerForge
+
+================================================================================
+## [3.7.0] - 2026-08-26 - transform into anything, and stop blocking a build that was fine
+Agent: Claude Code (Opus 5)
+Parent: FollowerForge 3.6.1
+
+Added:
+  - Combat transformation can now turn her into a CREATURE. Dragons, wolves, trolls,
+    spriggans, whatever the installed mods provide. The picker had silently excluded every
+    creature race since the feature shipped, which left "custom race / spell" offering only
+    the same people-races she could already be.
+    Why it was wrong: the exclusion exists because a creature race has no head data, so no
+    face can be built for it. That is a rule about the race she IS, not the race she TURNS
+    INTO - the face belongs to the base race, and FF_Transform only calls SetRace() at
+    runtime. Vanilla werewolf, which this feature already offered, is itself a creature race.
+    On this machine that is 191 races before and 944 after: 753 beast forms the feature was
+    written for had never been reachable.
+  - Creature rows carry their FormID and EditorID, the way gear rows already did. Five
+    installed mods each ship a race called "BabyDragonRace"; without the ID there is no way
+    to tell those five apart in a list that long.
+  - `FollowerForge.Cli.exe races --creatures` lists what the transformation picker offers,
+    beside the plain `races` that lists what she can be built as.
+
+Fixed (root cause of the user report: build interrupted with "Must be fixed" after adding
+clothing to inventory AND choosing a legacy outfit):
+  - Picking ANY armor together with a legacy outfit was a guaranteed hard build error, one
+    STARTING_ARMOR_NOT_WRITTEN per piece. The compiler has always supported the combination -
+    a chosen OTFT wins, and the pieces stay in inventory to be traded - but the validator only
+    knew about the generated-outfit path, then searched THIS plugin for an outfit that lives
+    in Skyrim.esm, found nothing, and reported every piece as missing. The validator now
+    follows the same branch the compiler takes.
+  - The combination is now one warning, OUTFIT_OVERRIDES_ARMOR, that names the outfit and says
+    what will happen: she starts in the outfit, and the pieces stay in her pack.
+  - LEGACY_OUTFIT_WITH_EQUIPMENT is gone, folded into that warning. It said the engine "may
+    choose" the outfit over inventory gear. It does choose it; there was never any doubt.
+
+Changed:
+  - A RaceMenu preset's BODY SHAPE has never transferred, and nothing ever said so. The build
+    now counts the shaped sliders in the preset's bodyMorphs block and warns, naming BodySlide
+    or OBody as where that shape actually belongs. Untouched sliders are excluded: RaceMenu
+    writes the whole set whether it was used or not (a reference preset on this machine holds
+    119 entries, of which 86 are shaped), so counting them all would warn on every build.
+    The same warning names RaceMenu overlays - tattoos, warpaint, scars - which do not
+    transfer either.
+
+Evidence:
+  - 489 Release tests pass (478 inherited from 3.6.1 + 11 new), 0 failed.
+  - End-to-end CLI build of the exact reported combination - legacy outfit + two armour pieces
+    + a creature transform race - is BUILD OK with one warning and no errors. The published
+    plugin's VMAD carries BeastRace = 0x000CDD84 against master index 0, and the ship gate
+    reads HEDR=1.71 numRecords=11 formVersion=44 ESL=True.
+  - Race counts read from the live 2,920-plugin catalogue on this machine, not from fixtures.
+
+
+================================================================================
+## [3.6.1] - 2026-08-22 - Copy diagnostics, and release plumbing that tells the truth
+Agent: Claude Code (Opus 5)
+Parent: FollowerForge 3.6.0
+
+Added:
+  - "Copy diagnostics" on the Review page and in the Ctrl+K palette. One click puts a
+    plain-text report on the clipboard: app version, OS, manager and profile, plugin and
+    catalogue counts, chosen face/race/voice, and the findings from the last build.
+    Why: every 3.x fix so far started from a report too vague to act on ("body/face colour
+    mismatch", "can't add arrows", "MO2 can't find my mods"), each costing a round-trip
+    before any work could begin.
+  - Home paths are written as %USERPROFILE% / %LOCALAPPDATA%, so a report pasted in a public
+    Nexus comment does not publish the reporter's Windows account name.
+
+Fixed (user report: "how do you unselect items? … all of my selections were stuck in place
+with no button to delete them, nor any instruction on how to unselect them"):
+  - Every optional picker now has a "Clear" button beside its Browse button — all seven armor
+    slots, weapons, ammo, belongings, spells, perks, and the single-choice face, combat style,
+    legacy outfit, body, and transform pickers. Race, voice, class and location deliberately
+    have none; they always need a value.
+  - Clearing one armor slot no longer touches the others. The seven slots share one remembered
+    set, so this uses the same offered-keys scoping the deck's Apply uses.
+  - The Expert Deck has a "Clear selection" button, and its hint now states how selection
+    actually works: click a row to select, Ctrl+click to add or remove.
+  - The deck's checkbox column was headed "Selected" inside a read-only grid, so it looked like
+    the control for selection and could not be clicked. Renamed to "In cart" and marked
+    read-only explicitly — it reports state, it does not set it.
+  - Root cause of the confusion: "Remove selected" buttons existed on Kin and custom lines and
+    nowhere else, so the app taught people to look for a button that 18 other pickers lacked.
+    Click-again-to-deselect worked on the multi lists all along but was never stated anywhere.
+
+Fixed:
+  - Narrow windows were clipped on the right. Below 1180px the follower dossier hides itself,
+    but its 312px grid column did not shrink, so every page kept being measured 312px narrower
+    than the window — content cut off ("CHECK BEFOR…") with a dead strip beside it, and no way
+    to scroll to it because these pages disable horizontal scrolling. Found by rendering the
+    Review page at the window's own MinWidth, which nothing had ever done.
+  - The build action row wraps instead of clipping, so a fourth button can never become
+    unreachable on a small window.
+  - CI installed the .NET 9 SDK (a 298 MB download) for projects that target net10.0. It was
+    green only because the windows-latest image happens to preinstall .NET 10 — the day that
+    image changes, or anyone adds a global.json, the build stops. Now asks for 10.0.x.
+  - Removed the stale `FollowerForge 3.6.0/dist` ZIP. It was rebuilt three minutes AFTER the
+    release upload from the same commit and did not match it (99,209,827 B / dbec86e8… local
+    vs 99,245,718 B / 3efa07d9… shipped), so any later hash check would have verified a file
+    nobody downloaded. Both hashes are recorded in VALIDATION.md instead.
+  - Docs caught up with reality: PLAN.md still had the 3.6.0 release unchecked and STATE.md
+    still said the push was unauthorized, three days after it shipped to GitHub and Nexus.
+    NEXUS-UPLOAD staged 3.5.0 while Nexus was serving 3.6.0.
+
+Known, unchanged:
+  - RaceMenu body/face OVERLAYS (tattoos, warpaint) still do not transfer to a built
+    follower — no NiOverride.AddOverlays path exists. 3.6.1 does not warn about this yet;
+    that is the next piece of work, and it is a warning first, not a fix.
+  - MO2 modlist.txt priority direction is still UNVERIFIED (PluginLists.cs).
+
+================================================================================
+## [3.6.0] - 2026-08-19 - Studio workspace and Expert Deck
+Agent: Codex
+Parent: FollowerForge 3.5.0
+
+Release readiness (Agent: Grok, 2026-08-19):
+  - Expert Deck Apply commits only the keys that deck offered, so armor families and
+    belongings slices (books/misc/food/ingredients) no longer wipe each other.
+  - Empty drafts: missing name is Needs attention, empty loadout is Optional, Review is
+    Error only after a must-fix build or a real setup failure.
+  - Command palette: Enter runs the highlighted command; arrows/caret keys do not refilter;
+    palette also offers Build, Paths, MO2 setup, and Switch manager.
+  - Escape only dismisses an open overlay; it no longer eats textbox Escape.
+  - Expert Deck EditorID column uses the plugin EditorID, including races (NordRace, not Nord).
+  - Multi-select Apply honours DataGrid checkbox ticks, not only SelectedItems.
+  - Ctrl+K/E/0-7 do not navigate behind a deck or palette overlay.
+  - 461 Release tests pass.
+
+Crash fix (Agent: Kimi, 2026-08-18):
+  - Opening any single-choice Expert Deck catalogue (race, face, voice, class, combat style,
+    outfit, body records, transform race/spell, location) crashed the app with
+    InvalidOperationException "Can only change SelectedItems collection in Extended selection
+    mode" (Windows Application event 1026, FollowerForge.exe 3.6.0.0).
+  - Root cause: WizardWindow.RefreshDeck always mutated the DataGrid SelectedItems collection;
+    Avalonia only allows that in Extended mode and single-choice decks run the grid in Single.
+  - Fix: DeckGridSelection.SyncSelected applies selection mode-aware (SelectedItems only in
+    Extended, SelectedItem in Single). Four regression tests pin the behavior.
+
+UI polish (Agent: Kimi, 2026-08-18):
+  - Density and clarity pass across the Studio: roomier cards (20px padding, 12px radius),
+    taller list rows (46px) and grid rows (40px), 38px buttons with hover/pressed feedback,
+    larger catalogue lists, wider sidebar (256px), and a 13px/19 hint type tier, following
+    Raycast/Linear-style token guidance (8pt spacing grid, rationed accent, hairline borders).
+  - Theme leak fixes: badge chips (Good/Caution/Warning/etc.) now bind to chip class styles
+    via DynamicResource and repaint live on theme switch; the MO2 setup and first-run paths
+    setup windows are converted from hardcoded dark/gold hex to theme tokens.
+  - ThemePalette gains Info and OnStatus (ink on colored chips) slots across all five themes.
+  - New ThemeCoverageTests pin palette completeness, contrast sanity, zero hardcoded brushes
+    in Ui XAML, and chip-class wiring. Suite now 454 tests.
+
+UI polish pass 3 (Agent: Kimi, 2026-08-18; user feedback: "no differences, error still yellow"):
+  - Root cause of the still-frozen look: pass 2 fixed the plumbing (chips follow theme
+    tokens), but every theme's Warning/Danger tokens held nearly the same amber/red hex, so
+    a theme switch visibly repainted nothing. Warning and Danger hues are now distinct per
+    theme (gold / peach / straw / lime-amber / dark-amber warnings; red / rose / coral /
+    vermilion / brick dangers).
+  - Badge chips redesigned Raycast/Linear-style: translucent tinted fill with colored text
+    (new SuccessSoft/InfoSoft/WarningSoft/DangerSoft tokens) instead of solid color blocks;
+    pills (radius 999), 11px semibold labels.
+  - New tests pin per-theme status distinctness and soft-fill alpha range. Suite now 456 tests.
+
+UI polish pass 4 (Agent: Kimi, 2026-08-19; screenshot-verified via new headless render harness):
+  - Fixed overlay bleed: deck/palette dim was only 80% opaque, so bright sidebar status
+    labels ghosted through (the user's "chips overlay the yellow labels"). Now ~95% opaque.
+  - Fixed Light-theme invisible buttons: App.axaml hardcoded RequestedThemeVariant=Dark, so
+    Fluent kept button text white-on-cream. ThemeResources.Apply now switches the Fluent
+    variant with the palette, and default Button/ComboBox styles draw from tokens.
+  - Sidebar readiness labels are tinted pills (same chip system as catalogue rows) instead of
+    bare yellow text, driven by ReadinessLevel.
+  - De-blockify: studio cards auto-height (no fixed 280x172 blocks), picker lists use
+    MaxHeight instead of fixed Height so empty lists collapse and populated lists breathe,
+    deck family/inspector panels flattened, DataGrid gets a hairline border + rounded corners.
+  - New tools/UiScreenshots harness renders the real WizardWindow headlessly (Avalonia
+    Headless + Skia) to PNG per theme; UI changes are now screenshot-verified before shipping.
+
+UI polish pass 5 (Agent: Kimi, 2026-08-19; user feedback: "space allocation is trash, overlay
+still happening" — verified at the user's 2560x1440 resolution):
+  - Root cause of the wasted right half of wide windows: the category host was a plain Panel
+    (arranges children at desired size, never stretches), every page ScrollViewer allowed
+    unconstrained horizontal measure, and the Fluent Expander theme left-aligns by default.
+    Fixed all three: host is now a Grid, all eight page ScrollViewers disable horizontal
+    scrolling, and the Expander style sets HorizontalAlignment/HorizontalContentAlignment
+    to Stretch. Pages, expanders, search boxes and lists now fill the full content column.
+  - Overlay dim is now FULLY opaque (FF alpha) per theme: even 95% still let bright sidebar
+    pills faintly ghost through on the user's display. Pixel-verified: ring pixels render
+    exactly the overlay token, zero bleed.
+  - Cramped lists raised ~1.5x (weapons 230 to 380, ammo 220 to 360, armor slots 170-190 to
+    280-320, race/face/voice 260-280 to 400-420, places 300 to 440, etc.) — still MaxHeight,
+    so empty lists collapse and populated ones use the tall window.
+  - Harness now also renders the Loadout category at 2560x1440 with populated lists so
+    wide-screen regressions are caught by the screenshot gate.
+
+Changed:
+  - Replaced the seven-step tab wizard with a Studio dashboard, seven Focus categories,
+    persistent dossier, bottom action bar, and responsive narrow-window drawer.
+  - Added Guided and Expert experiences. Expert category entry opens the primary installed-
+    record Deck while the complete Focus category remains available.
+  - Added reusable Expert Deck search, inspector, selection cart, single/multi selection,
+    cancel rollback, and commit back to the existing canonical picker controls.
+  - Added Ctrl+K command palette, Ctrl+0..7 navigation, Ctrl+E experience toggle, and Escape
+    overlay dismissal.
+  - Added five semantic themes and atomic UI-only preferences under LocalAppData.
+  - Grouped actual build findings into Must fix, Check before building, and Information.
+
+Compatibility and safety:
+  - All 158 named 3.5.0 controls are preserved exactly once and covered by a migration ledger.
+  - UI navigation, themes, experience, and Deck state do not alter serialized follower data.
+  - Existing Vortex/MO2 discovery, catalogue, profile construction, build, packaging, and
+    no-write boundaries are unchanged.
+  - FollowerForge 3.5.0 remains the immutable rollback snapshot.
+
+================================================================================
+## [3.4.0] - 2026-08-16 - paths, pronouns, gear FormIDs
+Agent: Grok
+Parent: FollowerForge 3.3.0
+
+See workspace-root CHANGELOG.txt for the full 3.4.0 notes. Snapshot parent 3.3.0 is preserved.
+
+================================================================================
+## [3.2.9] - 2026-08-10 - race false-positives, manual placement, cell FormVersion
+Agent: Grok
+Parent: FollowerForge 3.2.8
+
+Fixed (from user/CLI MO2 session reports on 3.2.7, after 3.2.8 MO2 masters fix):
+  - RaceSuitability no longer force-flags a *playable* race with real head data as Creature
+    solely because the EditorID contains a blocklist word (e.g. "horse" → BDHorseRace).
+    Non-playable blocklist hits (Dremora, Elk, …) stay Creature.
+  - Manual Placement.Cell + X/Y/Z no longer ignores the cell and hardcodes WhiterunWorld.
+  - Optional Placement.Worldspace for exterior worldspace-persistent cells outside Whiterun.
+  - Cell overrides DeepCopy always set FormVersion 44 (source Skyrim cells are often 40);
+    ship-gate no longer rejects those CELL records.
+  - Placed ACHR also stamped FormVersion 44; cellSource resolved for manual Cell paths.
+
+Known gap (not fixed in 3.2.9):
+  - RaceMenu body overlays still need NiOverride.AddOverlays (or a bake step) before node
+    overrides apply. jslot overlay data parses; runtime application path remains incomplete.
+    User baking experiments ongoing — do not claim overlays work yet.
+
+Retained from 3.2.8:
+  - MO2 master expansion / ValidateInstalledMasters / CharGen via PluginDataPath + mod folders.
+
+Verify: unit tests (race, location/FormVersion, MO2 masters) + full suite + publish.
+Nexus: YES
+================================================================================
+## [3.2.8] - 2026-08-10 - MO2 master expansion uses plugin view, not Steam Data
+Agent: Grok
+Parent: FollowerForge 3.2.7
+
+Fixed:
+  - Build-time master chain expansion (PluginWriter ExpandMasterChain) now reads from the
+    MO2 hardlink plugin view (PluginDataPath) after Mo2DataView.Ensure, not bare Steam Data.
+  - This fixes "Required master 'SOSVoices.esm' is not installed in '...Skyrim Special Edition\\Data'".
+  - ValidateInstalledMasters resolves masters through MO2 mod priority / overwrite.
+  - RecordResolver and CellSourceResolver open plugins from the same plugin view.
+  - CharGen export lookup during build uses the MO2-aware scanner (mods + overwrite + Data).
+  - Face texture and own-hub asset copy fall back to MO2 loose files when not in Steam Data.
+  - Vortex behavior unchanged (PluginReadRoot still equals GameDataPath).
+
+Safety:
+  - Still read-only against game Data, MO2 instance/mods/profiles, and Vortex staging.
+  - No change to saved mo2-settings.json schema.
+
+Verify: unit tests including Mo2MasterRootTests; full test suite + publish when packaging.
+Nexus: YES
+================================================================================
+## [3.2.7] - 2026-08-09 - deterministic MO2 instance/profile setup
+Agent: Codex
+Parent: FollowerForge 3.2.6
+
+Fixed:
+  - Added a GUI `MO2 setup...` dialog with an exact ModOrganizer.ini picker and profile selector.
+  - Added correct Settings/base_directory and case-insensitive %BASE_DIR% expansion.
+  - Relative mods/profiles/overwrite paths are now anchored to MO2's resolved base directory.
+  - Manual profile selection validates modlist.txt plus plugins.txt or loadorder.txt before indexing.
+  - Invalid manual choices no longer fall through to another MO2 instance, profile, or Vortex.
+  - Saved selections cancel stale indexing and start one serialized re-index for the chosen profile.
+  - Catalogue freshness now keys the exact profile, instance, and staging path, preventing stale cross-profile reuse when timestamps match.
+  - Added CLI --mo2-profile for deterministic command-line indexing.
+
+Safety:
+  - Saved selection is FollowerForge-owned LocalAppData only.
+  - No MO2, Vortex, Skyrim Data, or save file is modified.
+  - Vortex discovery behavior is unchanged.
+
+Rollback:
+  - Reinstall 3.2.6 and optionally remove LocalAppData\FollowerForge\mo2-settings.json.
+================================================================================
+## [3.2.4] - 2026-08-06 - MO2 switch during load; Export Head not false NO SCULPT
+Agent: Grok
+Parent: FollowerForge 3.2.3
+
+Fixed:
+  - Manager switch button is visible from first paint and works during Vortex/MO2 indexing
+    (cancel + reload; serialised catalogue build so a cancelled Vortex scan cannot stomp MO2).
+  - Startup status tells MO2 users to click the button instead of waiting on Vortex.
+  - NO SCULPT / slider-only warning only when jslot is slider-heavy AND HeadShapeCount <= 0.
+    RaceMenu Export Head bakes geometry into the NIF; empty jslot sculpt.data (FaceForge-style)
+    is normal and no longer mislabels a good export (e.g. Xija).
+
+Verify: unit tests + publish.
+Nexus: YES
+## [3.2.3] - 2026-08-05 - face noise, black-face probe, GUI MO2, overwrite path
+Agent: Grok
+Parent: FollowerForge 3.2.2
+
+Fixed:
+  - SavePCFace / missing .npc no longer listed as a quality note on every healthy Export Head.
+  - HeadShapeCount is probed at CharGen discovery (NifHeadFile); empty/corrupt heads block import.
+  - GUI: sidebar button switches Vortex ↔ Mod Organizer 2 (saved under LocalAppData\FollowerForge\prefer-mo2).
+  - MO2 Settings/overwrite_directory is stored on EnvironmentSnapshot and used by Mo2PathResolver
+    (RaceMenu exports in a non-default Overwrite are found again).
+  - CharGen under MO2 enumerates mod roots highest-first, then game Data (comment + order fixed).
+  - Write guard also protects external MO2 profiles_directory and custom overwrite path.
+  - User-facing CLI hints say FollowerForge.Cli.exe (not bare 'fforge').
+
+Verify: unit tests + publish.
+Nexus: YES
+## [3.2.2] - 2026-08-05 - brand: FollowerForge (pair with FaceForge)
+Agent: Grok
+Parent: FollowerForge 3.2.1
+
+Changed:
+  - Product display name, EXE, UI title, and ship docs unified to **FollowerForge** (no space).
+  - Matches GitHub repo ShugokiFable/FollowerForge and FaceForge compound branding.
+  - Publish stage folder and FollowerForge.exe (was "Follower Forge.exe").
+  - Nexus / README / generated package docs use FollowerForge.
+
+Verify: tests + publish package after rename.
+Nexus: YES
+## [3.2.1] - 2026-08-05 - hotfix: do not hang on houseCARL Vortex shim
+Agent: Grok
+Parent: FollowerForge 3.2.0
+
+Fixed:
+  - SKYRIM_MO2_INSTANCE no longer forces MO2 ahead of Vortex (houseCARL sets this to a shim).
+  - houseCARL-Shim instances are skipped unless FFORGE_ALLOW_HOUSECARL_SHIM=1.
+  - Catalogue freshness also checks manager kind so a half-built MO2 index is discarded.
+
+Verify: 285 tests pass; `fforge env` reports Vortex while SKYRIM_MO2_INSTANCE points at houseCARL-Shim.
+================================================================================
+================================================================================
+## [3.2.0] - 2026-08-05 - MO2, share package UX, face clarity, Nexus rewrite
+Agent: Grok
+Parent: FollowerForge 3.1.1
+
+Added:
+  - Mod Organizer 2 instance discovery (ModOrganizer.ini, selected profile, modlist priority).
+    Env: FFORGE_MO2_INSTANCE / SKYRIM_MO2_INSTANCE / --mo2-instance. Vortex still preferred when present.
+  - Private hardlink plugin view under LocalAppData\FollowerForge\mo2-view for Mutagen (no writes to game/MO2).
+  - MO2 loose + BSA asset indexing from enabled mods.
+  - SHARE-CHECKLIST.txt on every successful build; RSVexclude.ini when own-hub / author texture prefix applies.
+  - Author prefix normalisation helper (1-8 alnum, starts with letter).
+  - Stronger face quality notes: missing jslot/export vs NO SCULPT (slider-only) vs no tint; optional SavePCFace noted.
+  - Wizard status shows manager label (Vortex / Mod Organizer 2).
+  - Nexus page rewrite (character-first, voices/dialogue/creatures moat, honest SMP/MO2).
+
+Verify: 283 tests pass (278 prior + 5 new MO2/share tests).
+Runtime: MO2 live catalogue against a large personal instance is user-side; unit tests cover resolve + package docs.
+Nexus: YES (docs ready)
+================================================================================
+## [3.1.1] - 2026-08-05 - say so when a preset's shape cannot become a follower
+Agent: Claude
+Parent: FollowerForge 3.1.0
+
+Runtime basis:
+  - User report: a FaceForge-generated preset looked right on their own character but the
+    follower built from its exported head came out flat and unlike it.
+
+Investigation (all measured on the user's own install, nothing inferred):
+  - The shipped FaceGen mesh is a byte-exact copy of the RaceMenu export: same 7 shapes, same
+    vertex counts, and FaceGenRoundTripTests compares every vertex.
+  - The head is High Poly Head (00KLH_FemaleHeadImperial, 3832 verts) and IS deformed from the
+    HPH base mesh - 99.5% of vertices moved.
+  - The facegeom/facetint are deployed under the same naming every installed follower mod uses
+    (00000800.nif for an ESPFE), the plugin is enabled, and the NIF's tint slot was rewritten
+    to the generated facetint.
+  - The face tint DDS is 512x512 uncompressed 32-bit, byte-for-byte the same form as every
+    author-made follower's.
+  - NPC QNAM matches the tint's median colour, which is exactly what real follower mods do:
+    sampled 24 installed NPCs and QNAM equals the tint median on all of them.
+  So nothing FollowerForge writes is wrong.
+
+Root cause, upstream:
+  - The preset carries 99 RaceMenu slider values (CME_/EFM_/SPG_) and ZERO sculpt deltas. The
+    working preset on the same machine carries 944.
+  - Not one of those slider names exists as a vertex morph in ANY deployed chargen .tri -
+    checked both the vanilla and the High Poly Head one; both hold only the vanilla morph names.
+    They are node transforms applied to a live actor, which is why the jslot stores them beside
+    a "transforms" block the generated preset does not have at all.
+  - Only two things can reach an NPC's face: the vanilla 19 morphs, which go on the record, and
+    geometry, which bakes into the exported head. Slider-only shaping is neither, so it cannot
+    survive the trip however the follower is built.
+
+Added:
+  - The preset reader now counts non-zero sliders and sculpted vertices separately.
+  - A build warning, FACE_SLIDERS_WITHOUT_SCULPT, fires when a preset has 10+ sliders and no
+    sculpt at all, and names the fix (sculpt anything in RaceMenu before exporting the head).
+  - The face picker marks such an export NO SCULPT with the same explanation, so it is visible
+    at step 2 rather than after a build.
+  - Verified against the real preset: the warning fires and reads "99 RaceMenu slider values
+    and sculpts nothing".
+
+Files:
+  - src/AssetIndex/CharGenDiscovery.cs, src/Domain/FollowerProfile.cs
+  - src/BuildPipeline/FollowerBuilder.cs, src/Ui/PickerItem.cs
+  - src/Tests/SliderOnlyPresetTests.cs (new)
+
+Verify: 278 tests pass (275 at 3.1.0 + 3).
+Runtime: the warning is static analysis of the preset; the flat face itself is upstream and
+  is fixed by re-exporting the head with sculpt data present.
+Nexus: NO (local tool)
+
+================================================================================
+## [3.1.0] - 2026-08-05 - lore items build, the preset's complexion ships, and the lists finally read
+Agent: Claude
+Parent: FollowerForge 3.0.0
+Note: 3.0.1 was prepared and never released; its fixes are folded in here.
+
+Runtime basis:
+  - User report: selecting any book / misc item / potion failed the build outright, so no
+    follower carrying belongings could be produced at all.
+  - Same report: a High Poly Head follower built from an extended-slider (EFM) preset "looked
+    a bit worse" than in RaceMenu and showed a skin-tone seam at the neck.
+  - Follow-up: "SOSVoicePack voices are lost within weird creature voices"; the wizard as a
+    whole rated 6.5/10 and felt compacted.
+
+Fixed - lore items were rejected as equipment (blocking):
+  - The lore step writes books, keepsakes, food and ingredients into the same InventoryItems
+    list as gear, but the reference check still only accepted Armor and Weapon.
+  - Inventory now accepts what the engine takes in an NPC container list: Armor, Weapon, Book,
+    MiscItem, Ingestible, Ingredient. Spells and other non-carryables are still rejected.
+
+Fixed - the preset's face texture set was dropped (neck seam):
+  - A RaceMenu jslot records actor.headTexture, the TXST the face was built on; weight and hair
+    colour were read from that block and this was ignored.
+  - Unset, the follower inherits her race's DEFAULT complexion while the exported head keeps the
+    preset's - the two meet at a visible skin-tone seam at the neck.
+  - Now read, resolved against the live catalogue (with an ESL-mask retry, since RaceMenu writes
+    the id with no hint whether the plugin is light) and written to the NPC record's FTST.
+  - An unresolvable set warns (FACE_HEAD_TEXTURE_UNRESOLVED) rather than failing the build.
+
+Fixed - every voice pack voice claimed its files were missing:
+  - RecordIndexer classified voices with no file-existence check, because the asset index is
+    built AFTER the records and so is always empty at that moment. FilesVerified was therefore
+    false for all 17 SOS voices even with every .fuz present.
+  - Verification now happens where the catalogue is complete, against the folder the files
+    actually live in - the PART plugin's folder, not the master's.
+
+Voice list - ordered by what a voice can actually do:
+  - Measured here: 1,018 voice types - 24 vanilla, 17 SOS pack, 379 unverified modded, 598
+    creature/unique. Alphabetical order put "VP_11_Aria" under V, below hundreds of mudcrabs.
+  - Order is now vanilla -> voice pack -> other mod voices -> no-follower-lines, then by name.
+  - A "Show" filter hides the 598 creature and unique voices by default and says how many.
+  - Each row carries a chip and a sentence: what she gets, and whether the files are on disk.
+
+Every list reads differently:
+  - One row template for all of them: name, a muted line of why it matters, and a colour chip.
+    Previously every row was a single dense "Name - detail" string from ToString().
+  - Races, items, places and faces are chipped BASE GAME / MOD / READY / CANNOT BUILD, so the
+    cost to whoever installs her is visible without reading.
+  - Vortex's bookkeeping is stripped from mod names: "Call Of The Deep-154194-1-1-1754764218"
+    reads as "Call Of The Deep". The build report keeps the full folder name as provenance.
+
+Layout:
+  - Window 1320x900 (was 1180x820).
+  - Step 1 was a single column that overflowed the window and painted over the status bar; it
+    is now two columns and fits.
+  - Step 2 stacked one exported face above a squeezed race list; face and race are now side by
+    side and all ten vanilla races are visible at once.
+
+Investigated and cleared - the exported head mesh:
+  - Sculpt and extended (EFM) slider work lives entirely in the exported NIF's vertices, so a
+    lossy save would soften a high-poly face exactly as described.
+  - FaceGenRoundTripTests runs the real dirty swap over every CharGen export on the machine and
+    compares every vertex before and after. Bit-exact, High Poly Head included. The mesh path
+    was never the cause; the missing head texture set was.
+
+Files:
+  - src/BuildPipeline/FollowerBuilder.cs, src/AssetIndex/CharGenDiscovery.cs
+  - src/Domain/FollowerProfile.cs, src/SkyrimRecords/FollowerCompiler.cs
+  - src/SkyrimRecords/VoiceRanking.cs (new), src/SkyrimRecords/VoiceClassifier.cs
+  - src/FaceGen/NifHeadFile.cs, src/Ui/PickerItem.cs, src/Ui/ModNames.cs (new)
+  - src/Ui/WizardWindow.axaml, src/Ui/WizardWindow.axaml.cs
+  - src/Tests: InventoryReferenceTests, FaceGenRoundTripTests, ModNameTests,
+    VoiceRankingTests (all new), CharGenDiscoveryTests, FollowerOptionsTests
+
+Verify: 275 tests pass (249 at 3.0.0 + 26).
+  - End-to-end CLI build carrying the exact five records that failed for the user: BUILD OK.
+  - FTST read back from shipped plugin bytes: 00051648 -> 051648:Skyrim.esm (absent before).
+  - Wizard driven and screenshotted on the real load order: tiers, chips and both new layouts
+    confirmed rendering, SOS voices reading "voice files installed".
+Runtime: UNTESTED in game. The four scripted features carry over from 3.0.0 unchanged and
+  remain runtime-unconfirmed.
+Nexus: NO (local tool)
+
+================================================================================
+## [3.0.0] - 2026-07-29 - the follower suite
+Agent: Claude
+Parent: FollowerForge 2.1.3
+
+Everything below this entry shipped during 2.1.3's development and is released as 3.0.0.
+Headline: custom voiced dialogue, contextual reactions, vampires, werewolf and mod
+transformations, creature followers, enemy-to-ally, optional evolution, random spawns,
+NPC relationships, AI routines, lore inventory, and marriage reporting read from the
+actual load order.
+
+DISMISS / GOING HOME - verified rather than assumed. Vanilla's dismiss is only:
+    AddToFaction(pDismissedFollower)
+    SetPlayerTeammate(false)
+    RemoveFromFaction(pCurrentHireling)
+    EvaluatePackage()
+  There is no MoveTo and no editor-location call anywhere in it, so where a dismissed follower
+  goes is decided ENTIRELY by her AI package. Ours already gives her a sandbox package, so she
+  settles where she was placed - which is why this appeared to "just work".
+
+  That exposed a real bug: an EDITOR-location sandbox sends her back to her ORIGINAL placement,
+  which is wrong once something has moved her. A randomly-spawned or enemy-to-ally follower would
+  walk cross-country back to a marker after being dismissed. Those followers now get
+  SandboxCurrentLocation256 instead, so they settle wherever they actually are.
+
+  Note for "Leave it to the game": with no package at all, nothing directs her after dismissal.
+  Follower frameworks (NFF, My Home Is Your Home) override all of this anyway once the player
+  sets a home in game.
+
+SCRIPTED-FOLLOWER WARNING. Any build carrying one of the four optional scripts now emits
+  SCRIPTED_FOLLOWER once, and the experimental panel says the same: scripted followers can behave
+  oddly if also imported into a follower framework. Ordinary followers are unaffected.
+
+RELEASE STATUS - stated plainly rather than implied:
+  Record-only features are evidence-backed and structurally verified against shipped mods.
+  The four SCRIPT features (evolution, transformation, random spawn, enemy-to-ally) compile and
+  bind correctly but have NEVER been confirmed running in Skyrim. test-in-game.txt ships with
+  every follower and names the exact symptom of failure for each.
+
+================================================================================
+
+================================================================================
+## [3.0.0 development] — 2026-07-25 — face pairing fix + voice-synthesis groundwork
+Agent: Claude
+
+FACE MATCHING BUG (user-reported): 'A1_Imperial_Matilda_head' failed at BUILD time with
+  "has a head export but no readable matching jslot ... re-save the preset" — but the preset
+  existed all along as 'A1_Imperial_Matilda_Replacer.jslot'. Pairing only stripped a trailing
+  "_head", so any preset saved with a different decoration was missed and the advice given to
+  the user was simply wrong. NormalizeKey now peels head/replacer/sculpt/preset/chargen/export/
+  final/face repeatedly, then falls back to a single UNAMBIGUOUS prefix match; equal-length
+  rivals are left unmatched rather than guessed, because pairing a face with the wrong preset
+  would silently build the wrong follower.
+  Measured on this machine: 16/20 usable -> 20/20 usable
+  (recovered: Matilda, High Elf Eva, Samantha via "_Replacer"; Morya via "Sculpt").
+
+LOOK STEP now states readiness up front. CharGenExport.Blocker/IsUsable is the single source of
+  truth shared by the picker and the builder, so a face can no longer read "tint OK" at step 2
+  and then fail with FACE_PRESET_MISSING at step 7. Unusable faces sort last, read
+  "CANNOT BUILD: <reason>", and selecting one warns immediately. New CLI: `fforge faces`.
+
+VOICE SYNTHESIS GROUNDWORK (toward optional custom lines in step 3):
+  AssetIndex/VoiceModelCatalog.cs maps voice types onto installed xVASynth models
+  ("FemaleEvenToned" -> "sk_femaleeventoned") and locates the lip/fuz tools.
+  New CLI: `fforge voices`. Measured: 105 models, 46 of 1018 voice types speakable,
+  lip/fuz toolchain present.
+  Verified by direct inspection (NOT assumed):
+    - xVASynth serves a local HTTP API on port 8008. Standalone server is
+      resources/app/cpython_cpu/server.exe and MUST run with cwd = resources/app
+      (it loads ./javascript/script.js and exits otherwise). Confirmed by starting it.
+    - Synthesis endpoints: /synthesize, /synthesizeSimple, /synthesize_batch.
+      /synthesize takes {pluginsContext, modelType, sequence, pace, outfile, vocoder}.
+      /loadModel takes {model, modelType, pluginsContext}.
+      /outputAudio is the post-process hook lip_fuz attaches to, NOT the TTS call.
+    - lip/fuz chain, commands read verbatim from plugins/lip_fuz/main.py:
+        FaceFXWrapper.exe <game> USEnglish FonixData.cdf "<wav>" "<resampled>" "<lip>" "<text>"
+        xWMAEncode.exe -b 160000 "<wav>" "<xwm>"
+        fuz_extractor.exe -c "<fuz>" "<lip>" "<xwm>"
+    - Shipping layout confirmed against Laci Living Doll (1,674 .fuz):
+        sound/voice/<Plugin>.esp/<VoiceType>/<quest>_<topic>_<INFO FormID 8hex>_1.fuz
+        plus SEQ/<Plugin>.seq
+VOICE PIPELINE, first vertical slice:
+  SkyrimRecords/DialogueAssets.cs — VoiceFileNaming + SeqWriter, both derived from a shipped mod
+  rather than assumed. The two conventions differ in a way that fails SILENTLY:
+    - .fuz filename uses the record's LOCAL id with the master index ZEROED
+      (INFO 0700082B -> "…_0000082B_1.fuz"). Wrong form = follower mouths a line with no sound.
+    - .seq entries keep the plugin's OWN master index (07000801), little-endian, no header,
+      no signature. Wrong form = the dialogue quest never starts, with no error.
+  AssetIndex/VoiceSynthesizer.cs — starts xVASynth's server (cwd must be resources/app),
+  /loadModel + /synthesize, then FaceFXWrapper -> xWMAEncode -> fuz_extractor. Only stops a
+  server it started itself, so a user's own xVASynth session is left alone.
+
+  BUG CAUGHT BY TEST: SeqWriter first wrote Mutagen's FormKey.ID directly, producing 00000801
+  where the game needs 07000801 — Mutagen's ID carries only the 24-bit local id, so the plugin's
+  master index must be supplied. Now an explicit required parameter, and the test asserts the
+  output byte-for-byte against Laci's real abcd_laci.seq.
+
+  PIPELINE PROVEN END TO END, 13.1s for one line (CPU):
+    server ready 10.1s (cold) | loadModel 200 in 2.1s | synthesize 200 in 0.5s -> 75,820-byte wav
+    FaceFXWrapper 0.3s -> 1,842-byte .lip | xWMAEncode + fuz_extractor -> 17,546-byte .fuz
+    magic FUZE, lipSize 1842 (non-zero = the mouth actually moves)
+
+  MY FIRST CLIENT WAS WRONG AND HUNG. Corrected against Mantella's xvasynth.py, which drives the
+  same server fast enough for live conversation:
+    - address must be 127.0.0.1, NOT "localhost" — that resolves to ::1 first on Windows and the
+      connection stalls rather than failing fast. This is what left a test polling for hours.
+    - liveness is a plain GET "/" ; POSTing /checkReady with a guessed body throws server-side
+      and proves nothing.
+    - the server is launched with cwd at the xVASynth ROOT (not resources/app).
+    - /synthesize must carry the model's own base_emb (games[0].base_speaker_emb from the model
+      json, flattened) plus base_lang/useSR/useCleanup, or an xVAPitch model returns unusable audio.
+      VoiceModel now carries BaseSpeakerEmb; sk_femaleeventoned is modelType "xVAPitch".
+    - FaceFXWrapper runs from the lip_fuz folder with a RELATIVE FonixData.cdf. We deliberately do
+      NOT copy Mantella's trick of writing run_mantella_command.bat into the xVASynth install —
+      that is someone else's installed tool.
+    - xWMAEncode warns "bitrate 160000 -> using 48000"; harmless, matches what Mantella ships.
+    - THE ACTUAL KILLER, found in xVASynth's own server.log: every request was silently doing
+      nothing because server.py line 155 runs int(self.headers['Content-Length']) unconditionally,
+      and .NET's JsonContent streams CHUNKED with no Content-Length, so the handler threw before
+      reading a byte. Python's requests always sends the header, which is why Mantella never hit
+      it. Now serialised to a buffered StringContent so the length is set.
+    - The server also closes the socket without framing a reply; Python shrugs, .NET raises
+      HttpIOException. Treated as "delivered" and verified by the output file instead, matching
+      Mantella's own "Connection aborted ... So it is alive" handling.
+  C# end-to-end test now passes in 809ms against the real install (server already warm).
+
+CUSTOM DIALOGUE, END TO END. Records, audio, and the step-3 UI are now wired together, so a
+  follower built from the wizard actually speaks lines the user wrote.
+
+  Structure copied from a shipped follower mod (Laci Living Doll: 8 quests, 43 topics) by
+  dumping its records with Mutagen, not reconstructed from documentation:
+    - QUST flags 0x11 (StartGameEnabled + the unnamed bit the CK always sets), priority 0,
+      type None, ZERO aliases.
+    - The "is this the right speaker" test lives ONCE on the quest (DialogConditions), not on
+      every INFO.
+    - Hello -> HELO/Misc, Goodbye -> GBYE/Misc, Idle -> IDLE/Misc; a player-pickable topic is
+      CUST/Topic and needs a TopLevel DialogBranch or it never appears in the menu.
+    - INFO flags Random (alternatives), plus Goodbye on a player topic.
+
+  DELIBERATE DEPARTURE from how shipped follower mods do it: Laci gates dialogue on
+  GetIsVoiceType, which is safe only because she ships a bespoke voice type nobody else has.
+  FollowerForge offers STOCK voices, so that same condition would put the user's custom lines
+  in the mouth of every Nord woman in Skyrim. We gate on GetIsID against the generated NPC,
+  which is exact whichever voice was picked. Pinned by test.
+
+  SEQ INDEXING FOR LIGHT PLUGINS — checked rather than assumed. An ESPFE's records live at
+  runtime FormIDs FE-xxx-yyy, so the SEQ could plausibly need that form. It does not. Surveyed
+  every shipped .seq in this install: 926 quest FormIDs across 215 plugins, 182 of them
+  ESL-flagged, and EXACTLY ZERO use the FE form. The in-file master-count index is correct for
+  light and regular plugins alike.
+
+  Dialogue records are allocated LAST, so adding lines to an existing follower does not shift
+  her NPC/ACHR FormIDs and break saves that reference her. Pinned by test.
+
+  CHILD VOICES ARE REFUSED (SkyrimRecords/VoiceSuitability.cs). Enforced in the BUILD, not just
+  hidden in the wizard, so a hand-written profile or a CLI build cannot route around it.
+  "child"/"kid" match anywhere; "boy"/"girl" only as whole words so a name like "Boyle" is not
+  a false positive. Measured: 12 of 1,004 installed voice types blocked. Verified by building
+  with FemaleChild -> VOICE_UNSUITABLE, BUILD FAILED (not published).
+
+  Failures here are ERRORS, not warnings, on purpose: a follower whose quest silently never
+  starts, or whose lines are mute, looks identical to a working one until you are standing in
+  front of her in game. Turning synthesis off deliberately is a warning instead.
+
+  MEASURED END TO END (`fforge build`, 4 lines across 3 topics):
+    Voiced 4/4 lines | SHIP_GATE_PASS HEDR=1.71 numRec=26 ESL=True
+    4x .fuz written to sound/voice/FF_VoiceProbe.esp/FemaleEvenToned/, all magic FUZE with
+    lipSize 1119-2509 bytes (non-zero = the mouth moves)
+    SEQ = 01000803: quest local 0x803 at master index 1 (1 master), 4 bytes
+
+SILENT DIALOGUE FIXED (user-reported: "the mouth keeps moving for too long ... there is 0 audio").
+  Both symptoms were ONE bug, and not the one they look like. The engine builds a voice filename
+  from the quest EditorID cut to 10 characters and the topic EditorID cut to 15. We wrote full
+  names, so the file was never found — you get the subtitle and a generic mouth animation of
+  default length, which reads as broken lip sync rather than a missing file.
+    was: FF_LipProbe_Dialogue_FF_LipProbe_Topic01_00000805_1.fuz  (never found)
+    now: FF_LipProb_FF_LipProbe_Top_00000805_1.fuz
+  The .fuz itself was fine all along and still is: XWMA tag 353, mono, 44100 Hz, 48 kbps,
+  byte-for-byte the same shape as Eudora, Karla Raven and FDE Marcurio.
+
+  RULE ESTABLISHED BY CONSENSUS, NOT BY GUESSING. Every installed plugin shipping loose voice
+  files was checked against its own records, searching all truncation lengths for the one that
+  reproduces its real filenames. 79 of 114 plugins land on exactly 10/15 — INCLUDING Skyrim.esm,
+  which is the engine's own ground truth. Eudora and Karla Raven each have a unique optimum at
+  10/15 with no ties. The rest have EditorIDs too short to distinguish it, or ship a mix of both
+  forms (FDE Marcurio has 143 full-name and 40 truncated files, so some of its lines are
+  presumably silent in game too). Tests pin real rows read out of those mods, verified against
+  files that exist on disk.
+
+  Also matched xVASynth's own lip_fuz plugin: the text handed to FaceFXWrapper is now stripped to
+  letters and spaces (it does re.sub(r'[^a-zA-Z\s]+', '', text)). Punctuation degrades phoneme
+  timing, and a quote would break the command line. The subtitle keeps the user's original text.
+
+VOICE COVERAGE — "what does she already say?" (SkyrimRecords/VoiceCoverageScanner.cs)
+  Requested as RDO support. Investigating RDO showed there is nothing to ADD: it gates dialogue
+  on GetIsVoiceType, and its aaa_RDOPreventedActorsList is an EXCLUSION list that ships empty.
+  A generated follower is covered the moment she uses a voice RDO handles. Inventing records for
+  it would have been busywork that changed nothing.
+
+  So the feature is detection, and it generalises to every dialogue mod rather than special-casing
+  RDO: scan installed plugins for quests gated on a voice type (following FormLists), count the
+  lines, and report what each voice inherits. Negative conditions are ignored, since "is NOT this
+  voice" says nothing about who does get the line.
+
+  MEASURED on this load order (`fforge voice-coverage --scan`):
+    FemaleEvenToned  +4,613 lines from 8 mods
+      OOD.esp 1814 | Skyrim.esm 1423 | Followers React to Crafting 669 | RDO 462 | +4 more
+    Found without being told about any of them: RDO, RDO Updated, OOD, Followers React to
+    Crafting, Chattier Hunters and Fishermen, NPCModTowns, ...
+  Surfaced in the voice picker label, and in the build report as VOICE_EXTRA_DIALOGUE, with the
+  reminder that anyone installing her needs those mods to hear them. A voice that inherits
+  nothing now says so (VOICE_NO_EXTRA_DIALOGUE) instead of looking equivalent.
+
+AI PACKAGES + RELATIONSHIP RANK (Domain/Behavior.cs, FollowerCompiler.AddPackages)
+
+  I FIRST CLAIMED a follower with no package "stands rooted doing nothing". That was wrong, and
+  the user caught it — their test follower sat down. Checked: 3,066 of Skyrim.esm's 5,118 NPCs
+  carry NO package on the record, and Skyrim is plainly full of NPCs sitting and eating, so the
+  engine sandboxes actors by default. Packages are therefore about CONTROL, not animation:
+  how far she strays, whether she keeps to her spot, and whether she sleeps.
+
+  Vanilla packages are REFERENCED, never authored, which is what shipped followers do
+  (Willow -> DefaultSandboxEditorLocation512, Laci -> ...256). Adds no master beyond Skyrim.esm.
+  Chosen by measured usage in Skyrim.esm rather than taste:
+    01B217 DefaultSandboxEditorLocation512   307 NPCs   "uses the room she is in" (default)
+    09361E DefaultSandboxEditorLocation256     -        "keeps to her spot" (Laci uses it)
+    0956B8 DefaultSandboxCurrentLocation256   12 NPCs   "settles wherever she is"
+    01B210 DefaultSleepEditorLoc24x8         254 NPCs   "goes to bed at night"
+
+  ORDER IS THE WHOLE GAME and it fails silently. Skyrim runs the first package whose conditions
+  hold, so a broad sandbox above a sleep package means she never sleeps and nothing reports it.
+  Vanilla is unambiguous: Faendal lists nine timed eat/work/sleep packages and leaves the
+  open-ended one LAST; the Whiterun housecarl ends with DefaultSandboxEditorLocation512 as her
+  fallback. We emit user-chosen packages, then sleep, then sandbox. Pinned by test.
+
+  RELATIONSHIP RANK is now selectable instead of hardcoded Ally. This is not flavour: mods that
+  vary dialogue by rank — RDO above all — choose different lines for a Friend than a Confidant,
+  so it decides which of the inherited lines she actually uses. Our enum is cast to Mutagen's
+  Relationship.RankType; the values were checked to match rather than assumed
+  (0 Lover .. 8 Archnemesis).
+
+  VERIFIED BY READING THE SHIPPED PLUGIN BACK, not by trusting the compiler:
+    NPC FF_RoutineProbe_NPC  packages=2
+      [0] DefaultSleepEditorLoc24x8      (01B210:Skyrim.esm)
+      [1] DefaultSandboxEditorLocation512 (01B217:Skyrim.esm)
+    RELA rank=Confidant  parent=000800:FF_RoutineProbe.esp child=000007:Skyrim.esm
+    masters: Skyrim.esm
+
+  DELIBERATELY NOT ADDED: armor addons (ARMA). ARMA binds a race to specific meshes and skin
+  textures. We leave WornArmor unset so she inherits the race default, which is exactly why the
+  user's 3BA/OBody setup already works on generated followers. Authoring ARMA would break that.
+
+  NOT yet built: harvesting individual reaction triggers as editable templates; body-replacer
+  compatibility options (3BA/BHUNP/CBBE/TBD/UNP, OBody); free-form faction/keyword editing.
+
+MARRIAGE: NOW REPORTED FROM THE ACTUAL LOAD ORDER, NOT FROM VANILLA
+  I called this a bug and was wrong; the user pushed back and was right. Vanilla gates the
+  wedding proposal on a FormList of eight voice types (VoicesMarriageNeutral, 0CCD78), so reading
+  that alone says FemaleElfHaughty cannot marry. It can: Relationship Dialogue Overhaul ships 51
+  marriage INFOs of its own covering ~28 more voices. Checking the FormList was the wrong test.
+
+  Scanned all 2,992 installed plugins: NOTHING overrides the FormList, so the vanilla list really
+  is eight. Mods add marriage by shipping their own dialogue instead, which is the route that
+  needed detecting.
+
+  VoiceCoverageScanner now records marriage support alongside line coverage, on the scan the user
+  already runs. Two routes: the base game's FormList (Vanilla = true, needs nothing installed),
+  and any plugin whose dialogue conditions reference the marriage faction or that list.
+
+  MEASURED on this load order: 48 voice types can marry - 8 vanilla, 40 mod-supplied.
+    [Warning] MARRIAGE_NEEDS_MOD: 'FemaleElfHaughty' can only marry because of
+      Immersive Rejections.esp, Relationship Dialogue Overhaul.esp. Anyone who installs her
+      needs that too, or the wedding option will not appear for them.
+    [Info] MARRIAGE_VANILLA: 'FemaleEvenToned' can marry with no extra mods.
+  It also found Immersive Rejections unprompted, which I did not know added marriage voices.
+
+  A first cut got this wrong too: every voice lists Skyrim.esm (its own marriage INFOs name
+  voices), so "is Skyrim.esm the only plugin" never fired. The test has to be FormList membership,
+  which is now stored explicitly as MarriageSupport.Vanilla.
+
+TEST IN GAME (BuildPipeline/TestingNotes.cs)
+  Every build now writes test-in-game.txt with the console commands for whichever features that
+  follower actually has - and only those. Written because four scripted features (evolution,
+  transformation, random spawn, enemy-to-ally) are stacked up with no runtime confirmation, and
+  each needs a different check.
+
+  Commands use `help "<name>" 0` rather than literal FormIDs: a light plugin's records live at
+  FE-xxx-yyy where xxx is its load-order slot, so any number printed here would be wrong for
+  everyone else.
+
+  Each section names the symptom that means the feature did not run - "if Progress never moves,
+  OnCombatStateChanged is not firing"; "getdisabled 1 means the summon never ran"; "getquestrunning
+  0 means the SEQ file did not take".
+
+BOOKS AND BELONGINGS + CONTEXTUAL REACTIONS (earlier this session, published together)
+  BOOK/MISC/ALCH/INGR are now indexed - none of them were, which is why lore items were
+  impossible. New "Books & belongings" tab feeds her ordinary inventory.
+
+  Dialogue triggers 4 -> 13, and any line can now be gated on place and time via INFO conditions
+  (LocationHasKeyword + GetCurrentTime, both proven by Laci). 45 LocType keywords, so "reacts to
+  caves" needs no trigger per situation.
+
+  Mutagen's Subtype enum and the engine's four-character code DO NOT line up for the rarer
+  subtypes - vanilla shows Hit->BLOC and Flee->TAUT. Every pair was read off a working follower
+  mod instead: Laci confirms HELO/GBYE/IDLE/CUST, Karla Raven supplies the combat set. Pinned by
+  a 13-case test.
+
+  Night is two conditions OR'd: the range wraps midnight, so AND would never be true.
+
+FIXED: the RaceSuitability catalogue test failed the Release run on a damaged cache
+  (SQLite "database disk image is malformed"). A broken cache is the app's problem to repair
+  (QuarantineBrokenCache), not a reason to fail the suite, so the test skips like the
+  missing-file path. Cause of the damage was almost certainly me killing UI boot-check processes
+  mid-catalogue-rebuild during this session.
+
+ENEMY TO ALLY — THE ACTUAL LOOP (Domain/EnemyToAlly.cs, EnemyToAllyCompiler,
+  BuildPipeline/Resources/FF_Summon.psc)
+  CORRECTION: the previous entry implemented "spawn at a random spot" and called that E2A. That
+  was a misreading. The user wanted the real loop — find her, DEFEAT her, and only then can you
+  summon her ally form. Random spawning is one part of it, not the feature.
+
+  The chain, read out of AsianFollowers.esp rather than invented, and it is almost entirely
+  RECORDS with a single script for the summon:
+    DaeEnemy   ess=False  factions=[TrollFaction, SkeeverFaction, ChaurusFaction, FalmerFaction,
+                                    DwarvenAutomatonFaction]     item: spell tome
+    Dae        ess=True   factions=[PotentialMarriage, PotentialFollower, CurrentFollower]
+    Book       "Spell Tome: Teleport Dae"  teaches -> AAA_TeleportSpellBGDae
+    Spell      FireAndForget / Self -> MGEF archetype=Script -> KWYK_Teleport
+    ally ACHR  000815  initiallyDisabled=TRUE  persistent=TRUE
+  THERE IS NO DEATH SCRIPT ANYWHERE. The tome simply rides in the enemy's inventory, so beating
+  her is what hands it over. Ours does the same, and a test asserts no NPC carries a script.
+
+  Two NPCs, one character: the hostile copy is duplicated from the follower, then stripped of
+  Essential/Protected and of the follower factions — keeping those would make her recruitable
+  before she was ever beaten. She joins bandits, draugr, warlocks or creatures so the dungeon's
+  own inhabitants ignore her, which is what the E2A mods do with their per-follower faction mix.
+
+  The ally is her ordinary placed reference, flipped to start disabled and left persistent — the
+  spell holds a reference to her, so it must resolve before her cell has ever loaded. Enabling
+  that same reference (rather than spawning a copy) keeps one identity, so her relationships and
+  dialogue conditions still apply after she is summoned.
+
+  Forms verified, not guessed: BanditFaction 01BCC0, DraugrFaction 02430D, WarlockFaction 026724,
+  CreatureFaction 000013, PredatorFaction 02E893, EitherHand 013F44, and PlayerRef 000014 — which
+  has no EditorID, so the evidence is that E2A's own summon effect binds exactly that.
+
+  Refuses the one setup that cannot work: enabled with nowhere for her hostile form to appear
+  means she can never be found, beaten or recruited (E2A_NO_LOCATIONS).
+
+  MEASURED, reading the shipped plugin back:
+    NPC FF_Nadia_NPC    factions=[PotentialFollower, CurrentFollower, PlayerFaction]  items=[]
+    NPC FF_Nadia_Enemy  factions=[BanditFaction]   items=[FF_Nadia_SummonTome]
+    BOOK FF_Nadia_SummonTome "Spell Tome: Summon Nadia" teaches=FF_Nadia_SummonSpell
+    SPEL FF_Nadia_SummonSpell "Summon Nadia" cast=FireAndForget target=Self
+    MGEF FF_Nadia_SummonEffect archetype=Script
+         FF_Summon.AllyToSummon = 000802   FF_Summon.PlayerRef = 000014:Skyrim.esm
+    ACHR 000802 base=FF_Nadia_NPC disabled=True
+    QUST FF_Nadia_SpawnQuest 'FF_RandomSpawn' props=[SpawnBase, Spot1, Spot2, Spot3]
+    masters: Skyrim.esm      SHIP_GATE_PASS numRec=38 ESL=True
+  FF_RandomSpawn gained a SpawnBase property: with it the quest places the ENEMY at the chosen
+  spot; without it, it moves the follower as before.
+
+RANDOM SPAWN POINTS — the Enemy-to-Ally idea (SkyrimRecords/RandomSpawnCompiler.cs,
+  BuildPipeline/Resources/FF_RandomSpawn.psc)
+  Asked for an "E2A option instead of set location". Read how E2A actually works rather than
+  assuming — KWYK_Quest.psc is nine lines:
+    Event OnInit()
+      int random = Utility.RandomInt(0, 2)
+      ... spot.PlaceActorAtMe(MyActorBase1)
+  and in the plugin: QUST flags 0x111, no aliases, properties MyActorBase1 + spot0/1/2, where
+  the spots are EXISTING PLACED NPCs in vanilla dungeons (10EB74, 0A35F7, 08EAAE — all
+  Skyrim.esm). She appears next to enemies, which is the whole premise.
+
+  WE DO NOT SHIP THEIR SCRIPT, and that is the point rather than an oversight. Every E2A mod
+  ships an identical KWYK_Quest.pex — which is exactly why the user's screenshot shows them all
+  conflicting with each other. Adding another copy would join that pile AND would mean
+  redistributing someone else's script. Ours is FF_RandomSpawn; a test asserts the name is ours.
+
+  ONE DELIBERATE DIFFERENCE: they spawn a fresh copy with PlaceActorAtMe. We MOVE the follower
+  who was already placed, so she keeps one persistent reference — dialogue conditions,
+  relationships and follower frameworks all track that reference, and a spawned duplicate would
+  have an identity nothing else in the plugin knows about.
+
+  An invisible XMarker (00003B, verified in Skyrim.esm) is placed at each spot through the same
+  CellPlacer path the follower uses, so the room's real lighting is preserved exactly as for a
+  normal placement. Markers are persistent, because a script property must resolve before its
+  cell has ever loaded. Four spots is the ceiling — that is what the script holds — and asking
+  for more is capped with a warning rather than silently truncated.
+
+  MEASURED, reading the shipped plugin back:
+    markers placed: 3
+      FF_RoamProbe_SpawnMarker01  base=00003B:Skyrim.esm  persistent=True  pos=2328.4, 144.7, 0
+      FF_RoamProbe_SpawnMarker02  base=00003B:Skyrim.esm  persistent=True  pos=1139.5, -96.8, 0.5
+      FF_RoamProbe_SpawnMarker03  base=00003B:Skyrim.esm  persistent=True  pos=1792, -160, 0
+    QUST FF_RoamProbe_SpawnQuest flags=0x11 script 'FF_RandomSpawn'
+      Follower = 000802  Spot1..3 = 000803/4/5
+    masters: Skyrim.esm      SHIP_GATE_PASS numRec=26 ESL=True
+  Places used: The Frozen Hearth, Moorside Inn, Windpeak Inn — all from the existing library, so
+  no new dependency. If the script never runs she simply stays where she was placed.
+
+NON-HUMANOID AND CREATURE FOLLOWERS (RaceSuitability gains a Creature class)
+  Asked whether "Steadfast Machine's Maiden" is a custom race or an armour. Measured, not
+  guessed — and the three reference mods split into two different answers:
+    SteadfastMachinesmaiden  RACE AA00SteadfastMachineMaidenRace  headData=TRUE   25 ARMO/46 ARMA
+    SteadfastMariaFollower   RACE AA00SteadfastMariaFollowerRace  headData=TRUE
+    HSFBabyDragon            RACE BabyDragonRaceFire/Frost/...    headData=FALSE  wornArmor set
+
+  So the mech maidens are CUSTOM RACES, not armour — and because they have head data they were
+  already buildable here under "show custom races", face and all. A dwarven mech is not a special
+  case; a dragon is.
+
+  Head data is the line that matters, so the filter now says so. Races with no head data (or
+  creature-shaped EditorIDs) were classed Unsuitable and vanished entirely, which made creature
+  followers like the Baby Dragon impossible to build. They are now RaceClass.Creature: still
+  hidden by default, offered behind an explicit "Include creatures" tick.
+
+  CHILD RACES REMAIN EXCLUDED UNCONDITIONALLY — the creature option does not reach them, and a
+  test asserts that with includeCreatures: true.
+
+  One combination cannot work and is refused rather than warned about: a creature race has no
+  head data, so a RaceMenu face can never be built for it.
+    CREATURE_RACE_HAS_NO_FACE: 'BabyDragonRace' is a creature race with no head data, so the
+    face 'A1_High Elf_Eva_head' cannot be built for her ... BUILD FAILED (not published)
+  Everything else degrades rather than breaks, so it is reported and left to the user.
+
+  MEASURED, building against the real installed race:
+    Masters : Skyrim.esm, Update.esm, Dragonborn.esm, HSFBabyDragon.esp
+    CREATURE_RACE: '...she has no face to customise, equipment will usually not show, and
+      dialogue depends entirely on what that race's mod provides.'
+    SHARING_REQUIRES: Anyone who installs her also needs: HSFBabyDragon.esp
+    SHIP_GATE_PASS  BUILD OK
+
+  No animations or skeletons are authored — the follower uses the installed race's own, which is
+  the whole point of driving this from records the user already has.
+
+VAMPIRE FOLLOWERS — and it needs NO script (SkyrimRecords/VampireRaces.cs)
+  Read off Sybille Stentor rather than assumed:
+    NPC SybilleStentor  race=BretonRaceVampire
+      keyword Vampire
+      keyword ActorTypeUndead
+  ...and that is the whole of it. No vampire spells, no abilities, no vampire faction on the
+  record. So the option swaps her race for its vampire form and adds those two keywords, and
+  deliberately adds nothing else — inventing extras is how a follower ends up subtly wrong.
+  Pinned by a test that compares a vampire against a mortal build and asserts the spell and
+  faction counts are IDENTICAL.
+
+  The vampire form is found by EditorID convention (<race>Vampire), which all eleven vanilla
+  playable races follow and custom-race mods copy. Confirmed against the live load order: e.g.
+  YW_019_RaceWenchJV from WenchesJV.esp resolves correctly. A race with no vampire form is an
+  ERROR naming both races, not a shrug:
+    VAMPIRE_RACE_MISSING: 'ZckeZcktThusneldaFollowerNordRace' has no vampire form
+    ('...Vampire' is not installed) ... BUILD FAILED (not published)
+  The alternative is handing someone a "vampire" who simply is not one, with nothing to explain
+  why.
+
+  VERIFIED in the shipped plugin:
+    NPC FF_VampireProbe_NPC  race=NordRaceVampire
+      keyword Vampire | keyword ActorTypeUndead
+      spells=0  factions=3  scripts=0        masters: Skyrim.esm
+
+  WEREWOLF IS NOT SYMMETRIC. Skyrim.esm contains exactly one werewolf race, WerewolfBeastRace —
+  there is no NordRaceWerewolf. So a werewolf is a TRANSFORMATION, not a race swap, and it lives
+  in the feature below rather than beside vampirism.
+
+TRANSFORMATION — EXPERIMENTAL, OPT-IN, OFF BY DEFAULT (Domain/Transformation.cs,
+  TransformCompiler, BuildPipeline/Resources/FF_Transform.psc)
+  One mechanism covers both things asked for: werewolves, and the mod-supplied transformations
+  the attached followers use.
+
+  THE REVERT IS DOCUMENTED, NOT GUESSED. Actor.psc says of SetRace:
+    "akRace - OPTIONAL (Def=None) ... Default, no race, to switch back to the original race."
+  So SetRace(beast) transforms and SetRace() restores whatever race she was built with. No
+  vanilla script does the werewolf change (it is engine-side for the player), so this is the
+  documented API rather than a copied sequence.
+
+  WEREWOLF fills itself in from vanilla: WerewolfBeastRace (0CDD84) plus WerewolfChangeFX
+  (0F8208), which is a FireAndForget Self spell with a Script archetype — the game's own change
+  effect. A test asserts every record the script points at comes from Skyrim.esm, so a "vanilla"
+  werewolf follower cannot quietly acquire a dependency.
+
+  CUSTOM points at the user's own records: a race to become, a spell to cast, or both. Spell-only
+  is explicitly allowed because that is the shape the transforming followers actually use —
+  Sirina Celone ships mihail_general_attachSPELL, which waits a few seconds after combat starts
+  and casts. Read from her source rather than inferred.
+
+  Guards: the transform is flag-guarded because OnCombatStateChanged fires repeatedly during a
+  fight and a race swap per tick would be a disaster; "custom with neither race nor spell" emits
+  nothing rather than attaching a script that does nothing; and the build warns that a beast form
+  cannot wear or wield her equipment (Skyrim's behaviour — reverting restores it).
+
+  MEASURED, reading the shipped plugin back:
+    script 'FF_Transform'
+       BeastRace         = RACE WerewolfBeastRace
+       TransformFX       = SPEL WerewolfChangeFX
+       RevertOutOfCombat = True     DelaySeconds = 2
+    package: FF_WolfProbe.esp, Scripts/FF_Transform.pex, Scripts/Source/FF_Transform.psc
+    masters: Skyrim.esm      SHIP_GATE_PASS HEDR=1.71 numRec=11 ESL=True
+
+  Evolution and transformation coexist on one follower (both are NPC-level scripts); pinned by
+  test. STILL NOT CONFIRMED IN GAME — same caveat as evolution, and the UI says so.
+
+FIXED (user-reported): GARBLED TEXT THROUGHOUT THE WIZARD, and it was self-inflicted in the
+  previous fix. Editing WizardWindow.axaml with PowerShell 5.1's Get-Content/Set-Content mangled
+  it: Get-Content reads a BOM-less UTF-8 file using the system ANSI code page, so every em dash,
+  ellipsis and arrow decoded into three Latin-1 characters, and Set-Content wrote those back as
+  UTF-8 - double-encoding them. 29 lines affected. Nothing failed to build; the app simply
+  displayed the garbage.
+
+  Repaired by reversing the transform exactly (re-encode to the ANSI code page, decode as UTF-8)
+  rather than hand-patching strings, and the file is now stored WITH a BOM so the same tool
+  cannot misread it again. Recovered characters verified on disk: U+2014, U+2026, U+25C0, U+25B6.
+
+  Two things went wrong in the repair itself, both worth recording:
+   - The first attempt aborted on byte 0x9D. Python's cp1252 codec rejects the five positions the
+     code page leaves undefined, while .NET maps them to the matching control code points; the
+     reverse table needs those five or the repair refuses real files.
+   - The second attempt looked like it was CORRUPTING good text, because it printed recovered
+     characters to a cp1252 console. The diff was misleading, not the transform.
+
+  New guard: Tests/SourceEncodingTests scans every .cs/.axaml/.csproj/.psc/.md/.txt for the
+  double-encoding signatures. Confirmed it fails on the actual damaged file
+  ("Ui\WizardWindow.axaml (marker #0)") and passes once repaired. Its own markers are written as
+  \u escapes, because spelling them literally made the test fail itself on the first run.
+
+FIXED (user-reported, SECOND TIME FOR THIS BUG): the "Phases" spinner in the evolution panel
+  showed its two arrow buttons and no number. Avalonia's NumericUpDown spends most of a narrow
+  field on the spinners; the column was 90px with no MinWidth. All eight numeric spinners in the
+  wizard now reserve 150 (the level boxes were 135, just under the safe line).
+
+  The existing guard did not catch it, and it is worth saying why: it only asserted on the
+  private SkillValueEditorWidth constant used by the CODE-GENERATED skill editors, so a spinner
+  written by hand in XAML was invisible to it. The new test parses WizardWindow.axaml and
+  requires every NumericUpDown to declare MinWidth or Width >= 140.
+
+  Confirmed the guard can actually fail, rather than trusting it: temporarily restoring the 90px
+  width produced
+    "These numeric spinners are too narrow ... EvolvePhases: 90"
+  and the test failed. Restored, 187 tests pass.
+
+EVOLUTION — EXPERIMENTAL, OPT-IN, OFF BY DEFAULT (Domain/Evolution.cs, EvolutionCompiler,
+  BuildPipeline/Resources/FF_Evolution.psc)
+  Requested after looking at Melana the War Maiden: start her timid and let her grow into the
+  job as she survives fights beside you.
+
+  HOW MELANA DOES IT (read from DZ08_Melana.esp, not assumed):
+    quests=3 globals=15 npcs=1 topics=59 packages=4
+    All state in globals: CurrentPhase, CurrentCombatInPhase, MaxCombatPerPhase, ...
+    One controller script (16 properties) on a quest with 7 aliases.
+    The NPC record carries NO script, and its confidence is FOOLHARDY — phase-one cowardice is
+    applied at runtime. That is why "Melana the Brave" is a pure script replacer, and it is a
+    fail-safe worth copying: if the script never runs you get a normal follower, not a wreck.
+
+  OUR ARCHITECTURE. Users need no Papyrus compiler: FF_Evolution.psc is compiled once by us and
+  embedded in the exe, so a generated plugin only references it by name and fills properties.
+  The script attaches to the NPC record itself — verified writable and read back through Mutagen
+  — which removes the quest and alias plumbing Melana needs for her much larger feature set.
+  State lives in two globals so dialogue conditions and the console can read it, and so a
+  one-line patch plugin can retune it exactly like Melana's "evolve faster/slower" add-ons.
+
+  SAFETY, because this is the ONLY script FollowerForge writes:
+    - Off unless explicitly ticked. Default output stays 100% scriptless — verified: with the
+      option off the package has no Scripts/ folder and no warning at all.
+    - Phases are applied from the RECORD's base values, never added to current ones, so running
+      the same phase twice changes nothing. Reloads and duplicate events cannot stack bonuses.
+    - Phase-one confidence is baked onto the record too, or her first fight would happen at
+      whatever the record said before the script ran.
+    - A build that enables it always emits EVOLUTION_EXPERIMENTAL telling the user scripts
+      persist in saves and to test on a throwaway save.
+    - The .psc source ships beside the .pex so anyone can read what is in their save.
+
+  NOT CONFIDENT, AND SAID SO IN THE UI. The option is inside a bordered EXPERIMENTAL panel that
+  states plainly it has not been confirmed working in game. Everything else this app produces was
+  provable against shipped mods; Papyrus behaviour is not, and compiled is not the same as works.
+
+  MEASURED (`fforge build`, then the shipped plugin read back):
+    GLOB FF_EvolveProbe_Phase = 1     GLOB FF_EvolveProbe_Progress = 0
+    NPC  confidence=Cowardly   script 'FF_Evolution' with all 10 properties bound
+    package: FF_EvolveProbe.esp, Scripts/FF_Evolution.pex, Scripts/Source/FF_Evolution.psc
+    masters: Skyrim.esm        SHIP_GATE_PASS HEDR=1.71 numRec=14 ESL=True
+
+FIXED (user-reported): "copy combat style into her plugin" FAILED THE BUILD for styles from
+  mods like Nether's Follower Framework, with MASTER_CHAIN_INCOMPLETE naming the source plugin.
+  Unticking the box built fine — the opposite of what the option is for.
+
+  The writer was right and the CHECKER was wrong. ValidateMasterClosure computed required masters
+  from the profile's INTENT:
+      if (profile.CombatStyle is { } combat) selected.Add(combat.Style);
+  so it demanded nwsFollowerFramework.esp as a master even though the CSTY had been duplicated
+  into her plugin and nothing referenced the original any more. Mutagen had correctly omitted
+  that master, and the validator then failed the build for the writer's correct output.
+
+  Now the check asks what was actually WRITTEN, not what was asked for. CompileResult carries
+  CombatStyleCloned, derived from the finished record (does the NPC's CSTY FormKey belong to our
+  own ModKey?) rather than from the request — because asking to clone silently falls back to a
+  reference when the source cannot be resolved, and those two cases need opposite answers about
+  the master. A cloned style drops its origin; a referenced one keeps it.
+
+  VERIFIED with the real record the user picked (nwsCS_ranger, 081753:nwsFollowerFramework.esp):
+    original nwsCS_ranger       off=0.8 def=0.52 group=0.8
+    clone    FF_CloneRepro_CSTY off=0.8 def=0.52 group=0.8
+    clone lives in : 000801:FF_CloneRepro.esp
+    npc points at  : 000801:FF_CloneRepro.esp
+    masters        : Skyrim.esm          <- NFF dependency genuinely gone
+  BUILD OK, SHIP_GATE_PASS. Copying a style now does what it says: makes her standalone.
+
+  Test note: the first version of the regression test passed VACUOUSLY. It asserted on
+  CompileResult.Masters, which Mutagen only populates at WRITE time, so the collection was empty
+  and DoesNotContain succeeded for the wrong reason. The tests now assert the fact the validator
+  actually consumes — which plugin the style ends up in — and cover all three paths: cloned,
+  referenced, and clone-requested-but-unresolvable.
+
+CONFIDENCE IS NOW THE GAME'S OWN SCALE, AND COWARDLY IS REACHABLE
+  The wizard offered a 3-way "temperament" that mapped onto confidence 1/3/4, so two of the five
+  vanilla ranks could not be produced at all — including 0 Cowardly, which is exactly the
+  "starts timid and grows into the job" character the user asked for. Now all five ranks are
+  offered directly (Cowardly / Cautious / Average / Brave / Foolhardy). Aggression still only
+  rises at the most reckless rank, so she defends rather than starts fights.
+
+RELATIONSHIPS WITH OTHER NPCs, not just the player. Shipped followers do this — Karla Raven
+  carries a Friend relationship toward a vanilla NPC — and it is what gives a follower a history
+  instead of having appeared from nowhere. Each entry becomes its own RELA record, emitted in the
+  order listed so a rebuild stays byte-identical. The NPC picker searches on demand rather than
+  loading thousands of names.
+
+  NO SCRIPTING. An earlier draft of this went off building a Papyrus progression system to raise
+  confidence and relationship at runtime; the user stopped it, and they were right — the request
+  was for authorable STARTING values. The game and existing mods handle everything after that.
+  Nothing here compiles or ships a script.
+
+  VERIFIED BY READING THE SHIPPED PLUGIN BACK:
+    NPC FF_TimidProbe_NPC  confidence=Cowardly  aggression=Unaggressive
+       PKG DefaultSleepEditorLoc24x8
+       PKG DefaultSandboxEditorLocation256
+    RELA FF_TimidProbe_Rel    rank=Acquaintance  toward the player
+    RELA FF_TimidProbe_Rel01  rank=Rival         toward Lydia
+
+  Test data caught twice being wrong and corrected against the live load order rather than
+  memory: FormKeys carry the 6-hex LOCAL id (000A2C94 is malformed), and Lydia is 0A2C8E, not
+  the 0A2C94 first written.
+
+Verify: build 0 warnings / 0 errors; tests 109 -> 162; wizard launches; rebuilt follower voiced
+  1/1 with a correctly truncated filename; VOICE_EXTRA_DIALOGUE reported on a real build.
+================================================================================
+
+================================================================================
+## [2.1.3] - 2026-07-28 (Readable custom skill values)
+Agent: Codex
+Parent: FollowerForge 2.1.2
+UI repair:
+  - All 18 custom skill editors now reserve 150 pixels for the numeric value and spinner buttons.
+  - The previous 82-pixel column was almost entirely consumed by Avalonia's two spinner buttons,
+    leaving the actual value clipped.
+Regression coverage:
+  - A focused layout invariant test prevents the skill editor width from shrinking below the
+    readable threshold.
+Runtime:
+  - 2.1.1 user-confirmed in game; 2.1.3 UI and custom-stat behavior require user confirmation.
+Nexus: NO (local tool)
+
+================================================================================
+## [2.1.2] - 2026-07-28 (Optional full skill and primary-stat customization)
+Agent: Codex
+Parent: FollowerForge 2.1.1
+Runtime basis:
+  - The user confirmed that 2.1.1 works wonderfully in Skyrim.
+  - 2.1.1 remains unchanged as the known-good rollback point.
+New follower controls:
+  - AutoCalcStats remains enabled by default, preserving the easy class-and-level workflow.
+  - A new Skills & stats tab exposes all 18 Skyrim skills.
+  - Health, Magicka, and Stamina can be set directly in custom mode.
+  - Eight optional presets provide editable starting points: blank slate, one-handed warrior,
+    two-handed warrior, archer, pure mage, spellsword, restoration support, and rogue.
+Plugin behavior:
+  - Custom mode disables AutoCalcStats and writes a complete DNAM PlayerSkills block.
+  - Every skill value is serialized directly; hidden skill offsets are explicitly zero.
+  - Automatic and pre-2.1.2 profiles do not write custom DNAM values.
+Validation:
+  - Automatic/custom mode, all 18 skills, offsets, and primary attributes are checked after
+    reopening the final plugin bytes.
+  - Four focused tests cover default compatibility, preset completeness, exact DNAM round-trip,
+    and loading profiles that predate the Stats property.
+Runtime:
+  - 2.1.1 user-confirmed in game; 2.1.2 custom-stat behavior requires an in-game follower test.
+Nexus: NO (local tool)
+
+================================================================================
+## [2.1.1] - 2026-07-28 (Runtime-correct placement, equipment, FaceGen, masters, and cache recovery)
+Agent: Codex
+Parent: FollowerForge 2.1.0
+Confirmed repairs:
+  - SQLite cache failures are now self-recovering: broken DB/WAL/SHM files are quarantined
+    and the disposable catalogue is rebuilt once.
+  - Recursive installed-header master closure writes Update/DLC and every transitive origin.
+  - Cloned CSTY records are normalized to formVersion 44.
+  - Interior/exterior follower ACHR records carry the Persistent major-record flag.
+  - Selected ARMO pieces are both real NPC inventory and a generated private starting-equipment
+    OTFT so the follower initially wears them. Weapons remain real inventory.
+  - Matching RaceMenu jslot data now writes weight, head parts, default morphs/presets,
+    tint layers, skin tone, and hair color into the NPC record.
+  - RaceMenu tint alpha now becomes Skyrim's fractional TINV interpolation value instead of
+    forcing every non-zero makeup/complexion layer to full strength.
+  - Head-part formIdentifier dependencies are included even when RaceMenu's mods array omits them.
+  - Face texture validation falls back to the actual deployed Data file when a valid Vortex
+    hardlink is absent from the catalogue, preventing false missing-texture warnings.
+  - Installed matching face/body texture paths are the safe default; incomplete head-only
+    free-resource substitutions are no longer applied.
+  - Build-stopping errors are separated from warnings and show validation codes.
+  - Level numeric fields are wider and readable.
+Exact supplied test2 verification:
+  - Build PASS; HEDR 1.71; ESL; formVersion 44.
+  - Masters: Skyrim.esm, Update.esm, Dawnguard.esm, HearthFires.esm, Dragonborn.esm,
+    High Poly Head.esm, Aquarium.esp, Arclight.esp, KS Hairdo's.esp,
+    Even More Eyes.esp, Koralina's Eyebrows.esp, Ordinator - Perks of Skyrim.esp.
+  - Deterministic: two independent generated ESPs were byte-identical.
+Runtime:
+  - Not yet tested in Skyrim; Vortex install and in-game smoke matrix remain required.
+Nexus: NO (local tool)
+
+================================================================================
+## [2.1.0] - 2026-07-26 (Equipment-first follower construction + crash hardening)
+Agent: Codex
+Parent: FollowerForge 2.0.0
+Intent:
+  - Replace the primary OTFT picker with actual ARMO equipment selection grouped by
+    resolved biped slots (helmet, torso, gauntlets, boots, shield, accessories, and more).
+  - Keep optional OTFT import for compatibility while putting the chosen gear directly in
+    the NPC inventory.
+  - Expand complete-follower choices, including spells and perks, with reference validation.
+  - Stop presenting deterministic 2019/2020-era dates as the creation date of a new package.
+  - Harden generated-plugin validation after the reported FF_test.esp game-load crash.
+Runtime evidence:
+  - Supplied CrashLoggerSSE log: Skyrim 1.6.1170, EXCEPTION_BREAKPOINT on a loading worker.
+  - FF_test.esp was enabled at FE:224, but the log names no relevant form or generated record.
+  - The exact ESP/profile was removed before this audit; only Vortex folder markers remain.
+  - Therefore the original crash is confirmed, but no exact record culprit is yet proven.
+Verify (pending):
+  - Release build and complete xUnit suite.
+  - Generated equipment/spell/perk fixture reopened through Mutagen and Skyrim Forge.
+  - ESP header, master, FormID, record reference, package inventory, and SHA-256 gates.
+  - User Vortex install + in-game load/equipment/combat/follower/save-reload smoke test.
+Nexus: NO (local tool)
+================================================================================
+## [2.0.0] — 2026-07-24 (Location Library + wizard)
+Agent: Claude
+Intent: Turn an engineer's tool into a follower-maker. v1 required hand-written JSON with raw
+  FormKeys and could effectively only spawn followers at one hardcoded Whiterun spot.
+Files changed (added):
+  - Domain/SpawnLocation.cs — SpawnLocation + LocationLibrary (Placeable, grid, provenance)
+  - SkyrimRecords/LocationScanner.cs — harvests spots from every plugin that places its OWN NPC
+  - SkyrimRecords/CellPlacer.cs — interior + worldspace placement, block math
+  - SkyrimRecords/CellSourceResolver.cs — reads the target cell's own definition
+  - BuildPipeline/LocationLibraryBuilder.cs — build/load/search the library
+  - Ui/WizardWindow.axaml(.cs), Ui/PickerItem.cs — 7-step wizard, real names only
+  - Tests/LocationTests.cs (+8 tests)
+Files changed (modified):
+  - Domain/FollowerProfile.cs — PlacementSpec.LocationId (Cell now optional)
+  - SkyrimRecords/FollowerCompiler.cs — placement takes a SpawnLocation, not a worldspace
+  - BuildPipeline/FollowerBuilder.cs — resolves LocationId, errors loudly if unknown
+  - Cli/Program.cs — `locations --scan | --text`
+  - Ui/App.axaml.cs — opens the wizard
+  - REMOVED BuildPipeline/PlacementResolver.cs (no longer needs to open Skyrim.esm to place)
+Why / root cause:
+  - Placement was hardcoded to WhiterunWorld's persistent cell; there was no way to say
+    "put her in the Bannered Mare" without knowing FormKeys and coordinates.
+Ground truth established (this is what made it correct):
+  - Real follower mods add themselves to a vanilla inn via a CELL override + persistent ACHR.
+    Z_Iseult.esp's CELL overrides are zlib-COMPRESSED; decompressed they carry the FULL record
+    (EDID, FULL, DATA, XCLL, LTMP, XCLW, XLCN, XCIM, XCMO, XCCM, XOWN, XCAS). An earlier
+    reading of them as "empty" was wrong — shipping that would have blanked the room's lighting.
+  - Interior cell grouping: block = formID % 10, sub-block = (formID / 10) % 10.
+    Verified on 0x013870 (4/8), 0x015239 (5/8), 0x0152AA (8/9), 0x01605E (6/0).
+  - Placement copies the cell's data but EXCLUDES Persistent/Temporary/Landscape/NavMeshes,
+    so the room's existing contents are never duplicated.
+Verify:
+  - dotnet build → 0 warnings / 0 errors; dotnet test → 45 passed
+  - fforge locations --scan → 2,834 plugins scanned, 17,274 custom-NPC placements,
+    3,370 distinct spots (1,346 interior / 2,024 exterior). Top: The Frozen Hearth (18 mods),
+    Moorside Inn (17), Windpeak Inn (15), Sleeping Giant Inn (13), The Bannered Mare (7).
+  - Built "Roze" → Sleeping Giant Inn + RaceMenu face A1_Nord_Roze + cloned CSTY:
+    generated CELL 000133C6 subrecords match the shipped-mod set exactly; ONE ACHR added;
+    masters = Skyrim.esm only.
+  - Independent check with Skyrim Forge `plugin-info`: form_version 44, header_version 1.71,
+    is_light_flag true, record_flags 512, masters [Skyrim.esm]. Agrees with the built-in gate.
+  - Avalonia wizard boot-verified (runs, window titled "FollowerForge", zero stderr).
+Field fixes (same day, from first real user run — 2.0.0 was never packaged/released):
+  - STALE CATALOGUE: the wizard only built the catalogue when missing, so a week-old index
+    reported installed mods as absent. It now rebuilds whenever Vortex has deployed since
+    (CatalogBuilder.IsFresh) and invalidates the location library with it.
+    Measured: 852,370 → 863,621 assets after refresh.
+  - TEXTURE WARNING NOISE: every referenced texture was warned about equally. Head meshes
+    routinely point at optional slots (_sk subsurface, _s specular, _e cubemap) that do not
+    exist and the engine skips. Warnings are now slot-aware — only diffuse (0) and normal (1)
+    are Warnings; the rest are Info. Verified the remaining warnings are REAL: the reported
+    face pointed at textures\actors\character\SGBrowsImproved\… while the installed folder is
+    …\SGbrows\…, and no Kala eye folder exists at all, so those brows/eyes would render broken.
+    Added an actionable hint (install the mod, or re-export the face with current mods).
+  - OPEN OUTPUT FOLDER failed with Explorer's "Location is not available" even though the
+    folder existed; shell-executing a directory path is unreliable. Now launches
+    explorer.exe with the path as an argument, with an existence check.
+  - RACE LIST: offered every RACE record including creatures, child and transformation races.
+    Added SkyrimRecords/RaceSuitability.cs — drops unsuitable races (beastrace/child/creature/
+    no-head-parts), sorts vanilla first, and labels custom races "everyone needs <mod>".
+  - SHARING CLARITY: the build now states which mods a downloader will need, or confirms
+    "needs nothing but the base game" (this is why a build showed Naz_Ardessa.esp as required).
+  - UI: plugin file name fills in as you type; list rows are taller with alternating stripes
+    and a readable selection colour.
+  - Added CLI `assets --path <rel>` to answer "is this texture actually in my load order?".
+  - Tests 45 → 56 (race suitability incl. a real-catalogue check).
+Presentation + shareability pass (second field report):
+  - LAYOUT: pages used fixed-height lists inside StackPanels, so on a large window the lists
+    stayed ~140px with hundreds of rows behind a hairline scrollbar and most of the window was
+    empty. Pages 2-7 are now Grids whose list rows are '*', so lists grow with the window.
+    Larger default window (1180x820, min 900x620), roomier rows (38px, striped, gold selection),
+    styled inputs/buttons.
+  - RACE LIST: 190 usable races in one flat list was overwhelming and opened scrolled into the
+    custom entries. Now shows the ten vanilla races by default with a checkbox to add custom
+    ones ("they become requirements"). Verified via new `fforge races`: 977 records -> 190 usable,
+    vanilla first.
+  - APP IDENTITY: tools/New-AppIcon.ps1 draws a multi-size .ico (256/128/64/48/32/16) in the
+    app palette; wired via ApplicationIcon + Window Icon. Output renamed "FollowerForge.exe"
+    (WinExe, no console window) with Product/Description/Version metadata.
+  - SHARING: Publish-FollowerForge.ps1 produces a self-contained single-file win-x64 build
+    (no .NET needed by the recipient), strips ~100MB of Skia/HarfBuzz native .pdb symbols,
+    copies README + CHANGELOG, boot-checks the exe, and zips it. 94.3 MB zip.
+  - README rewritten for end users (was developer notes) since it ships inside the zip.
+  - Removed dead MainWindow.axaml(.cs); fixed 12 Avalonia AVLN5001 warnings
+    (TextBox.Watermark -> PlaceholderText). Release build now 0 warnings / 0 errors.
+  - NOTE for PowerShell 5.1: .ps1 files must be ASCII — em-dashes were read as mojibake and
+    broke parsing.
+Asset hubs (free-hub default + build-your-own):
+  - Verified what the two free modder's resources ACTUALLY ship before writing any code:
+      MAW Assets  = head/brow/hairline MESHES + .tri morphs (+ hairline textures), MawAssets.esp
+      Naz's Coll. = per-race skin SUPPORT MAPS ONLY (_msn/_s/_sk + blankdetailmap), 8 human/mer
+                    races, NO diffuse.
+    So "free hubs make her fully shareable" is FALSE and is never claimed. Naz's filenames
+    (femalehead_msn/_s/_sk) map exactly onto what a RaceMenu head references, which is what
+    makes the substitution safe.
+  - Domain/AssetHub.cs (FaceAssetKind, AssetHub, FaceAsset, HubMode),
+    AssetIndex/HubCatalog.cs (detection by marker file, per-race Naz mapping, texture
+    classification), BuildPipeline/HubAssetPackager.cs (retarget + copy + declaration).
+  - HubMode.FreeHubs is the DEFAULT: skin support maps are repointed at Naz when installed and
+    the race is covered. Verified live on Roze (Nord): 4 maps repointed
+    (FemaleHead_msn/_sk/_S + BlankDetailmap -> textures\Nazarethblood\body\Nord\...), while the
+    diffuse (Zhizhen skin), eyes (Koralina) and mouth (Botox) correctly stayed as her mods.
+  - HubMode.OwnHub copies the assets she actually uses into textures\<Prefix>\{skin,hair,eyes,
+    brows,mouth}\ and repoints the face at them. Verified: 14 files copied into AuthorAssets.
+    BSA-packed assets are never unpacked — that is the source author's call.
+  - PERMISSIONS GATE: OwnHub refuses (build fails, nothing copied) without a written
+    RedistributionPermission, checked ONCE up front. Every build writes PERMISSIONS.md listing
+    each copied file by source mod and stating plainly that FollowerForge did not and cannot
+    verify permission, and that credit is not permission. The app never sets the declaration
+    itself — in the wizard it comes from the user ticking the box.
+  - CLI `hubs` (what's installed and what it really covers) and `races`; source-assets.json now
+    lists every face texture, its source mod, and any retargeting.
+  - Bugs found by the new tests: "eyebrows03.dds" classified as Eyes (brow check had to precede
+    eyes), then "...\Eyes\brown\Amber Dark.dds" classified as Brows because "brown" contains
+    "brow" — now matched on eyebrow / brows\ / filename-brow-not-brown.
+  - Avalonia trap: ComboBox.SelectionChanged fires during XAML load, before the name scope
+    exists, so FindControl threw "Could not find parent name scope" and the app died on start.
+    Guarded with a _ready flag set after AvaloniaXamlLoader.Load.
+  - Tests 56 -> 77. Release build 0 warnings / 0 errors.
+Completeness audit (asked to double-check nothing was forgotten) - gaps found and closed:
+  - SILENT NO-OP FIXED: `Marriageable` existed on the profile and the compiler ignored it, so
+    ticking it did nothing. Now adds PotentialMarriageFaction rank 0. FormID verified from the
+    live load order as 019809:Skyrim.esm (the same query re-confirmed PotentialFollowerFaction
+    05C84D, which was already hardcoded correctly).
+  - LATENT CRASH FIXED: npc.Items / ActorEffect / Perks are null on a fresh NPC and the code used
+    `!` (null-forgiving) instead of creating them — any profile carrying weapons, spells or perks
+    threw NullReferenceException mid-build. Never hit before because nothing could set them.
+    Caught by the new tests the moment the wizard could.
+  - "loadout" (was missing): step 5 now offers multi-select weapons and spells alongside outfit.
+  - "body too" (was missing): profile gains SkinArmor -> NPC.WornArmor. Left unset she inherits
+    her race's default skin, i.e. whatever body replacer the player has — which is what most
+    people want. BodySlide *builds* remain outside this tool by nature.
+  - Marriage checkbox added to step 1.
+  - SOS voice proven end-to-end (was labelled but never built): follower with VP_11_Aria ->
+    masters Skyrim.esm + SOSVoices.esm, SHARING_REQUIRES names the mod and its Vortex folder,
+    voice files confirmed PRESENT inside the BSA, ship-gate PASS.
+  - Tests 77 -> 83.
+  GitHub (product version 2.0.0 — not Skyrim Forge 4.x):
+  - Repo: https://github.com/ShugokiFable/FollowerForge
+  - Tag: v2.0.0 on the completeness-audit commit (marriage + loadout + body + 83 tests)
+  - Release asset: FollowerForge-2.0.0-win-x64.zip (self-contained win-x64)
+  STILL OPEN (deliberately, not forgotten):
+  - Level scaling and follower-framework integration are profile-only (sensible defaults used);
+    not exposed in the wizard.
+  - OutputStrategy now overlaps HubMode; kept because SharedHub still drives the hub keyword.
+Nexus: NO (local tool)
+Notes:
+  - The external skyrim-ship-gate script is no longer present in the skill library; the same
+    checks live in Validation/EspHeaderValidator.cs and ran green.
+  - UNPROVEN: in-game recruit/trade/wait/dismiss and the follower actually standing in the inn.
+    Requires launching Skyrim.
+================================================================================
+## [1.0.0] — WITHDRAWN
+Never shipped as a working release. JSON-only / single-cell prototype; broken for
+real follower making. Snapshot folder and tag `v1.0.0` removed from the repo.
+Use **2.0.0** only.
+================================================================================

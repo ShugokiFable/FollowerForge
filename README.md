@@ -1,4 +1,4 @@
-# FollowerForge 3.6.0 - Windows follower-building tool
+# FollowerForge 3.7.0 - Windows follower-building tool
 
 FollowerForge is an out-of-game application that reads your active Vortex or Mod Organizer 2 setup and creates an installable Skyrim follower mod (ESPFE plus assets).
 
@@ -6,7 +6,7 @@ FollowerForge itself is **not** a Skyrim mod. Do not install the application int
 
 ## Download
 
-Download the self-contained Windows x64 build from the [FollowerForge 3.6.0 release](https://github.com/ShugokiFable/FollowerForge/releases/tag/v3.6.0). A separate .NET installation is not required.
+Download the self-contained Windows x64 build from the [latest release](https://github.com/ShugokiFable/FollowerForge/releases/latest). A separate .NET installation is not required.
 
 ## Install and use
 
@@ -17,6 +17,17 @@ Download the self-contained Windows x64 build from the [FollowerForge 3.6.0 rele
 5. Install the generated follower package with Vortex or MO2, enable its plugin, and deploy it.
 
 RaceMenu Export Head NIF/DDS files are required for a custom face. A slider-only preset without usable exported head geometry may not reproduce the face on an NPC.
+
+## New in 3.7.0
+
+- **Combat transformation can turn her into a creature.** Dragons, wolves, trolls, spriggans - whatever your mods provide. Creature races were previously filtered out of the transform picker, which is the one place they belong.
+- Choosing a legacy outfit **and** hand-picked armour no longer stops the build. The outfit decides what she starts in, the pieces stay in her inventory, and the build says so instead of failing.
+- The build warns when a RaceMenu preset carries a body shape, because a plugin cannot store one. That shape belongs in a BodySlide or OBody preset.
+
+## New in 3.6.1
+
+- **Copy diagnostics** on the Review page and in the command palette. Home folders are tokenised, so a pasted report does not publish your Windows account name.
+- **Clear** on every optional picker, and **Clear selection** in the Expert Deck. Nothing is stuck any more.
 
 ## New in 3.6.0
 
@@ -46,7 +57,7 @@ Click **Paths...** to set the xVASynth folder and where built followers are save
 
 Saved GUI settings live under `%LOCALAPPDATA%\FollowerForge`. FollowerForge does not modify MO2 profile/INI files, Vortex deployment data, Skyrim `Data`, or saves.
 
-See [the detailed MO2 guide](FollowerForge%203.6.0/docs/MO2.md) for setup and troubleshooting.
+See [the detailed MO2 guide](FollowerForge%203.7.0/docs/MO2.md) for setup and troubleshooting.
 
 ## CLI and environment options
 
@@ -82,4 +93,4 @@ Recommended face workflow: [FaceForge](https://github.com/ShugokiFable/FaceForge
 
 ## Version history
 
-See [CHANGELOG.txt](CHANGELOG.txt) for the complete history and [the 3.6.0 Nexus changelog](FollowerForge%203.6.0/NEXUS-CHANGELOG-3.6.0.txt) for the short user-facing update notes.
+See [CHANGELOG.txt](CHANGELOG.txt) for the complete history and [the 3.7.0 Nexus changelog](FollowerForge%203.7.0/NEXUS-CHANGELOG-3.7.0.txt) for the short user-facing update notes.

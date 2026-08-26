@@ -1,0 +1,63 @@
+FollowerForge 3.7.0 — she can turn into a dragon now, and the outfit bug is dead
+
+[size=4]Creature forms in combat transformation[/size]
+
+"Custom race / spell" quietly refused to show you a single creature race. Every dragon, wolf,
+troll, spriggan and beast form your mods provide was filtered out, which left the feature
+offering the same people-races your follower could already be.
+
+The filter was right in the wrong place. Creature races are hidden from the [b]identity[/b]
+picker because they carry no head data, so no face can be built for one. That is a rule about
+the race she IS. It says nothing about the race she TURNS INTO — her face belongs to her base
+race, and the transformation only swaps races once a fight has started. Vanilla werewolf, which
+this feature already offered, is a creature race itself.
+
+On a 2,920-plugin load order that is 191 races before and 944 after. Creature rows now show
+their FormID and EditorID too, because five installed mods can each ship something called
+"BabyDragonRace" and you need to know which one you are picking.
+
+[size=4]"Must be fixed" when you chose an outfit and armour[/size]
+
+Reported by a user: they put clothing in the follower's inventory, gave her a legacy outfit,
+and the build stopped with errors and no way back — because 3.6.0 had no way to unselect
+anything either. 3.6.1 fixed the unselecting. This fixes the error itself.
+
+Armour plus a legacy outfit was a guaranteed hard failure, one error per piece. The combination
+has always been supported: the outfit decides what she starts in, and the pieces stay in her
+inventory so you can trade them to her. Only the checker disagreed — it looked for your
+Skyrim.esm outfit inside the plugin FollowerForge had just written, did not find it, and called
+every piece missing.
+
+It now says so instead, once, naming the outfit: she starts in that, the pieces are in her pack,
+clear the outfit if you want her wearing your own picks.
+
+[size=4]The body shape that never came across[/size]
+
+A RaceMenu preset can carry a whole body in its bodyMorphs block — OBody and BodySlide write
+their sliders there. A plugin has nowhere to store that: an NPC record holds head data, not a
+body. So it has always been dropped, silently.
+
+The build now counts the sliders you actually shaped and tells you, and points at BodySlide or
+OBody as the place that shape belongs. It names RaceMenu overlays in the same breath — tattoos,
+warpaint and scars applied as overlay layers do not transfer either.
+
+[size=4]Also[/size]
+
+[list]
+[*]LEGACY_OUTFIT_WITH_EQUIPMENT is gone. It said the engine "may choose" the outfit over your
+gear. It does choose it — there was never any doubt, and two warnings for one situation is noise.
+[*]FollowerForge.Cli.exe races --creatures lists what the transformation picker offers.
+[/list]
+
+489 automated tests pass. The exact reported combination — legacy outfit, two armour pieces and
+a creature transform race — builds end to end with one warning and no errors.
+
+[size=4]Still true, and still worth knowing[/size]
+
+[list]
+[*]Transformation is EXPERIMENTAL and adds a script. Scripts persist in save files.
+[*]A beast form cannot wear or wield her equipment. That is Skyrim's behaviour; reverting
+restores it.
+[*]Creature races have no face to customise and their dialogue depends entirely on the mod
+that added them.
+[/list]

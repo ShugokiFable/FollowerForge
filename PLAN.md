@@ -1,3 +1,40 @@
+# FollowerForge 3.7.0 plan
+
+1. [x] Snapshot 3.6.1 -> 3.7.0 (3.6.1 is released and immutable: GitHub v3.6.1). 238 files
+       copied, 0 failed, 0 mismatched.
+2. [x] Creature races in combat transformation, which is what the user asked for. Root cause
+       was a filter in the wrong place, not a missing feature: the transform picker reused the
+       identity picker's creature exclusion, which exists because a creature has no head data
+       and therefore no buildable face. That constrains the race she IS, not the race she
+       TURNS INTO. The comment above the offending line even said "all races here, not the
+       follower-suitable subset - a beast form is the whole point"; the code did the opposite.
+3. [x] `_transformRaces` (creatures first, then vanilla, then custom) feeds the focus card,
+       its search box, the Expert Deck and selection restore. Those four had drifted apart -
+       the deck honoured the identity page's creature checkbox and the focus card never did.
+4. [x] Creature rows carry FormID + EditorID. 753 extra rows with repeating names otherwise.
+5. [x] Found and fixed the actual "Must be fixed" from the 3.6.1 user report, which 3.6.1 had
+       only guessed at. Armour + legacy outfit = one hard error per piece, always. The
+       validator checked the generated-outfit path even when the compiler took the
+       chosen-outfit path. Now it follows the same branch, and warns once instead.
+6. [x] RaceMenu preset body shape (bodyMorphs) now warns instead of vanishing silently.
+       Deferred from 3.6.1 as "the overlay warning"; the evidence on disk said body shape is
+       the bigger and detectable half, so that is what shipped. Overlays are named in the same
+       warning without pretending to detect them.
+7. [x] 489 Release tests (478 inherited + 11 new). End-to-end CLI build of the reported
+       combination verified, including the VMAD FormID for the creature beast race.
+8. [ ] Publish 3.7.0 zip, refresh NEXUS-UPLOAD, push, tag `v3.7.0`. NOT yet authorised.
+
+Next, deliberately NOT in 3.7.0:
+  - Detecting RaceMenu overlays specifically. Neither reference preset on this machine has an
+    overlay block, so the key name cannot be confirmed from evidence and will not be guessed.
+    Needs a preset that actually carries overlays.
+  - MO2 `modlist.txt` priority direction is still UNVERIFIED (PluginLists.cs:69, open since
+    3.2.5). Needs a real MO2 instance or a reporter's modlist.txt + a screenshot of MO2's order.
+  - Publish from CI on tag, so the shipped zip is provably the one the tests ran against.
+  - Whether a creature transform survives a real fight in game. SetRace() on a follower is
+    engine behaviour this build cannot exercise; the plugin side is verified, the gameplay
+    side is not.
+
 # FollowerForge 3.6.1 plan
 
 1. [x] Snapshot 3.6.0 → 3.6.1 (3.6.0 is released and immutable: GitHub v3.6.0, Nexus 187479).

@@ -1,4 +1,105 @@
-# VALIDATION — FollowerForge 3.6.1
+# VALIDATION — FollowerForge 3.7.0
+
+## Snapshot gate
+
+```text
+Parent: FollowerForge 3.6.1 (released, untouched)
+Active: FollowerForge 3.7.0
+Robocopy: 238 copied, 0 failed, 0 mismatched (bin/obj/dist excluded — disposable, regenerated)
+```
+
+## Commands and results
+
+```text
+dotnet build src/FollowerForge.slnx -c Release      -> PASS, 0 warnings, 0 errors
+dotnet test  src/FollowerForge.slnx -c Release      -> 489 passed, 0 failed (478 + 11 new)
+Publish-FollowerForge.ps1 -Version 3.7.0            -> NOT RUN (release not authorised yet)
+```
+
+## Creature transformation gate
+
+Fixtures prove the classifier; they do not prove the picker has anything to show. Read from
+the live catalogue on this machine (2,920 enabled plugins, 978 RACE records):
+
+```text
+FollowerForge.Cli.exe races                 -> 978 race records → 191 usable
+FollowerForge.Cli.exe races --creatures     -> 978 race records → 944 offered (creatures included)
+```
+
+753 beast forms the feature was written for had never been reachable. Sampled rows confirm the
+new entries are real forms, not junk: BabyDragonRace (×5, different plugins), Bear, Cave Bear,
+Blue Spriggan, Burnt inside out Vampire Lord.
+
+The ×5 duplicate names are why creature rows now carry FormID + EditorID.
+
+## End-to-end build gate — the exact reported failure
+
+Profile: legacy outfit `01DC10:Skyrim.esm` + `EquippedArmor` and `InventoryItems` of
+`012E49`/`012E4B:Skyrim.esm` + `Transformation.Kind = Custom` with
+`BeastRace = 0CDD84:Skyrim.esm` (WerewolfBeastRace — a Creature-class race).
+
+```text
+[INF] Transformation: Custom, beast race 0CDD84:Skyrim.esm, reverts True
+[INF] Compiled follower Beast Repro: NPC 000800, ACHR 000802, masters []
+[INF] Wrote plugin FF_BeastRepro.esp (1060 bytes, HEDR numRecords=11)
+[INF] Wrote Scripts/FF_Transform.pex
+  [Warning] OUTFIT_OVERRIDES_ARMOR: She will start in 'FarmClothesOutfit01', not the 2 armor
+            piece(s) you picked ...
+  [Info]    SHIP_GATE_PASS: HEDR=1.71 numRec=11 formVersion=44 (5 records) ESL=True
+BUILD OK (published)
+```
+
+Before this snapshot the same profile produced `STARTING_ARMOR_NOT_WRITTEN` once per piece and
+stopped the build. No errors now, and exactly one warning for the situation (the old vague
+`LEGACY_OUTFIT_WITH_EQUIPMENT` was removed rather than left to duplicate it).
+
+Bytes, not logs — the published plugin's VMAD read back directly:
+
+```text
+FF_Transform         present=True
+BeastRace            present=True     -> 84 dd 0c 00  (0x000CDD84, master index 0)
+RevertOutOfCombat    present=True
+DelaySeconds         present=True
+```
+
+## Preset body-shape gate
+
+The jslot block names were read from two real presets in the game's CharGen folder, never
+assumed:
+
+```text
+Woo-Female-Imperial_Silvia.jslot   bodyMorphs: 119 entries, 86 shaped (keyed "OBody")
+READ_ALL_SLIDERS_TEST.jslot        bodyMorphs: 135 entries
+```
+
+Top-level keys present in both: actor, bodyMorphs, faceTextures, headParts, modNames, mods,
+morphs, tintInfo, transforms, version. The parser consumes mods, headParts, actor, morphs and
+tintInfo — so bodyMorphs is genuinely unread, and genuinely lost.
+
+`transforms` was deliberately NOT warned about: in the reference preset it holds SHIELD and
+WEAPON node placement from a weapon-position mod, which has nothing to do with the follower.
+
+## Runtime status
+
+```text
+tool-validated: desktop build, full suite, shipped-CLI end-to-end build, plugin bytes read back
+NOT confirmed : a creature transform surviving a real fight in game. SetRace() on a follower is
+                engine behaviour this build cannot exercise.
+SSEEdit/CK    : not launched
+```
+
+## Deliberately unresolved
+
+- RaceMenu OVERLAYS cannot be detected here. Neither reference preset carries an overlay block,
+  so the key name is unconfirmed and was not guessed. The body-shape warning names overlays as
+  a known limitation without claiming to detect them.
+- MO2 `modlist.txt` priority direction still UNVERIFIED (`PluginLists.cs:69`, open since 3.2.5).
+- The publish ZIP is not byte-reproducible; publishing from CI on tag would settle it.
+- 3.7.0 is not published, pushed or tagged. Nexus still serves 3.6.0; GitHub still serves 3.6.1.
+
+---
+
+# VALIDATION — FollowerForge 3.6.1 (previous)
 
 ## Snapshot gate
 
@@ -12,334 +113,11 @@ Robocopy: 235 copied, 0 failed, 0 mismatched (bin/obj/dist excluded — disposab
 
 ```text
 dotnet build src/FollowerForge.slnx -c Release      -> PASS, 0 warnings, 0 errors
-dotnet test  src/FollowerForge.slnx -c Release      -> 478 passed, 0 failed (461 + 11 diagnostics + 6 deselection)
+dotnet test  src/FollowerForge.slnx -c Release      -> 478 passed, 0 failed
 Publish-FollowerForge.ps1 -Version 3.6.1            -> PASS, boot check "window stayed up"
 ```
 
-## Diagnostics report gate
-
-Unit tests cover redaction and content. Fixtures alone would not prove redaction works on a
-real machine, so the report was also rendered through the live `EnvironmentDiscovery`:
-
-```text
-manager      : Vortex
-profile      : LEWs7W0Rj  [closest match (100%); deployment pending]
-game root    : C:\Program Files (x86)\Steam\steamapps\common\Skyrim Special Edition
-instance     : %APPDATA%\Vortex\skyrimse
-plugins      : 2,921 enabled of 3,001
-```
-
-- No occurrence of the Windows account name anywhere in the output (also asserted by
-  `A_pasted_report_does_not_publish_the_windows_account_name`).
-- Paths outside the home folder (the Steam install) are deliberately left readable.
-- The run surfaced a real live warning — the Vortex profile has undeployed changes — which is
-  exactly the class of fact these reports exist to carry.
-
-## Shipped artifact
-
-```text
-ZIP    : FollowerForge 3.6.1/dist/FollowerForge-3.6.1-win-x64.zip
-Bytes  : 99,249,351
-SHA-256: EB48F7867CA19167E2A6720BECED21DF6B32DC5D58AF8860B3AF81F8F60695C6
-FileVersion   : 3.6.1.0
-ProductVersion: 3.6.1+f009a21156e5e3ca6cb5764703acaf338f6caee2
-Entries: 5 — FollowerForge.exe, cli/FollowerForge.Cli.exe, README.md, CHANGELOG.txt,
-         NEXUS-CHANGELOG-3.6.1.txt.  No .pdb, source, or secret files.
-```
-
-The stamped commit must exist in the pushed history, which constrains the order of operations:
-**publish from the commit you are going to push, then record the hash in a NEW commit.** Two
-earlier attempts in this session got it wrong and were corrected — the first publish stamped
-`3.6.1+431f9552…` (the *3.6.0* commit, because 3.6.1 was not committed yet), and a later one
-stamped `6bc9c246…`, which an `--amend` then orphaned. Amending after publishing always
-invalidates the stamp; that is why the artifact record below is a separate commit.
-
-End-to-end from the SHIPPED binary (not the dev build): `cli/FollowerForge.Cli.exe build`
-produced `FF_AriaForge.esp`, 926 bytes, HEDR 1.71, numRecords 11, formVersion 44, ESL=True.
-houseCARL integrity sweep on that output: **0 dangling refs, 0 missing masters, 0 unscannable**.
-
-## 3.6.0 artifact discrepancy (recorded, then removed)
-
-`FollowerForge 3.6.0/dist` held a ZIP that did **not** match the one users downloaded, built
-from the same commit three minutes after the release upload:
-
-```text
-shipped (GitHub v3.6.0 asset): 99,245,718 B  SHA-256 3EFA07D9FA98B2E955C8D67311E63D278626E72356797D56F2BF830AA7345CFD
-local rebuild (deleted):       99,209,827 B  SHA-256 dbec86e8158df423843da0f237819630b1209496115967c951274d41cba2cdcd
-```
-
-`Deterministic=true` and `PathMap` are set, but the self-contained single-file publish is not
-byte-reproducible, so a hash recorded from one local build cannot be re-derived from another.
-The local copy was deleted so no later check verifies a file nobody downloaded. The fix is to
-publish from CI on tag; not done in 3.6.1.
-
-## Not confirmed in 3.6.1
-
-- Real-user click-through of the new button on someone else's machine
-- In-game behaviour (unchanged by this patch, but not re-tested)
-- SSEEdit / Creation Kit: not launched
-
----
-
-# VALIDATION — FollowerForge 3.6.0
-
-## Snapshot gate
-
-```text
-Parent: FollowerForge 3.5.0
-Active: FollowerForge 3.6.0
-Robocopy: 1,473 copied, 0 failed, 0 mismatched
-```
-
-## 3.6.0 implementation gate
-
-- Studio → Focus Cards → Expert Deck approved design implemented.
-- Five selectable semantic palettes implemented: Obsidian Gold, Arcane Amethyst, Nordic Frost,
-  Forge Teal, and Light.
-- Guided/Expert routing, command palette, keyboard navigation, responsive dossier, atomic UI
-  preferences, actionable startup states, and grouped build findings implemented.
-- All 158 named 3.5.0 controls preserved exactly once by the field-migration gate.
-
-## Commands and results
-
-```text
-dotnet clean src/FollowerForge.slnx -c Release
-  -> PASS, 0 warnings, 0 errors
-
-dotnet test src/FollowerForge.slnx -c Release --no-restore
-  -> PASS, 441 passed, 0 failed, 0 skipped
-
-dotnet build src/FollowerForge.slnx -c Release --no-restore
-  -> PASS, 0 warnings, 0 errors
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, self-contained app and CLI published
-  -> hidden FollowerForge.exe boot stayed alive for 12 seconds
-```
-
-## Crash fix re-validation (2026-08-18, Kimi)
-
-Crash evidence: Windows Application log event 1000/1026, FollowerForge.exe 3.6.0.0,
-2026-08-18 02:24 — InvalidOperationException at DataGridSelectedItemsCollection.Clear()
-from WizardWindow.RefreshDeck <- OpenDeck <- OnOpenDeck (button Click).
-
-```text
-dotnet test src/Tests -c Release --filter FullyQualifiedName~ExpertDeckTests
-  -> PASS, 15 passed (incl. 4 new: single-mode Clear() pins the throw,
-     SyncSelected single/extended/empty)
-
-.\Build-FollowerForge.ps1            (clean + Release build + tests + CLI boot)
-  -> PASS, 445 passed, 0 failed, 0 skipped; 0 warnings, 0 errors; CLI OK
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, self-contained app and CLI published
-  -> hidden FollowerForge.exe boot stayed alive for 12 seconds
-  -> staged docs refreshed (crash-fix changelog + Nexus note) and archive re-zipped
-```
-
-Environment note (Kimi shell): `ProgramFiles`, `ProgramFiles(x86)`, `ProgramData`, and
-`CommonProgramFiles` are absent from this agent's process tree; NuGet then fails with
-`Value cannot be null. (Parameter 'path1')`. All dotnet commands above ran with those
-variables injected via `env`, after `dotnet build-server shutdown` cleared stale build nodes.
-Codex/PowerShell sessions with a normal user environment do not need this workaround.
-
-## UI polish re-validation (2026-08-18, Kimi)
-
-Scope: density/clarity pass on WizardWindow.axaml, theme-leak fixes (chip class styles via
-DynamicResource binding; MO2/paths setup windows de-hardcoded), ThemePalette Info/OnStatus
-slots, new ThemeCoverageTests, extended UiPreferencesTests.
-
-```text
-dotnet test src/FollowerForge.slnx -c Release
-  -> PASS, 454 passed, 0 failed, 0 skipped
-
-.\Build-FollowerForge.ps1            (clean + Release build + tests + CLI boot)
-  -> PASS, 454 passed, 0 failed; 0 warnings, 0 errors; CLI OK
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, self-contained app and CLI published
-  -> hidden FollowerForge.exe boot stayed alive for 12 seconds
-  -> staged docs refreshed (UI polish changelog + Nexus note) and archive re-zipped
-```
-
-Theme-leak evidence: grep for `SolidColorBrush|Brushes\.|Color\.Parse` across src/Ui hits
-only ThemeResources.cs (the token factory). ThemeCoverageTests pin zero hex brushes in Ui
-XAML, palette Info/OnStatus completeness + contrast sanity, and chip-class wiring.
-Not runtime-confirmed: live chip repaint on theme switch is reasoned from Avalonia
-DynamicResource semantics; user should flip themes and watch the badge chips.
-
-## UI polish pass 3 re-validation (2026-08-18, Kimi)
-
-User feedback on pass 2: "no differences... error is still yellow no matter the theme".
-Root cause: pass 2 fixed the plumbing (chips follow theme tokens) but every theme's
-Warning/Danger tokens held nearly identical amber/red hex, so theme switches visibly
-repainted nothing. Fix: per-theme distinct Warning/Danger hues + Raycast/Linear-style
-tinted badge chips (translucent Soft fills + colored text, pill radius).
-
-```text
-dotnet test src/Tests -c Release
-  -> PASS, 456 passed, 0 failed, 0 skipped (454 + status-distinctness + soft-alpha pins)
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, self-contained app and CLI published
-  -> hidden FollowerForge.exe boot stayed alive for 12 seconds
-  -> archive rebuilt by the script itself (flat root layout, 5 entries)
-```
-
-Flake note: Phase6Tests Batch_BuildsAllProfiles / NormalFollower_HasNoDuplicateEditorIds
-failed intermittently this session inside FollowerBuilder's final Directory.Move. They pass
-isolated and on full-suite retries (456/456 green twice after); signature is external file
-lock contention on %TEMP% builds, unrelated to the UI-only pass-3 diff. Worth a retry-loop
-hardening in the builder if it recurs.
-
-## UI polish pass 4 re-validation (2026-08-19, Kimi)
-
-User feedback on pass 3: "chips overlay the yellow error labels on the left; 0 work on
-blocky/compacted". Root causes found by rendering the real window headlessly (new
-tools/UiScreenshots harness, Avalonia Headless + Skia -> PNG per theme):
-  - OverlayBrush was 80% opaque: sidebar status labels ghosted through deck/palette dim.
-  - App.axaml hardcoded RequestedThemeVariant=Dark: Light-theme buttons were white-on-cream.
-  - Fixed-height lists/cards produced the "blocky, compacted" look and dead-space pits.
-Fixes: ~95% opaque overlay, Fluent variant follows the palette, token-driven default
-Button/ComboBox styles, sidebar status pills, auto-height cards, MaxHeight lists,
-flattened deck panels.
-
-```text
-dotnet run --project tools/UiScreenshots -c Release
-  -> PASS, 15 PNGs (5 themes x studio/appearance/deck); overlay bleed and Light-theme
-     buttons visually confirmed fixed in the rendered frames
-
-.\Build-FollowerForge.ps1
-  -> PASS, 456 passed, 0 failed; 0 warnings, 0 errors; CLI OK
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, boot check 12s; archive rebuilt by the script (flat root layout, 5 entries)
-```
-
-## UI polish pass 5 re-validation (2026-08-19, Kimi)
-
-User feedback on pass 4 (with 2560x1440 screenshots): "space allocation and ui design is
-trash in some places... overlay theme still happening". Root causes found by extending the
-harness to render the Loadout category at the user's 2560x1440 with populated lists, plus a
-container-painting diagnostic render (page StackPanel painted provably full-width while the
-Expanders stayed narrow):
-  - CategoryHost was a plain Panel: arranges children at desired size, never stretches.
-  - Page ScrollViewers allowed unconstrained horizontal measure: content sized to its
-    widest child instead of the viewport.
-  - The Fluent Expander theme left-aligns by default: sections rendered as small chips.
-Fixes: CategoryHost is now a Grid; all eight page ScrollViewers (plus sidebar) set
-HorizontalScrollBarVisibility=Disabled; the Expander style sets
-HorizontalAlignment/HorizontalContentAlignment=Stretch; all 26 catalogue list MaxHeights
-raised ~1.5x; OverlayBrush raised from F2 to FF alpha on all five themes.
-
-```text
-dotnet run --project tools/UiScreenshots
-  -> PASS, 20 PNGs (5 themes x studio/appearance/deck/loadout-1440p)
-  -> loadout-1440p frames: expanders and lists fill the full content column (visually
-     confirmed, dark + Light themes)
-  -> deck frames: overlay ring pixels sampled with PIL = exactly (9,10,12) = FF090A0C,
-     zero sidebar pill ghosting possible
-
-.\Build-FollowerForge.ps1
-  -> PASS, 456 passed, 0 failed; 0 warnings, 0 errors; CLI OK
-
-dotnet test src/Tests -c Release --nologo   (post-publish confirmation)
-  -> PASS, 456 passed, 0 failed, 0 skipped
-
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, boot check "window stayed up"; archive rebuilt (flat root layout, 5 entries)
-  -> pass-5 changelog confirmed inside the shipped zip
-```
-
-## Final package
-
-```text
-Path: FollowerForge 3.6.0 WIP\dist\FollowerForge-3.6.0-win-x64.zip
-Bytes: 111,277,638
-SHA-256: A9D302602647D3479A04D47B3DCB20FFD277EAED8EAA85DF6653F63B1675F778
-Entries: 5 (flat root layout, as produced by Publish-FollowerForge.ps1)
-Forbidden bin/obj/cache/test/temp/PDB entries: 0
-FollowerForge.exe FileVersion: 3.6.0.0
-README and Nexus notes: 3.6.0 (Nexus notes + changelog include pass-2/3/4/5 polish entries)
-Supersedes pass-4 package: 99,240,266 bytes,
-  SHA-256 4E0EF712BEAA2C3A1334C0D9B27AAC96D1E8AD801EB2F8ED6F8C9E4938E6688F (replaced)
-Earlier packages: 99,239,699 bytes D076092D…CABA18 (pass 3, replaced);
-  99,239,667 bytes 318B7F6A…E3CD15 (pass 2, replaced);
-  99,239,399 bytes A182E8EE…C562559FB (crash-fix-only, replaced);
-  99,738,273 bytes 296E6EA5…93A2895A (broken deck, deleted)
-```
-
-## Release-readiness re-validation (2026-08-19, Grok)
-
-Scope: finish Claude's half-wired 3.6.0 review fixes and remaining Kimi data-loss / palette /
-readiness defects. No new product surface beyond the approved Studio / Deck / palette spec.
-
-```text
-dotnet test src/Tests -c Release --nologo --filter FullyQualifiedName~WorkspaceReadiness|FullyQualifiedName~ExpertDeck|FullyQualifiedName~RaceSuitability|FullyQualifiedName~WorkspaceLayout|FullyQualifiedName~ThemeCoverage
-  -> PASS, 52 passed, 0 failed
-
-dotnet test src/FollowerForge.slnx -c Release --nologo
-  -> PASS, 461 passed, 0 failed, 0 skipped
-```
-
-Pins added or updated: belongings/armor OfferedKeys merge, empty-draft readiness, failed-build
-review Error, palette command titles, race EditorID, multi-select checkbox Commit.
-
-Publish/hash for this exact tree is recorded after `Publish-FollowerForge.ps1` in this session.
-NEXUS-UPLOAD working-tree dirt was not included.
-
-```text
-.\Publish-FollowerForge.ps1 -Version 3.6.0 -SkipTests
-  -> PASS, boot check "window stayed up"
-  -> zip: FollowerForge 3.6.0\dist\FollowerForge-3.6.0-win-x64.zip
-  -> 99,245,718 bytes
-  -> SHA-256 3EFA07D9FA98B2E955C8D67311E63D278626E72356797D56F2BF830AA7345CFD
-  -> 5 entries (FollowerForge.exe, cli\FollowerForge.Cli.exe, CHANGELOG.txt,
-     NEXUS-CHANGELOG-3.6.0.txt, README.md)
-  -> FollowerForge.exe FileVersion 3.6.0.0
-```
-
-## Runtime status
-
-- Status: `tool-validated`
-- Confirmed: compile, 461 tests, XAML load/build, packaged desktop boot, archive inventory/version/hash,
-  real-control regression tests for the crashing deck-open path, OfferedKeys apply, readiness, palette titles
-- Not confirmed: real-user visual walkthrough, follower generation on the active mod setup, Skyrim gameplay
-- Publication: not pushed or released remotely in this run
-- SSEEdit/CK: not launched
-
----
-
-## Prior validation: FollowerForge 3.5.0
-
-## Commands run
-
-```text
-dotnet test FollowerForge 3.5.0\src\Tests -c Release --nologo
-  → 388 passed, 0 failed
-```
-
-PEX compile (russo papyrus.exe, headers from Skyrim Data\Source\Scripts):
-  FF_Transform.psc → FF_Transform.pex (2340 bytes)
-  Disassembly confirms GetCombatState, originalRace, RestoreRace, OnLoad, OnUpdate, DispelSpell.
-  String table does not contain WerewolfChangeFX.
-
-SSEEdit/CK: not launched.
-
-## Targeted checks
-
-| Test | Intent | Result |
-|---|---|---|
-| Werewolf_UsesTheGamesOwnRace_WithoutWerewolfChangeFx | compiler must not attach the delayed-SetRace spell | PASS |
-| BundledTransformScript_DoesNotCastWerewolfChangeFx | shipped PSC has no that EditorID | PASS |
-| BundledTransformScript_AbortsIfTheFightAlreadyEnded | GetCombatState after wait | PASS |
-
-## Package
-
-Not published this session. Use:
-
-```text
-.\Publish-FollowerForge.ps1 -Version 3.5.0 -SkipTests
-```
-
-from `FollowerForge 3.5.0`.
+Shipped artifact: `FollowerForge-3.6.1-win-x64.zip`, 99,249,351 bytes,
+SHA-256 `EB48F7867CA19167E2A6720BECED21DF6B32DC5D58AF8860B3AF81F8F60695C6`.
+The GitHub release asset digest matched this exactly, unlike 3.6.0 where they diverged.
+Exe stamps `3.6.1+f009a21156e5e3ca6cb5764703acaf338f6caee2`.

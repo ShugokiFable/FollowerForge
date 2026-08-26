@@ -1,6 +1,59 @@
 # CHANGELOG — FollowerForge
 
 ================================================================================
+## [3.7.0] - 2026-08-26 - transform into anything, and stop blocking a build that was fine
+Agent: Claude Code (Opus 5)
+Parent: FollowerForge 3.6.1
+
+Added:
+  - Combat transformation can now turn her into a CREATURE. Dragons, wolves, trolls,
+    spriggans, whatever the installed mods provide. The picker had silently excluded every
+    creature race since the feature shipped, which left "custom race / spell" offering only
+    the same people-races she could already be.
+    Why it was wrong: the exclusion exists because a creature race has no head data, so no
+    face can be built for it. That is a rule about the race she IS, not the race she TURNS
+    INTO - the face belongs to the base race, and FF_Transform only calls SetRace() at
+    runtime. Vanilla werewolf, which this feature already offered, is itself a creature race.
+    On this machine that is 191 races before and 944 after: 753 beast forms the feature was
+    written for had never been reachable.
+  - Creature rows carry their FormID and EditorID, the way gear rows already did. Five
+    installed mods each ship a race called "BabyDragonRace"; without the ID there is no way
+    to tell those five apart in a list that long.
+  - `FollowerForge.Cli.exe races --creatures` lists what the transformation picker offers,
+    beside the plain `races` that lists what she can be built as.
+
+Fixed (root cause of the user report: build interrupted with "Must be fixed" after adding
+clothing to inventory AND choosing a legacy outfit):
+  - Picking ANY armor together with a legacy outfit was a guaranteed hard build error, one
+    STARTING_ARMOR_NOT_WRITTEN per piece. The compiler has always supported the combination -
+    a chosen OTFT wins, and the pieces stay in inventory to be traded - but the validator only
+    knew about the generated-outfit path, then searched THIS plugin for an outfit that lives
+    in Skyrim.esm, found nothing, and reported every piece as missing. The validator now
+    follows the same branch the compiler takes.
+  - The combination is now one warning, OUTFIT_OVERRIDES_ARMOR, that names the outfit and says
+    what will happen: she starts in the outfit, and the pieces stay in her pack.
+  - LEGACY_OUTFIT_WITH_EQUIPMENT is gone, folded into that warning. It said the engine "may
+    choose" the outfit over inventory gear. It does choose it; there was never any doubt.
+
+Changed:
+  - A RaceMenu preset's BODY SHAPE has never transferred, and nothing ever said so. The build
+    now counts the shaped sliders in the preset's bodyMorphs block and warns, naming BodySlide
+    or OBody as where that shape actually belongs. Untouched sliders are excluded: RaceMenu
+    writes the whole set whether it was used or not (a reference preset on this machine holds
+    119 entries, of which 86 are shaped), so counting them all would warn on every build.
+    The same warning names RaceMenu overlays - tattoos, warpaint, scars - which do not
+    transfer either.
+
+Evidence:
+  - 489 Release tests pass (478 inherited from 3.6.1 + 11 new), 0 failed.
+  - End-to-end CLI build of the exact reported combination - legacy outfit + two armour pieces
+    + a creature transform race - is BUILD OK with one warning and no errors. The published
+    plugin's VMAD carries BeastRace = 0x000CDD84 against master index 0, and the ship gate
+    reads HEDR=1.71 numRecords=11 formVersion=44 ESL=True.
+  - Race counts read from the live 2,920-plugin catalogue on this machine, not from fixtures.
+
+
+================================================================================
 ## [3.6.0] - 2026-08-19 - complete frontend redesign - CRASH FIXED + UI POLISH PASSES 2-5 + RELEASE-READINESS
 Agent: Codex
 Parent: FollowerForge 3.5.0

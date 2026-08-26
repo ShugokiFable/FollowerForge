@@ -1,0 +1,2603 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
+using Avalonia.Media;
+using FollowerForge.AssetIndex;
+using FollowerForge.BuildPipeline;
+using FollowerForge.Domain;
+using FollowerForge.ModManagers;
+using FollowerForge.SkyrimRecords;
+using Serilog;
+
+namespace FollowerForge.Ui;
+
+/// <summary>
+/// The seven-step follower wizard. Every choice is made from the user's own installed content
+/// by name. Gear rows also show the FormID so identically named variants can be told apart.
+/// </summary>
+public partial class WizardWindow : Window
+{
+    private const int StepCount = 7;
+    private const double SkillValueEditorWidth = 150;
+    private static readonly ILogger Log = new LoggerConfiguration().MinimumLevel.Warning().CreateLogger();
+
+    private int _step;
+    private EnvironmentSnapshot? _env;
+    private LocationLibrary? _library;
+    private string? _lastOutputDir;
+    private IReadOnlyList<string> _lastMustFix = [], _lastBuildWarnings = [];
+
+    // Full lists, kept so the search boxes can filter without touching the database again.
+    private IReadOnlyList<PickerItem> _voices = [], _classes = [], _styles = [], _outfits = [], _skins = [];
+    private IReadOnlyList<PickerItem> _weapons = [], _spells = [], _perks = [], _ammo = [];
+    private IReadOnlyList<PickerItem> _armorTorso = [], _armorHead = [], _armorHands = [];
+    private IReadOnlyList<PickerItem> _armorFeet = [], _armorShield = [], _armorAccessories = [], _armorOther = [];
+    private readonly HashSet<string> _selectedArmor = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedWeapons = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedAmmo = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedSpells = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedPerks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedLore = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<PickerItem> _books = [], _miscItems = [], _ingestibles = [], _ingredients = [];
+    /// <summary>LocType keywords, for lines that only apply in a kind of place.</summary>
+    private IReadOnlyList<PickerItem> _placeKeywords = [];
+    private readonly Dictionary<FollowerSkill, NumericUpDown> _skillBoxes = [];
+    private readonly List<DialogueLine> _lines = [];
+    private readonly List<KinItem> _kin = [];
+    private readonly List<LocationItem> _alternateSpawns = [];
+    private VoiceModelCatalog _voiceModels = new();
+
+    /// <summary>
+    /// How much dialogue each voice type already inherits from installed mods (RDO and anything
+    /// else that keys lines to a voice). Null until the scan has been run at least once.
+    /// </summary>
+    private Dictionary<string, VoiceCoverage>? _coverage;
+    private bool _restoringMultiSelection;
+    private IReadOnlyList<FaceItem> _faces = [];
+    // Races are split: ten vanilla by default, hundreds of custom ones only on request.
+    private IReadOnlyList<PickerItem> _vanillaRaces = [], _customRaces = [], _creatureRaces = [];
+    private IReadOnlyList<PickerItem> _races
+    {
+        get
+        {
+            var races = new List<PickerItem>(_vanillaRaces);
+            if (Ctl<CheckBox>("CustomRacesBox").IsChecked == true) races.AddRange(_customRaces);
+            if (Ctl<CheckBox>("CreatureRacesBox").IsChecked == true) races.AddRange(_creatureRaces);
+            return races;
+        }
+    }
+
+    /// <summary>
+    /// What she can turn INTO, which is a different question from what she can BE. Creature
+    /// races are hidden from the identity picker because they carry no head data, so no face
+    /// can ever be built for one — but the face belongs to her base race, and FF_Transform only
+    /// calls SetRace() once a fight has started. Vanilla werewolf, which this very feature has
+    /// always offered, is itself a creature race. Beast forms lead the list because they are the
+    /// entire point of transforming.
+    /// </summary>
+    private IReadOnlyList<PickerItem> _transformRaces =>
+        [.. _creatureRaces, .. _vanillaRaces, .. _customRaces];
+
+    /// <summary>
+    /// False until the XAML has finished loading. Control events (ComboBox.SelectionChanged in
+    /// particular) fire while the tree is still being built, and looking a control up by name
+    /// before then throws "Could not find parent name scope".
+    /// </summary>
+    private bool _ready;
+
+    /// <summary>Cancels an in-flight startup/index when the user switches Vortex ↔ MO2.</summary>
+    private CancellationTokenSource? _loadCts;
+
+    /// <summary>
+    /// Bumped on every load/switch so a cancelled Vortex index that still finishes cannot
+    /// overwrite the UI/state from a later MO2 load.
+    /// </summary>
+    private int _loadGeneration;
+
+    /// <summary>
+    /// Serialises catalogue builds so a cancelled Vortex re-index cannot finish after an MO2
+    /// re-index and stomp the SQLite catalogue.
+    /// </summary>
+    private readonly object _catalogGate = new();
+
+    private bool _mo2SetupOpen;
+    private bool _skipMo2SetupPromptOnce;
+    private UiPreferences _preferences;
+    private readonly WorkspaceNavigator _navigator = new();
+    private CategoryReadiness? _nextRecommended;
+    private ExpertDeckSession? _deckSession;
+    private string? _deckTarget;
+    private Control? _deckOpener;
+    private bool _syncingDeckSelection;
+    private bool _indexing = true;
+    private bool _lastBuildHadMustFix;
+    private IReadOnlyList<CommandOption> _commands = [];
+
+    private sealed record CommandOption(string Title, string Detail, Action Run)
+    {
+        public override string ToString() => $"{Title}  —  {Detail}";
+    }
+
+    public WizardWindow() : this(UiPreferences.Default)
+    {
+    }
+
+    public WizardWindow(UiPreferences preferences)
+    {
+        _preferences = preferences;
+        AvaloniaXamlLoader.Load(this);
+        Width = preferences.Window.Width;
+        Height = preferences.Window.Height;
+        if (preferences.Window.Maximized) WindowState = WindowState.Maximized;
+        if (Application.Current is { } app) ThemeResources.Apply(app, preferences.Theme);
+        Ctl<ComboBox>("ThemeBox").SelectedIndex = (int)preferences.Theme;
+        Ctl<Button>("ExperienceButton").Content = preferences.Experience == ExperienceMode.Expert ? "Expert" : "Guided";
+        InitializeCommands();
+        BuildSkillEditor();
+        ApplyStatPreset(FollowerStatPreset.BlankSlate);
+        _ready = true;
+        ApplyPronouns();
+        UpdateVoiceSynthStatus();
+        RenderCurrentSection();
+        RefreshWorkspaceChrome();
+        // MO2 users must be able to switch BEFORE a long Vortex index soft-locks the UI.
+        ShowManagerSwitchDuringLoad();
+        _ = LoadEverythingAsync();
+    }
+
+    private T Ctl<T>(string name) where T : Control => this.FindControl<T>(name)!;
+
+    private FollowerPronouns CurrentPronouns =>
+        FollowerPronouns.FromFemale(Ctl<ComboBox>("SexBox").SelectedIndex == 0);
+
+    private void OnSexChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        ApplyPronouns();
+        RelabelKin();
+        RelabelVoiceSilence();
+        RefreshVoices();
+        if (_step == StepCount - 1)
+            Ctl<TextBlock>("SummaryText").Text = Summary();
+    }
+
+    private void ApplyPronouns()
+    {
+        var p = CurrentPronouns;
+        Ctl<TextBlock>("Step0").Text = WizardCopy.StepWho(p);
+        Ctl<TextBlock>("Step1").Text = WizardCopy.StepLook(p);
+        Ctl<TextBlock>("Step2").Text = WizardCopy.StepVoice(p);
+        Ctl<TextBlock>("Step3").Text = WizardCopy.StepFight(p);
+        Ctl<TextBlock>("Step4").Text = WizardCopy.StepWear(p);
+        Ctl<TextBlock>("Step5").Text = WizardCopy.StepWait(p);
+        Ctl<TextBlock>("Step6").Text = WizardCopy.StepBuild(p);
+        Ctl<TextBlock>("Page0Title").Text = WizardCopy.WhoTitle(p);
+        SetComboItem("MortalBox", 0, WizardCopy.ProtectedOption(p));
+        SetComboItem("MortalBox", 2, WizardCopy.MortalOption(p));
+        Ctl<CheckBox>("MarriageBox").Content = WizardCopy.MarriageOption(p);
+        Ctl<TextBlock>("RegardsYouLabel").Text = WizardCopy.RegardsYou(p);
+        Ctl<TextBlock>("KinSectionLabel").Text = p.Fill("How {subject} regards other people (optional)");
+        Ctl<TextBlock>("KinHintText").Text = WizardCopy.KinHint(p);
+        Ctl<TextBlock>("KinPeopleLabel").Text = WizardCopy.KinPeople(p);
+        Ctl<TextBlock>("Page1Title").Text = WizardCopy.LookTitle(p);
+        Ctl<TextBlock>("Page1Hint").Text = WizardCopy.LookHint(p);
+        Ctl<CheckBox>("VampireBox").Content = WizardCopy.VampireOption(p);
+        Ctl<TextBlock>("Page2Title").Text = WizardCopy.VoiceTitle(p);
+        SetComboItem("VoiceScopeBox", 0, WizardCopy.VoicesUsable(p));
+        Ctl<TextBlock>("CustomLinesHint").Text = WizardCopy.CustomLinesHint(p);
+        SetComboItem("LineTriggerBox", 0, WizardCopy.TalkToHer(p));
+        Ctl<TextBox>("LineTextBox").PlaceholderText = WizardCopy.WhatSheSays(p);
+        Ctl<TextBlock>("HerLinesLabel").Text = WizardCopy.HerLines(p);
+        Ctl<TextBlock>("Page3Title").Text = WizardCopy.FightTitle(p);
+        Ctl<CheckBox>("CloneCstyBox").Content = WizardCopy.CloneStyle(p);
+        SetComboItem("TemperBox", 2, WizardCopy.AverageTemper(p));
+        Ctl<TextBlock>("TemperHint").Text = WizardCopy.TemperHint(p);
+        Ctl<TextBlock>("EvolveTitle").Text = WizardCopy.EvolveTitle(p);
+        Ctl<TextBlock>("EvolveHint").Text = WizardCopy.EvolveHint(p);
+        Ctl<CheckBox>("EvolveBox").Content = WizardCopy.EvolveOption(p);
+        Ctl<TextBlock>("TransformHint").Text = WizardCopy.TransformHint(p);
+        Ctl<TextBlock>("Page4Title").Text = WizardCopy.WearTitle(p);
+        Ctl<TextBlock>("Page4Hint").Text = WizardCopy.WearHint(p);
+        Ctl<TextBlock>("AmmoHint").Text = WizardCopy.AmmoHint(p);
+        Ctl<TextBlock>("LoreHint").Text = WizardCopy.LoreHint(p);
+        Ctl<TextBlock>("SpellsLabel").Text = WizardCopy.SpellsLabel(p);
+        Ctl<TextBlock>("PerksLabel").Text = WizardCopy.PerksLabel(p);
+        Ctl<TextBlock>("BodyHint").Text = WizardCopy.BodyHint(p);
+        Ctl<TextBlock>("Page5Title").Text = WizardCopy.PlaceTitle(p);
+        Ctl<TextBlock>("IdleLabel").Text = WizardCopy.IdleLabel(p);
+        SetComboItem("IdleBox", 0, WizardCopy.IdleDefault(p));
+        SetComboItem("IdleBox", 1, WizardCopy.IdleSpot(p));
+        SetComboItem("IdleBox", 2, WizardCopy.IdleRoom(p));
+        SetComboItem("IdleBox", 3, WizardCopy.IdleWherever(p));
+        Ctl<TextBlock>("AlternateLabel").Text = WizardCopy.AlternateLabel(p);
+        Ctl<TextBlock>("AlternateHint").Text = WizardCopy.AlternateHint(p);
+        Ctl<TextBlock>("E2AHint").Text = WizardCopy.E2AHint(p);
+        Ctl<CheckBox>("E2ABox").Content = WizardCopy.E2AOption(p);
+        Ctl<TextBlock>("Page6Title").Text = WizardCopy.BuildTitle(p);
+        Ctl<TextBlock>("AssetsLabel").Text = WizardCopy.AssetsLabel(p);
+        SetComboItem("HubModeBox", 2, WizardCopy.CopyAssets(p));
+        UpdateVoiceSynthStatus();
+    }
+
+    private void SetComboItem(string comboName, int index, string text)
+    {
+        var box = Ctl<ComboBox>(comboName);
+        if (box.Items[index] is ComboBoxItem item)
+            item.Content = text;
+        else
+            box.Items[index] = text;
+    }
+
+    private void RelabelKin()
+    {
+        var p = CurrentPronouns;
+        for (var i = 0; i < _kin.Count; i++)
+            _kin[i] = new KinItem(_kin[i].Relationship, _kin[i].DisplayName, p);
+        RefreshKinList();
+    }
+
+    private void RelabelVoiceSilence()
+    {
+        var p = CurrentPronouns;
+        _voices = _voices.Select(v =>
+        {
+            if (v.Detail is null) return v;
+            var detail = v.Detail
+                .Replace("she would be silent", $"{p.Subject} would be silent", StringComparison.Ordinal)
+                .Replace("he would be silent", $"{p.Subject} would be silent", StringComparison.Ordinal);
+            return detail == v.Detail
+                ? v
+                : new PickerItem(v.Display, v.FormKey, detail, v.Tier, v.Badge, v.BadgeKind, v.EditorId);
+        }).ToList();
+    }
+
+    private async void OnPathsSetup(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        try
+        {
+            var current = AppUserSettings.Load(warning: message => Log.Warning("{Warning}", message));
+            var dialog = new PathsSetupWindow(current, _env);
+            var result = await dialog.ShowDialog<PathsSetupResult?>(this);
+            if (result is null) return;
+            if (result.ReturnToAutomatic)
+                AppUserSettings.Clear();
+            else if (result.Selection is not null)
+                AppUserSettings.Save(result.Selection);
+            _voiceModels = new VoiceModelCatalog();
+            UpdateVoiceSynthStatus();
+            SetStatus("Paths saved.");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not open Paths setup");
+            SetStatus("Could not open Paths: " + ex.Message);
+        }
+    }
+
+    // ---------- start-up ----------
+
+    private async Task LoadEverythingAsync()
+    {
+        var env = Ctl<TextBlock>("EnvLine");
+        var gen = Interlocked.Increment(ref _loadGeneration);
+        _indexing = true;
+        RefreshWorkspaceChrome();
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        var ct = _loadCts.Token;
+        ShowManagerSwitchDuringLoad();
+
+        bool StillCurrent() => gen == _loadGeneration && !ct.IsCancellationRequested;
+
+        try
+        {
+            env.Text = ManagerPreference.PreferMo2
+                ? "Looking for Mod Organizer 2…\n(You can switch to Vortex below.)"
+                : "Looking for Vortex…\n(MO2 users: click the button below to skip Vortex.)";
+            SetStatus(ManagerPreference.PreferMo2
+                ? "Starting with Mod Organizer 2…"
+                : "Starting with Vortex (use the button to pick MO2 instead)…");
+
+            // A FollowerForge environment override outranks the saved GUI selection. The saved
+            // selection is strict: never substitute another MO2 profile or fall back silently.
+            var savedMo2 = ManagerPreference.PreferMo2
+                && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FFORGE_MO2_INSTANCE"))
+                    ? Mo2UserSettings.Load(warning: message => Log.Warning("{Warning}", message))
+                    : null;
+            var discovered = await Task.Run(() => new EnvironmentDiscovery(Log).Discover(
+                mo2InstanceOverride: savedMo2?.InstanceRoot,
+                preferMo2: ManagerPreference.PreferMo2,
+                mo2ProfileOverride: savedMo2?.ProfileName,
+                strictMo2Override: savedMo2 is not null), ct);
+            if (!StillCurrent()) return;
+            _env = discovered;
+            UpdateManagerSwitchButton();
+
+            if (ManagerPreference.PreferMo2 && discovered.Manager != ModManagerKind.Mo2)
+            {
+                if (_skipMo2SetupPromptOnce)
+                {
+                    _skipMo2SetupPromptOnce = false;
+                }
+                else
+                {
+                    SetStatus("Automatic MO2 detection could not find your instance. Choose it in MO2 setup.");
+                    if (await ShowMo2SetupDialogAsync()) return;
+                }
+            }
+
+            try
+            {
+                await PrepareCatalogAsync(env, ct, gen);
+            }
+            catch (Exception ex) when (CatalogDb.IsCacheFailure(ex) && StillCurrent())
+            {
+                env.Text = "The catalogue cache was damaged — repairing it automatically…";
+                CatalogDb.QuarantineBrokenCache(CatalogBuilder.DefaultDbPath, Log);
+                LocationLibraryBuilder.Invalidate();
+                await Task.Run(() => new CatalogBuilder(Log).Build(_env!), ct);
+                if (!StillCurrent()) return;
+                await Task.Run(LoadPickers, ct);
+            }
+
+            if (!StillCurrent()) return;
+            _library = LocationLibraryBuilder.Load();
+            if (_library is null)
+            {
+                env.Text = "Finding spawn locations…";
+                var lib = await Task.Run(() => new LocationLibraryBuilder(Log).Build(_env!), ct);
+                if (!StillCurrent()) return;
+                _library = lib;
+            }
+            if (!StillCurrent()) return;
+            FillPlaces(null);
+
+            // Which voices already have follower and marriage dialogue is read off the real load
+            // order. Without it the build can only say "cannot tell whether this voice can marry".
+            if (_coverage is null)
+            {
+                env.Text = "Reading what your mods already say (one time)…";
+                await Task.Run(ScanVoiceCoverage, ct);
+            }
+
+            if (!StillCurrent()) return;
+            env.Text =
+                $"{_env!.ManagerLabel}\n{_env.EnabledPluginCount} plugins\n{_library.Locations.Count} known places\n{_faces.Count} exported faces";
+            UpdateManagerSwitchButton();
+            _indexing = false;
+            SetStatus("Ready.");
+        }
+        catch (OperationCanceledException)
+        {
+            // User flipped Vortex/MO2 — a new LoadEverythingAsync owns the UI.
+            if (StillCurrent())
+                env.Text = "Switching manager…";
+        }
+        catch (Exception ex)
+        {
+            if (!StillCurrent()) return;
+            _indexing = false;
+            env.Text = "Setup problem";
+            // Keep the switch visible so MO2 users can recover without restarting.
+            ShowManagerSwitchDuringLoad();
+            SetStatus("Could not read your setup: " + ex.Message);
+            if (ManagerPreference.PreferMo2)
+                await ShowMo2SetupDialogAsync();
+        }
+    }
+
+    /// <summary>
+    /// Shown immediately at startup (before discovery finishes) so MO2-only dual-install users
+    /// are not stuck watching a multi-minute Vortex index with no way out.
+    /// </summary>
+    private void ShowManagerSwitchDuringLoad()
+    {
+        if (!_ready) return;
+        var btn = Ctl<Button>("ManagerSwitchButton");
+        // Preference already set → offer the other manager; default Vortex path → offer MO2.
+        if (ManagerPreference.PreferMo2)
+        {
+            btn.Content = "Use Vortex instead";
+            btn.IsVisible = true;
+        }
+        else
+        {
+            btn.Content = "Use Mod Organizer 2 instead";
+            btn.IsVisible = true;
+        }
+    }
+
+    /// <summary>
+    /// Lets Vortex+MO2 users flip which manager FollowerForge indexes. Preference is stored under
+    /// LocalAppData\FollowerForge\prefer-mo2 so the next launch keeps the choice.
+    /// Available during indexing — cancel the in-flight load and restart.
+    /// </summary>
+    private void UpdateManagerSwitchButton()
+    {
+        var btn = Ctl<Button>("ManagerSwitchButton");
+        if (_env is null)
+        {
+            ShowManagerSwitchDuringLoad();
+            return;
+        }
+
+        if (_env.Manager == ModManagerKind.Vortex)
+        {
+            btn.Content = "Use Mod Organizer 2 instead";
+            btn.IsVisible = true;
+        }
+        else
+        {
+            btn.Content = "Use Vortex instead";
+            btn.IsVisible = true;
+        }
+    }
+
+    private async void OnMo2Setup(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        try
+        {
+            await ShowMo2SetupDialogAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected MO2 setup failure");
+            SetStatus("Could not open MO2 setup: " + ex.Message);
+        }
+    }
+
+    private async Task<bool> ShowMo2SetupDialogAsync()
+    {
+        if (_mo2SetupOpen) return false;
+        Mo2SetupResult? result;
+        _mo2SetupOpen = true;
+        try
+        {
+            var current = Mo2UserSettings.Load(warning: message => Log.Warning("{Warning}", message));
+            var dialog = new Mo2SetupWindow(current);
+            result = await dialog.ShowDialog<Mo2SetupResult?>(this);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not open MO2 setup dialog");
+            SetStatus("Could not open MO2 setup: " + ex.Message);
+            return false;
+        }
+        finally
+        {
+            // Release the modal guard before reload. If strict discovery fails, LoadEverythingAsync
+            // can immediately reopen setup with the saved values instead of dead-ending.
+            _mo2SetupOpen = false;
+        }
+
+        if (result is null) return false;
+        try
+        {
+            if (result.ReturnToAutomatic)
+            {
+                Mo2UserSettings.Clear();
+                _skipMo2SetupPromptOnce = true;
+            }
+            else if (result.Selection is not null)
+            {
+                Mo2UserSettings.Save(result.Selection);
+            }
+            else
+            {
+                return false;
+            }
+
+            ManagerPreference.SetPreferMo2(true);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not save MO2 setup");
+            SetStatus("Could not save MO2 setup: " + ex.Message);
+            return false;
+        }
+
+        _loadCts?.Cancel();
+        _coverage = null;
+        _library = null;
+        _faces = [];
+        _env = null;
+        LocationLibraryBuilder.Invalidate();
+        SetStatus(result.ReturnToAutomatic
+            ? "Returning to automatic MO2 detection..."
+            : "Switching to the selected MO2 profile and re-indexing...");
+
+        await Task.Delay(50);
+        await LoadEverythingAsync();
+        return true;
+    }
+
+    private async void OnManagerSwitch(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+
+        // During first load _env may still be null — default path is Vortex, so switch means MO2.
+        var currentlyMo2 = _env?.Manager == ModManagerKind.Mo2
+            || (_env is null && ManagerPreference.PreferMo2);
+        var wantMo2 = !currentlyMo2;
+
+        try
+        {
+            ManagerPreference.SetPreferMo2(wantMo2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not save manager preference");
+            SetStatus("Could not save the manager choice: " + ex.Message);
+            return;
+        }
+        // Abort Vortex (or MO2) index so the user is not soft-locked for minutes.
+        _loadCts?.Cancel();
+        _coverage = null;
+        _library = null;
+        _faces = [];
+        LocationLibraryBuilder.Invalidate();
+
+        var env = Ctl<TextBlock>("EnvLine");
+        env.Text = wantMo2
+            ? "Switching to Mod Organizer 2…\n(Stopping the previous scan.)"
+            : "Switching to Vortex…\n(Stopping the previous scan.)";
+        SetStatus(wantMo2
+            ? "Switching to Mod Organizer 2…"
+            : "Switching to Vortex…");
+        ShowManagerSwitchDuringLoad();
+
+        // Let the cancelled load exit before starting another.
+        await Task.Delay(50);
+        await LoadEverythingAsync();
+        if (_env is null) return;
+        if (wantMo2 && _env.Manager != ModManagerKind.Mo2)
+            SetStatus("Could not open Mod Organizer 2. Set FFORGE_MO2_INSTANCE to your instance folder (the one with ModOrganizer.ini), then try again.");
+        else if (!wantMo2 && _env.Manager != ModManagerKind.Vortex)
+            SetStatus("Could not open Vortex. Deploy Skyrim SE in Vortex, or keep using Mod Organizer 2.");
+        else
+            SetStatus($"Now using {_env.ManagerLabel}.");
+    }
+
+    private async Task PrepareCatalogAsync(TextBlock env, CancellationToken ct, int gen)
+    {
+        // Rebuild whenever Vortex has deployed since the catalogue was made, otherwise the
+        // wizard offers stale content and reports mods you actually have as missing.
+        var dbPath = CatalogBuilder.DefaultDbPath;
+        var fresh = File.Exists(dbPath) && CatalogBuilder.IsFresh(_env!, dbPath);
+        if (!fresh)
+        {
+            var manager = _env!.ManagerLabel;
+            env.Text = File.Exists(dbPath)
+                ? $"{manager}: your mods changed — re-reading them (about a minute)…\n(Use the button below to switch manager.)"
+                : $"{manager}: first run — reading your mods (about a minute)…\n(MO2 users: click Use Mod Organizer 2 instead.)";
+            ShowManagerSwitchDuringLoad();
+            // Serialise builds: a cancelled Vortex index may still be running; do not let it
+            // finish after MO2 and overwrite the catalogue. Generation check drops stale work.
+            var envSnap = _env!;
+            await Task.Run(() =>
+            {
+                lock (_catalogGate)
+                {
+                    if (gen != _loadGeneration) return;
+                    new CatalogBuilder(Log).Build(envSnap);
+                }
+            }, CancellationToken.None);
+            if (gen != _loadGeneration || ct.IsCancellationRequested)
+                throw new OperationCanceledException(ct);
+            LocationLibraryBuilder.Invalidate();
+        }
+        if (gen != _loadGeneration || ct.IsCancellationRequested)
+            throw new OperationCanceledException(ct);
+        await Task.Run(LoadPickers, ct);
+    }
+
+    /// <summary>
+    /// Builds the voice-dialogue library from the live load order, then reloads the pickers so the
+    /// voice list carries what each voice already says. Failure here is never fatal — the wizard
+    /// simply keeps reporting marriage support as unknown.
+    /// </summary>
+    private void ScanVoiceCoverage()
+    {
+        try
+        {
+            var (entries, _) = new LoadOrderBuilder(Log).BuildEntryList(_env!);
+            var enabled = entries.Where(e => e.Enabled).Select(e => e.PluginFileName);
+            VoiceCoverageScanner.Save(
+                new VoiceCoverageScanner(Log).Scan(_env!.GameDataPath, enabled));
+            LoadPickers();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Voice coverage scan failed: {Error}", ex.Message);
+        }
+    }
+
+    /// <summary>Pulls every list the wizard offers straight out of the catalogue.</summary>
+    private void LoadPickers()
+    {
+        using var db = new CatalogDb(CatalogBuilder.DefaultDbPath, Log);
+        const int AllPickerRecords = int.MaxValue;
+
+        static string? Best(IndexedRecord r) =>
+            !string.IsNullOrWhiteSpace(r.DisplayName) ? r.DisplayName : r.EditorId;
+
+        // Every row says whether picking it costs the downloader another mod. Ordering stays
+        // alphabetical here — people search these lists for a specific thing by name.
+        List<PickerItem> Grab(IndexedRecordType type, Func<IndexedRecord, string?>? detail = null, bool showId = false) =>
+            db.SearchRecords(type, null, AllPickerRecords)
+                .Where(r => !string.IsNullOrWhiteSpace(Best(r)))
+                .Select(r => new PickerItem(
+                    Best(r)!, r.FormKey,
+                    showId
+                        ? RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), detail?.Invoke(r) ?? SourceOf(r))
+                        : detail?.Invoke(r) ?? SourceOf(r),
+                    badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
+                    badgeKind: IsBaseGame(r) ? "good" : "dim",
+                    editorId: r.EditorId))
+                .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        // Dialogue a voice already inherits from installed mods. Loaded before the voice list is
+        // built so the labels can carry it; absent until the user runs the scan.
+        _coverage = VoiceCoverageScanner.Load()?.Voices
+            .ToDictionary(v => v.VoiceFormKey, v => v, StringComparer.OrdinalIgnoreCase);
+
+        // Races are filtered and labelled: creature/child/beast-form records are dropped, and
+        // custom races say plainly that they become a requirement for anyone who installs her.
+        // Showing all ~190 at once was overwhelming, so custom ones are behind a checkbox.
+        var offered = RaceSuitability.Offer(
+            db.SearchRecords(IndexedRecordType.Race, null, AllPickerRecords), includeCreatures: true);
+        _vanillaRaces = offered.Where(r => r.Class == RaceClass.Vanilla).Select(RaceRow).ToList();
+        _customRaces = offered.Where(r => r.Class is not RaceClass.Vanilla and not RaceClass.Creature)
+            .Select(RaceRow).ToList();
+        // Creatures are kept apart so they can never appear unless deliberately asked for.
+        _creatureRaces = offered.Where(r => r.Class == RaceClass.Creature).Select(RaceRow).ToList();
+        _classes = Grab(IndexedRecordType.Class);
+        _outfits = Grab(IndexedRecordType.Outfit);
+        _weapons = Grab(IndexedRecordType.Weapon, showId: true);
+        _ammo = Grab(IndexedRecordType.Ammo, showId: true);
+        _spells = Grab(IndexedRecordType.Spell);
+        _books = Grab(IndexedRecordType.Book, showId: true);
+        _miscItems = Grab(IndexedRecordType.MiscItem, showId: true);
+        _ingestibles = Grab(IndexedRecordType.Ingestible, showId: true);
+        _ingredients = Grab(IndexedRecordType.Ingredient, showId: true);
+        // Only LocType* keywords are useful here; the rest of the ~2000 are noise.
+        _placeKeywords = db.SearchRecords(IndexedRecordType.Keyword, "LocType", AllPickerRecords)
+            .Where(r => r.EditorId is { Length: > 0 } e && e.StartsWith("LocType", StringComparison.Ordinal))
+            .Select(r => new PickerItem(Friendly(r.EditorId!), r.FormKey, r.EditorId, editorId: r.EditorId))
+            .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _perks = Grab(IndexedRecordType.Perk);
+        var armorRecords = db.SearchRecords(IndexedRecordType.Armor, null, AllPickerRecords)
+            .Where(r => !string.IsNullOrWhiteSpace(Best(r)))
+            .ToList();
+        _skins = armorRecords
+            .Where(IsSkinArmor)
+            .Select(r => new PickerItem(
+                Best(r)!, r.FormKey,
+                RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), $"body / skin • {SourceOf(r)}"),
+                badge: "SKIN", badgeKind: "dim",
+                editorId: r.EditorId))
+            .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var armor = armorRecords
+            .Select(r => (
+                Item: new PickerItem(
+                    Best(r)!, r.FormKey,
+                    RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, Best(r), ArmorLabel(r)),
+                    badge: IsBaseGame(r) ? "BASE GAME" : "MOD",
+                    badgeKind: IsBaseGame(r) ? "good" : "dim",
+                    editorId: r.EditorId),
+                Group: ArmorGroup(r)))
+            .OrderBy(pair => pair.Item.Display, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _armorTorso = armor.Where(a => a.Group == "Torso").Select(a => a.Item).ToList();
+        _armorHead = armor.Where(a => a.Group == "Head").Select(a => a.Item).ToList();
+        _armorHands = armor.Where(a => a.Group == "Hands").Select(a => a.Item).ToList();
+        _armorFeet = armor.Where(a => a.Group == "Feet").Select(a => a.Item).ToList();
+        _armorShield = armor.Where(a => a.Group == "Shield").Select(a => a.Item).ToList();
+        _armorAccessories = armor.Where(a => a.Group == "Accessories").Select(a => a.Item).ToList();
+        _armorOther = armor.Where(a => a.Group == "Other").Select(a => a.Item).ToList();
+        _styles = Grab(IndexedRecordType.CombatStyle, r => CombatTags(r) ?? SourceOf(r));
+        // Ordered by how useful a voice actually is, then by name. Alphabetical alone buried the
+        // whole SOS pack among ~600 creature voices, which is exactly how it reads in game too.
+        _voices = db.SearchRecords(IndexedRecordType.VoiceType, null, AllPickerRecords)
+            .Where(r => !string.IsNullOrWhiteSpace(r.EditorId))
+            .Where(r => VoiceSuitability.IsAllowed(r.EditorId))
+            .Select(r => VoiceItem(r, db))
+            .OrderBy(p => p.Tier)
+            .ThenBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Usable faces first: the ones that would fail the build sink to the bottom rather than
+        // sitting among the good ones looking identical.
+        _faces = new CharGenDiscovery(Log).Discover(_env!)
+            .Select(e => new FaceItem(e))
+            .OrderBy(f => f.IsUsable ? 0 : 1)
+            .ThenBy(f => f.Export.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            RelabelVoiceSilence();
+            Fill("RaceList", _races, "Nord");
+            Fill("ClassList", _classes, "CombatWarrior1H");
+            Fill("OutfitList", _outfits, null);
+            Fill("SkinList", _skins, null);
+            Fill("CstyList", _styles, null);
+            RefreshVoices();
+            Fill("WeaponList", _weapons, null);
+            Fill("AmmoList", _ammo, null);
+            Fill("LoreList", _books, null);
+            FillPlaceKeywords();
+            Fill("SpellList", _spells, null);
+            Fill("PerkList", _perks, null);
+            Fill("ArmorTorsoList", _armorTorso, null);
+            Fill("ArmorHeadList", _armorHead, null);
+            Fill("ArmorHandsList", _armorHands, null);
+            Fill("ArmorFeetList", _armorFeet, null);
+            Fill("ArmorShieldList", _armorShield, null);
+            Fill("ArmorAccessoriesList", _armorAccessories, null);
+            Fill("ArmorOtherList", _armorOther, null);
+            Ctl<ListBox>("FaceList").ItemsSource = _faces;
+        });
+    }
+
+    private static string SourceOf(IndexedRecord r) =>
+        r.SourceMod is { Length: > 0 } mod ? ModNames.Pretty(mod) : r.WinningPlugin;
+
+    /// <summary>
+    /// True when the winning version of this record comes from the game itself, so choosing it
+    /// adds no requirement for anyone who installs her. Judged on the WINNING plugin: a vanilla
+    /// sword a mod overrides is that mod's sword now.
+    /// </summary>
+    private static bool IsBaseGame(IndexedRecord r) =>
+        VanillaMasters.Contains(r.WinningPlugin);
+
+    private static readonly HashSet<string> VanillaMasters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm",
+    };
+
+    /// <summary>
+    /// A race row says what it costs the downloader. Vanilla is free; anything else becomes a
+    /// hard requirement for everyone who installs her, and a creature can never have a face.
+    /// </summary>
+    private static PickerItem RaceRow(RaceOption r) => new(
+        r.Name,
+        r.FormKey,
+        // Creature names repeat hard: five installed mods each ship a "BabyDragonRace",
+        // and the transform picker offers every one of them. Without the FormID and the
+        // EditorID on the row there is no way to tell those five apart.
+        r.Class == RaceClass.Creature
+            ? RecordIdDisplay.GearDetail(r.FormKey, r.EditorId, r.Name, r.Note)
+            : r.Note,
+        (int)r.Class,
+        r.Class switch
+        {
+            RaceClass.Vanilla => "VANILLA",
+            RaceClass.CustomPlayable => "NEEDS A MOD",
+            RaceClass.Creature => "CREATURE",
+            _ => "MOD RACE",
+        },
+        r.Class switch
+        {
+            RaceClass.Vanilla => "good",
+            RaceClass.Creature => "warn",
+            _ => "dim",
+        },
+        editorId: r.EditorId);
+
+    /// <summary>
+    /// A skin ARMO — the record an NPC wears as its body rather than as gear: non-playable and
+    /// covering the torso slot. Verified against Orimagen's Fauna, whose FaunaBody is NonPlayable
+    /// over slots 30-33/37/40/55 and is that follower's WornArmor.
+    /// </summary>
+    private static bool IsSkinArmor(IndexedRecord r) =>
+        (r.MajorFlags & NonPlayableFlag) != 0 && ArmorGroup(r) == "Torso";
+
+    private const uint NonPlayableFlag = 0x00000004;
+
+    private static string ArmorGroup(IndexedRecord r)
+    {
+        if (r.DetailJson is null) return "Other";
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(r.DetailJson);
+            return doc.RootElement.TryGetProperty("SlotGroup", out var group)
+                ? group.GetString() ?? "Other"
+                : "Other";
+        }
+        catch (System.Text.Json.JsonException) { return "Other"; }
+    }
+
+    private static string ArmorLabel(IndexedRecord r)
+    {
+        var source = SourceOf(r);
+        if (r.DetailJson is null) return $"Other • slots unknown • {source}";
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(r.DetailJson);
+            var root = doc.RootElement;
+            var group = root.TryGetProperty("SlotGroup", out var g) ? g.GetString() ?? "Other" : "Other";
+            var type = root.TryGetProperty("ArmorType", out var t) ? t.GetString() ?? "Unknown" : "Unknown";
+            var slots = root.TryGetProperty("BipedSlots", out var s)
+                ? string.Join("+", s.EnumerateArray().Select(v => v.GetString()).Where(v => v is not null))
+                : "unknown slots";
+            return $"{group} • {type} • {slots} • {source}";
+        }
+        catch (System.Text.Json.JsonException) { return $"Other • slots invalid • {source}"; }
+    }
+
+    /// <summary>Turns the stored combat-style analysis into words a player understands.</summary>
+    private static string? CombatTags(IndexedRecord r)
+    {
+        if (r.DetailJson is null) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(r.DetailJson);
+            if (!doc.RootElement.TryGetProperty("Tags", out var tags)) return null;
+            var words = tags.EnumerateArray().Select(t => t.GetString()).Where(t => t is not null);
+            return string.Join(", ", words);
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// One voice as the user sees it: its tier, a chip, and a sentence about what she gets.
+    ///
+    /// Whether a voice pack's files are really installed is checked here rather than at index
+    /// time, because the asset index is built after the records and so is always empty when the
+    /// classifier runs. That left every SOS voice reading "not confirmed on disk" even with all
+    /// its .fuz files present.
+    /// </summary>
+    private PickerItem VoiceItem(IndexedRecord r, CatalogDb db)
+    {
+        var capability = VoiceRanking.CapabilityOf(CapabilityJson(r));
+        var tier = VoiceRanking.TierOf(capability);
+        var source = SourceOf(r);
+
+        var what = tier switch
+        {
+            VoiceTier.Vanilla => "Every recruit, trade and wait line — nothing extra needed",
+            VoiceTier.VoicePack => VoiceRanking.VoiceFolders(r.EditorId!).Any(db.AssetPathPrefixExists)
+                ? "Simply Open Source Voice Pack — voice files installed"
+                : "Simply Open Source Voice Pack — listed, but its voice files are NOT on disk",
+            VoiceTier.NoFollowerLines => WizardCopy.SilentVoice(FollowerPronouns.Female, source),
+            _ => $"{source} — allows generic dialogue, unverified",
+        };
+
+        return new PickerItem(
+            r.EditorId!, r.FormKey, Join(what, CoverageLabel(r.FormKey)),
+            (int)tier, VoiceRanking.Badge(tier), VoiceRanking.BadgeKind(tier),
+            editorId: r.EditorId);
+    }
+
+    private static string? CapabilityJson(IndexedRecord r)
+    {
+        if (r.DetailJson is null) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(r.DetailJson);
+            return doc.RootElement.TryGetProperty("Capability", out var c) ? c.GetString() : null;
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    private void Fill(string listName, IReadOnlyList<PickerItem> items, string? preselect)
+    {
+        var list = Ctl<ListBox>(listName);
+        list.ItemsSource = items;
+        if (preselect is not null)
+            list.SelectedItem = items.FirstOrDefault(i => i.Display.Contains(preselect, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void FillPlaces(string? query)
+    {
+        if (_library is null) return;
+        var items = LocationLibraryBuilder.Search(_library, query, 300)
+            .Where(l => l.Placeable)
+            .Select(l => new LocationItem(l))
+            .ToList();
+        Ctl<ListBox>("PlaceList").ItemsSource = items;
+    }
+
+    // ---------- searching ----------
+
+    private static IReadOnlyList<PickerItem> Filter(IReadOnlyList<PickerItem> all, string? q) =>
+        PickerFilter.Filter(all, q);
+
+    private void Refilter(string boxName, string listName, IReadOnlyList<PickerItem> all)
+    {
+        var list = Ctl<ListBox>(listName);
+        var keep = list.SelectedItem;
+        list.ItemsSource = Filter(all, Ctl<TextBox>(boxName).Text);
+        if (keep is not null) list.SelectedItem = keep;
+    }
+
+    private void RefilterMany(
+        string boxName, string listName, IReadOnlyList<PickerItem> all,
+        HashSet<string> remembered)
+    {
+        var list = Ctl<ListBox>(listName);
+        var visible = Filter(all, Ctl<TextBox>(boxName).Text);
+        _restoringMultiSelection = true;
+        try
+        {
+            list.ItemsSource = visible;
+            if (list.SelectedItems is { } selected)
+                foreach (var item in visible.Where(i => remembered.Contains(i.FormKey)))
+                    selected.Add(item);
+        }
+        finally { _restoringMultiSelection = false; }
+    }
+
+    private void UpdateRememberedSelection(HashSet<string> remembered, SelectionChangedEventArgs e)
+    {
+        if (_restoringMultiSelection) return;
+        foreach (var item in e.RemovedItems.OfType<PickerItem>())
+            remembered.Remove(item.FormKey);
+        foreach (var item in e.AddedItems.OfType<PickerItem>())
+            remembered.Add(item.FormKey);
+    }
+
+    private void OnRaceSearch(object? s, RoutedEventArgs e) => Refilter("RaceSearch", "RaceList", _races);
+
+    // ---------- voices ----------
+
+    /// <summary>
+    /// The voices on offer. 598 of the 1,018 on a real load order are creature or unique voices
+    /// with no follower dialogue at all; showing them by default is what buried the SOS pack.
+    /// </summary>
+    private IReadOnlyList<PickerItem> VoiceSource() =>
+        Ctl<ComboBox>("VoiceScopeBox").SelectedIndex == 1
+            ? _voices
+            : _voices.Where(v => VoiceRanking.IsFollowerReady((VoiceTier)v.Tier)).ToList();
+
+    private void OnVoiceSearch(object? s, RoutedEventArgs e) => RefreshVoices();
+
+    private void OnVoiceScopeChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (_ready) RefreshVoices();
+    }
+
+    private void RefreshVoices()
+    {
+        var source = VoiceSource();
+        Refilter("VoiceSearch", "VoiceList", source);
+
+        var hidden = _voices.Count - source.Count;
+        Ctl<TextBlock>("VoiceCountLine").Text = hidden > 0
+            ? WizardCopy.VoicesSheCanUse(CurrentPronouns, source.Count, hidden)
+            : $"{source.Count:N0} voices";
+    }
+
+    // ---------- books and belongings ----------
+
+    private IReadOnlyList<PickerItem> LoreSource() => Ctl<ComboBox>("LoreKindBox").SelectedIndex switch
+    {
+        1 => _miscItems,
+        2 => _ingestibles,
+        3 => _ingredients,
+        _ => _books,
+    };
+
+    private void OnLoreKindChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (_ready) RefilterMany("LoreSearch", "LoreList", LoreSource(), _selectedLore);
+    }
+
+    private void OnLoreSearch(object? s, RoutedEventArgs e) =>
+        RefilterMany("LoreSearch", "LoreList", LoreSource(), _selectedLore);
+
+    private void OnLoreSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedLore, e);
+
+    /// <summary>"LocTypeAnimalDen" reads badly in a menu; "Animal Den" does not.</summary>
+    private static string Friendly(string keywordEditorId)
+    {
+        var bare = keywordEditorId["LocType".Length..];
+        var spaced = string.Concat(bare.Select((c, i) =>
+            i > 0 && char.IsUpper(c) && !char.IsUpper(bare[i - 1]) ? " " + c : c.ToString()));
+        return spaced.Length == 0 ? keywordEditorId : spaced;
+    }
+
+    private void FillPlaceKeywords()
+    {
+        var box = Ctl<ComboBox>("LinePlaceBox");
+        var items = new List<object> { "Anywhere" };
+        items.AddRange(_placeKeywords);
+        box.ItemsSource = items;
+        box.SelectedIndex = 0;
+    }
+
+    private LineContext BuildLineContext() => new()
+    {
+        LocationKeyword = Ctl<ComboBox>("LinePlaceBox").SelectedItem is PickerItem place
+            ? new RecordRef(place.FormKey)
+            : null,
+        Time = (TimeOfDay)Math.Max(0, Ctl<ComboBox>("LineTimeBox").SelectedIndex),
+    };
+
+    // ---------- evolution (experimental) ----------
+
+    private void OnEvolveToggled(object? s, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        var on = Ctl<CheckBox>("EvolveBox").IsChecked == true;
+        Ctl<Grid>("EvolveOptions").IsEnabled = on;
+
+        // Spell out what she will actually be like at the start, because the temperament box
+        // above stops applying the moment this is switched on.
+        Ctl<TextBlock>("EvolveNote").Text = on
+            ? CurrentPronouns.Fill(
+                "{Subject} will start Cowardly and run from danger — the temperament above no longer "
+                + "applies. {Possessive} confidence, combat skills, health, stamina and magicka rise at each "
+                + "phase. {Possessive} phase is stored in a global you can read or change from the console.")
+            : "";
+    }
+
+    private EvolutionSpec BuildEvolution()
+    {
+        if (Ctl<CheckBox>("EvolveBox").IsChecked != true) return new EvolutionSpec();
+        return new EvolutionSpec
+        {
+            Enabled = true,
+            Phases = (int)(Ctl<NumericUpDown>("EvolvePhases").Value ?? 3),
+            CombatsPerPhase = (int)(Ctl<NumericUpDown>("EvolveCombats").Value ?? 25),
+            StartConfidence = 0,
+            EndConfidence = (byte)Math.Clamp(Ctl<ComboBox>("EvolveEndBox").SelectedIndex, 0, 4),
+        };
+    }
+
+    // ---------- alternate spawn points ----------
+
+    private void OnAddAlternateSpawn(object? s, RoutedEventArgs e)
+    {
+        if (Ctl<ListBox>("PlaceList").SelectedItem is not LocationItem picked)
+        {
+            ShowSpawnError("Pick a place from the list above first.");
+            return;
+        }
+        if (_alternateSpawns.Count >= 4)
+        {
+            ShowSpawnError(WizardCopy.FourPlaces(CurrentPronouns));
+            return;
+        }
+        if (_alternateSpawns.Any(x => x.Location.Id == picked.Location.Id))
+        {
+            ShowSpawnError($"{picked.Location.Display} is already in the list.");
+            return;
+        }
+        if (!picked.Location.Placeable)
+        {
+            ShowSpawnError($"{picked.Location.Display} is an outdoor grid cell and cannot hold a marker.");
+            return;
+        }
+        ShowSpawnError(null);
+        _alternateSpawns.Add(picked);
+        RefreshAlternateSpawns();
+    }
+
+    private void OnRemoveAlternateSpawn(object? s, RoutedEventArgs e)
+    {
+        if (Ctl<ListBox>("AlternateSpawnList").SelectedItem is not LocationItem item) return;
+        _alternateSpawns.Remove(item);
+        RefreshAlternateSpawns();
+    }
+
+    private void RefreshAlternateSpawns() =>
+        Ctl<ListBox>("AlternateSpawnList").ItemsSource = _alternateSpawns.ToList();
+
+    private void ShowSpawnError(string? message)
+    {
+        var block = Ctl<TextBlock>("SpawnError");
+        block.Text = message ?? "";
+        block.IsVisible = message is not null;
+    }
+
+    private void OnE2AToggled(object? s, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        var on = Ctl<CheckBox>("E2ABox").IsChecked == true;
+        Ctl<StackPanel>("E2AOptions").IsVisible = on;
+        Ctl<TextBlock>("E2ANote").Text = on
+            ? _alternateSpawns.Count == 0
+                ? CurrentPronouns.Fill(
+                    "Add at least one place above — otherwise {possessive} hostile form has nowhere to be found, "
+                    + "and {subject} could never be beaten or recruited.")
+                : CurrentPronouns.Fill(
+                    $"{{Possessive}} hostile form waits at one of {_alternateSpawns.Count} place(s). The place chosen "
+                    + "in the list above is where {subject} appears once summoned.")
+            : "";
+    }
+
+    private EnemyToAllySpec BuildEnemyToAlly()
+    {
+        if (Ctl<CheckBox>("E2ABox").IsChecked != true) return new EnemyToAllySpec();
+        return new EnemyToAllySpec
+        {
+            Enabled = true,
+            Company = (HostileCompany)Math.Max(0, Ctl<ComboBox>("E2ACompanyBox").SelectedIndex),
+            LocationIds = _alternateSpawns.Select(x => x.Location.Id).ToList(),
+        };
+    }
+
+    // ---------- transformation (experimental) ----------
+
+    private void OnTransformKindChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        var custom = Ctl<ComboBox>("TransformKindBox").SelectedIndex == 2;
+        Ctl<Grid>("TransformCustom").IsVisible = custom;
+        if (custom && Ctl<ListBox>("TransformRaceList").ItemsSource is null)
+        {
+            // Every race, creatures included — a beast form is the whole point.
+            Fill("TransformRaceList", _transformRaces, null);
+            Fill("TransformSpellList", _spells, null);
+        }
+    }
+
+    private void OnTransformRaceSearch(object? s, RoutedEventArgs e) =>
+        Refilter("TransformRaceSearch", "TransformRaceList", _transformRaces);
+
+    private void OnTransformSpellSearch(object? s, RoutedEventArgs e) =>
+        Refilter("TransformSpellSearch", "TransformSpellList", _spells);
+
+    private TransformSpec BuildTransformation()
+    {
+        var kind = Ctl<ComboBox>("TransformKindBox").SelectedIndex switch
+        {
+            1 => TransformKind.Werewolf,
+            2 => TransformKind.Custom,
+            _ => TransformKind.None,
+        };
+        if (kind == TransformKind.None) return new TransformSpec();
+
+        var race = Picked("TransformRaceList");
+        var spell = Picked("TransformSpellList");
+        return new TransformSpec
+        {
+            Kind = kind,
+            BeastRace = kind == TransformKind.Custom && race is not null ? new RecordRef(race.FormKey) : null,
+            OnTransformSpell = kind == TransformKind.Custom && spell is not null ? new RecordRef(spell.FormKey) : null,
+            RevertOutOfCombat = Ctl<CheckBox>("TransformRevertBox").IsChecked == true,
+        };
+    }
+
+    private string TransformSummary()
+    {
+        var spec = BuildTransformation();
+        if (!spec.IsUsable)
+        {
+            return Ctl<ComboBox>("TransformKindBox").SelectedIndex == 2
+                ? "EXPERIMENTAL — custom chosen but no race or spell picked, so nothing will happen"
+                : "(none)";
+        }
+        var what = spec.Kind == TransformKind.Werewolf
+            ? "werewolf"
+            : string.Join(" + ", new[]
+            {
+                Picked("TransformRaceList")?.Display,
+                Picked("TransformSpellList")?.Display,
+            }.Where(x => x is not null));
+        return $"EXPERIMENTAL — turns into {what} in combat"
+             + (spec.RevertOutOfCombat ? ", reverts after" : ", stays that way");
+    }
+
+    // ---------- relationships with other people ----------
+
+    /// <summary>
+    /// NPCs are the biggest table in the catalogue, so this searches on demand instead of filling
+    /// a list with thousands of names nobody will scroll through.
+    /// </summary>
+    private void OnKinSearch(object? s, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        var text = (Ctl<TextBox>("KinSearch").Text ?? "").Trim();
+        if (text.Length < 2)
+        {
+            Ctl<ListBox>("KinCandidates").ItemsSource = null;
+            return;
+        }
+
+        using var db = new CatalogDb(CatalogBuilder.DefaultDbPath, Log);
+        Ctl<ListBox>("KinCandidates").ItemsSource = db
+            .SearchRecords(IndexedRecordType.Npc, text, 200)
+            .Where(r => !string.IsNullOrWhiteSpace(r.DisplayName))
+            .Select(r => new PickerItem(r.DisplayName!, r.FormKey, SourceOf(r)))
+            .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void OnAddKin(object? s, RoutedEventArgs e)
+    {
+        if (Ctl<ListBox>("KinCandidates").SelectedItem is not PickerItem picked)
+        {
+            ShowKinError("Search for someone and select them from the list first.");
+            return;
+        }
+        if (_kin.Any(k => k.Relationship.Npc.FormKey.Equals(picked.FormKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            ShowKinError(WizardCopy.AlreadyKnows(CurrentPronouns, picked.Display));
+            return;
+        }
+        ShowKinError(null);
+
+        _kin.Add(new KinItem(
+            new NpcRelationship
+            {
+                Npc = new RecordRef(picked.FormKey),
+                Rank = (RelationshipRank)Math.Max(0, Ctl<ComboBox>("KinRankBox").SelectedIndex),
+            },
+            picked.Display,
+            CurrentPronouns));
+        RefreshKinList();
+    }
+
+    private void OnRemoveKin(object? s, RoutedEventArgs e)
+    {
+        if (Ctl<ListBox>("KinList").SelectedItem is not KinItem item) return;
+        _kin.Remove(item);
+        RefreshKinList();
+    }
+
+    private void RefreshKinList() => Ctl<ListBox>("KinList").ItemsSource = _kin.ToList();
+
+    private void ShowKinError(string? message)
+    {
+        var block = Ctl<TextBlock>("KinError");
+        block.Text = message ?? "";
+        block.IsVisible = message is not null;
+    }
+
+    // ---------- custom lines ----------
+
+    private void OnVoiceSelected(object? s, SelectionChangedEventArgs e)
+    {
+        if (_ready) UpdateVoiceSynthStatus();
+    }
+
+    /// <summary>
+    /// Says up front whether these lines can actually be spoken in the chosen voice, rather than
+    /// letting the user write a dozen of them and discover at build time that they will be silent.
+    /// </summary>
+    private void UpdateVoiceSynthStatus()
+    {
+        var status = Ctl<TextBlock>("VoiceSynthStatus");
+        var voice = Picked("VoiceList")?.Display;   // for voice types the display name IS the EditorID
+
+        if (!_voiceModels.Installed)
+        {
+            status.Text = "xVASynth was not found, so custom lines would be silent subtitles. " +
+                          "Install xVASynth (with its lip_fuz plugin) to have them spoken aloud.";
+            return;
+        }
+        if (!_voiceModels.CanMakeFuz)
+        {
+            status.Text = WizardCopy.LipMissing(CurrentPronouns);
+            return;
+        }
+        status.Text = voice is null
+            ? $"xVASynth is ready with {_voiceModels.Models.Count} voice models. Pick a voice to check it."
+            : _voiceModels.CanSpeak(voice)
+                ? $"Ready — “{voice}” can be spoken with lip sync."
+                : $"xVASynth has no model for “{voice}”, so lines in this voice would be silent. " +
+                  "Pick a different voice, or download that voice model in xVASynth.";
+    }
+
+    private void OnLineTriggerChanged(object? s, SelectionChangedEventArgs e)
+    {
+        // Only a player-facing topic needs a menu entry; the rest are spoken unprompted.
+        if (_ready)
+            Ctl<TextBox>("LinePromptBox").IsVisible = Ctl<ComboBox>("LineTriggerBox").SelectedIndex == 3;
+    }
+
+    private void OnAddLine(object? s, RoutedEventArgs e)
+    {
+        var text = (Ctl<TextBox>("LineTextBox").Text ?? "").Trim();
+        var trigger = (DialogueTrigger)Math.Max(0, Ctl<ComboBox>("LineTriggerBox").SelectedIndex);
+        var prompt = (Ctl<TextBox>("LinePromptBox").Text ?? "").Trim();
+
+        if (text.Length == 0) { ShowLineError(WizardCopy.TypeLineFirst(CurrentPronouns)); return; }
+        if (trigger == DialogueTrigger.PlayerTopic && prompt.Length == 0)
+        {
+            ShowLineError("A topic needs the menu entry the player clicks, or it cannot be selected.");
+            return;
+        }
+        ShowLineError(null);
+
+        var emotion = (LineEmotion)Math.Max(0, Ctl<ComboBox>("LineEmotionBox").SelectedIndex);
+        _lines.Add(new DialogueLine
+        {
+            Text = text,
+            Trigger = trigger,
+            Prompt = trigger == DialogueTrigger.PlayerTopic ? prompt : null,
+            Emotion = emotion,
+            // A deliberately chosen emotion should read on her face; neutral stays mid-range.
+            EmotionValue = emotion == LineEmotion.Neutral ? 50u : 75u,
+            Context = BuildLineContext(),
+        });
+
+        Ctl<TextBox>("LineTextBox").Text = "";
+        RefreshLineList();
+    }
+
+    private void OnRemoveLine(object? s, RoutedEventArgs e)
+    {
+        if (Ctl<ListBox>("LineList").SelectedItem is not LineItem item) return;
+        _lines.Remove(item.Line);
+        RefreshLineList();
+    }
+
+    private void RefreshLineList() =>
+        Ctl<ListBox>("LineList").ItemsSource = _lines.Select(l => new LineItem(l)).ToList();
+
+    private void ShowLineError(string? message)
+    {
+        var block = Ctl<TextBlock>("LineError");
+        block.Text = message ?? "";
+        block.IsVisible = message is not null;
+    }
+    private void OnClassSearch(object? s, RoutedEventArgs e) => Refilter("ClassSearch", "ClassList", _classes);
+    private void OnCstySearch(object? s, RoutedEventArgs e) => Refilter("CstySearch", "CstyList", _styles);
+    private void OnOutfitSearch(object? s, RoutedEventArgs e) => Refilter("OutfitSearch", "OutfitList", _outfits);
+    private void OnSkinSearch(object? s, RoutedEventArgs e) => Refilter("SkinSearch", "SkinList", _skins);
+    private void OnArmorSearch(object? s, RoutedEventArgs e)
+    {
+        RefilterMany("ArmorSearch", "ArmorTorsoList", _armorTorso, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorHeadList", _armorHead, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorHandsList", _armorHands, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorFeetList", _armorFeet, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorShieldList", _armorShield, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorAccessoriesList", _armorAccessories, _selectedArmor);
+        RefilterMany("ArmorSearch", "ArmorOtherList", _armorOther, _selectedArmor);
+    }
+    private void OnWeaponSearch(object? s, RoutedEventArgs e) =>
+        RefilterMany("WeaponSearch", "WeaponList", _weapons, _selectedWeapons);
+    private void OnSpellSearch(object? s, RoutedEventArgs e) =>
+        RefilterMany("SpellSearch", "SpellList", _spells, _selectedSpells);
+    private void OnPerkSearch(object? s, RoutedEventArgs e) =>
+        RefilterMany("PerkSearch", "PerkList", _perks, _selectedPerks);
+    private void OnPlaceSearch(object? s, RoutedEventArgs e) => FillPlaces(Ctl<TextBox>("PlaceSearch").Text);
+
+    private void OnArmorSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedArmor, e);
+    private void OnAmmoSearch(object? s, RoutedEventArgs e) =>
+        RefilterMany("AmmoSearch", "AmmoList", _ammo, _selectedAmmo);
+
+    private void OnAmmoSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedAmmo, e);
+
+    private void OnWeaponSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedWeapons, e);
+    private void OnSpellSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedSpells, e);
+    private void OnPerkSelectionChanged(object? s, SelectionChangedEventArgs e) =>
+        UpdateRememberedSelection(_selectedPerks, e);
+
+    private void OnNameTyped(object? s, RoutedEventArgs e)
+    {
+        SyncPluginName();
+        RefreshWorkspaceChrome();
+    }
+
+    /// <summary>The hub name and the declaration only matter when copying assets.</summary>
+    private void OnHubModeChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        Ctl<StackPanel>("OwnHubPanel").IsVisible = Ctl<ComboBox>("HubModeBox").SelectedIndex == 2;
+    }
+
+    private void OnStatsModeChanged(object? s, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        Ctl<StackPanel>("CustomStatsPanel").IsVisible =
+            Ctl<ComboBox>("StatsModeBox").SelectedIndex == 1;
+    }
+
+    private void OnApplyStatPreset(object? s, RoutedEventArgs e)
+    {
+        var index = Math.Clamp(
+            Ctl<ComboBox>("StatPresetBox").SelectedIndex,
+            0,
+            Enum.GetValues<FollowerStatPreset>().Length - 1);
+        ApplyStatPreset((FollowerStatPreset)index);
+        Ctl<ComboBox>("StatsModeBox").SelectedIndex = 1;
+        Ctl<StackPanel>("CustomStatsPanel").IsVisible = true;
+    }
+
+    private void OnCustomRacesToggled(object? s, RoutedEventArgs e)
+    {
+        if (!_ready || _vanillaRaces.Count == 0) return;   // still loading
+        Refilter("RaceSearch", "RaceList", _races);
+    }
+
+    /// <summary>Say immediately why a face cannot be used, rather than at build time.</summary>
+    private void OnFaceSelected(object? s, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        if (Ctl<ListBox>("FaceList").SelectedItem is not FaceItem face) return;
+        SetStatus(face.Blocker is { } why
+            ? $"'{face.Export.Name}' cannot be used — {why}."
+            : $"'{face.Export.Name}' is ready to build.");
+    }
+
+    private void OnFaceSearch(object? s, RoutedEventArgs e)
+    {
+        var q = Ctl<TextBox>("FaceSearch").Text;
+        Ctl<ListBox>("FaceList").ItemsSource = string.IsNullOrWhiteSpace(q)
+            ? _faces
+            : _faces.Where(f => f.Export.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    // ---------- navigation ----------
+
+    /// <summary>The rail doubles as navigation — people expect to click the step they want.</summary>
+    private void OnStepClicked(object? s, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (!_ready || s is not Control { Tag: { } tag }) return;
+        if (int.TryParse(tag.ToString(), out var step)) ShowStep(step);
+    }
+
+    private void OnBack(object? s, RoutedEventArgs e)
+    {
+        if (_navigator.Back()) RenderCurrentSection();
+    }
+
+    private void OnNext(object? s, RoutedEventArgs e)
+    {
+        if (_navigator.Current == WorkspaceSection.Studio)
+        {
+            OpenSection(_nextRecommended?.Section ?? WorkspaceSection.IdentityProgression);
+            return;
+        }
+        if (_step == 0 && string.IsNullOrWhiteSpace(Ctl<TextBox>("NameBox").Text))
+        {
+            SetStatus(WizardCopy.NeedsName(CurrentPronouns));
+            return;
+        }
+        if (_navigator.Current < WorkspaceSection.ReviewValidationBuild)
+            OpenSection(_navigator.Current + 1);
+    }
+
+    private void ShowStep(int step) => OpenSection((WorkspaceSection)(Math.Clamp(step, 0, StepCount - 1) + 1));
+
+    private void OpenSection(WorkspaceSection section)
+    {
+        _navigator.Open(section);
+        RenderCurrentSection();
+        var surface = FocusRouting.DefaultSurface(section, _preferences.Experience);
+        var deck = surface switch
+        {
+            DensePickerFamily.Race => "Race",
+            DensePickerFamily.Voice => "Voice",
+            DensePickerFamily.Class => "Class",
+            DensePickerFamily.Armor => "ArmorTorso",
+            DensePickerFamily.Location => "Location",
+            _ => null,
+        };
+        if (deck is not null) OpenDeck(deck);
+    }
+
+    private void RenderCurrentSection()
+    {
+        var section = _navigator.Current;
+        Ctl<Control>("StudioPage").IsVisible = section == WorkspaceSection.Studio;
+        _step = Math.Clamp((int)section - 1, 0, StepCount - 1);
+        for (var i = 0; i < StepCount; i++)
+        {
+            Ctl<Control>($"Page{i}").IsVisible = section != WorkspaceSection.Studio && i == _step;
+            var tab = Ctl<TextBlock>($"Step{i}");
+            tab.Classes.Set("active", section != WorkspaceSection.Studio && i == _step);
+        }
+        Ctl<Button>("BackButton").IsEnabled = section != WorkspaceSection.Studio;
+        Ctl<Button>("NextButton").IsEnabled = section != WorkspaceSection.ReviewValidationBuild;
+        Ctl<Button>("NextButton").Content = section == WorkspaceSection.Studio ? "Open next action" : "Continue";
+
+        if (section == WorkspaceSection.IdentityProgression) SyncPluginName();
+        if (section == WorkspaceSection.ReviewValidationBuild) Ctl<TextBlock>("SummaryText").Text = Summary();
+        SetStatus(section == WorkspaceSection.Studio ? "Studio overview" : section.DisplayName());
+        RefreshWorkspaceChrome();
+    }
+
+    private void SyncPluginName()
+    {
+        var name = Ctl<TextBox>("NameBox").Text ?? "";
+        var safe = new string(name.Where(char.IsLetterOrDigit).ToArray());
+        Ctl<TextBox>("PluginBox").Text = safe.Length == 0 ? "" : $"FF_{safe}.esp";
+    }
+
+    // ---------- 3.6 workspace shell ----------
+
+    private void OnNavClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: { } tag }
+            && int.TryParse(tag.ToString(), out var value)
+            && value is >= 0 and <= 7)
+            OpenSection((WorkspaceSection)value);
+    }
+
+    private void OnNextRecommended(object? sender, RoutedEventArgs e) =>
+        OpenSection(_nextRecommended?.Section ?? WorkspaceSection.IdentityProgression);
+
+    private void RefreshWorkspaceChrome()
+    {
+        if (!_ready) return;
+
+        var name = Ctl<TextBox>("NameBox").Text?.Trim() ?? "";
+        var plugin = Ctl<TextBox>("PluginBox").Text?.Trim() ?? "";
+        var draft = new WorkspaceDraftSummary(
+            EnvironmentReady: _env is not null,
+            CatalogueReady: _env is not null && !_indexing,
+            IsIndexing: _indexing,
+            Name: name,
+            PluginName: plugin,
+            HasRace: Picked("RaceList") is not null,
+            HasFace: Ctl<ListBox>("FaceList").SelectedItem is FaceItem,
+            HasVoice: Picked("VoiceList") is not null,
+            CustomLineCount: _lines.Count,
+            HasClass: Picked("ClassList") is not null,
+            HasCombatStyle: Picked("CstyList") is not null,
+            ArmorCount: _selectedArmor.Count,
+            WeaponCount: _selectedWeapons.Count,
+            SpellCount: _selectedSpells.Count,
+            PerkCount: _selectedPerks.Count,
+            HasPlacement: Ctl<ListBox>("PlaceList").SelectedItem is LocationItem,
+            HasBlockingBuildError: _lastBuildHadMustFix);
+        var readiness = WorkspaceReadiness.Evaluate(draft);
+        _nextRecommended = WorkspaceReadiness.NextRecommended(readiness);
+
+        for (var i = 0; i < readiness.Count; i++)
+        {
+            Ctl<TextBlock>($"NavStatus{i}").Text = readiness[i].Status;
+            var pill = Ctl<Border>($"NavStatusPill{i}");
+            pill.Classes.Set("chip-good", readiness[i].Level == ReadinessLevel.Complete);
+            pill.Classes.Set("chip-ok", readiness[i].Level == ReadinessLevel.InProgress);
+            pill.Classes.Set("chip-warn", readiness[i].Level == ReadinessLevel.NeedsAttention);
+            pill.Classes.Set("chip-bad", readiness[i].Level == ReadinessLevel.Error);
+            pill.Classes.Set("chip-dim", readiness[i].Level is not (ReadinessLevel.Complete
+                or ReadinessLevel.InProgress or ReadinessLevel.NeedsAttention or ReadinessLevel.Error));
+            Ctl<TextBlock>($"StudioSummary{i}").Text = readiness[i].Summary;
+        }
+
+        Ctl<TextBlock>("NextActionTitle").Text = _nextRecommended.Action;
+        Ctl<TextBlock>("NextActionDetail").Text = _nextRecommended.Summary;
+        Ctl<TextBlock>("TopFollowerName").Text = name.Length == 0 ? "New follower" : name;
+        Ctl<TextBlock>("DossierName").Text = name.Length == 0 ? "Unnamed follower" : name;
+        Ctl<TextBlock>("DossierPlugin").Text = plugin.Length == 0 ? "No plugin name yet" : plugin;
+        Ctl<TextBlock>("DossierIdentity").Text = readiness[0].Summary;
+        Ctl<TextBlock>("DossierAppearance").Text = readiness[1].Summary;
+        Ctl<TextBlock>("DossierVoice").Text = readiness[2].Summary;
+        Ctl<TextBlock>("DossierCombat").Text = readiness[3].Summary;
+        Ctl<TextBlock>("DossierLoadout").Text = readiness[4].Summary;
+        Ctl<TextBlock>("DossierPlacement").Text = readiness[5].Summary;
+        Ctl<TextBlock>("DossierDrawerText").Text = string.Join(Environment.NewLine + Environment.NewLine,
+            readiness.Select(item => $"{item.Section.DisplayName()}: {item.Summary}"));
+
+        Ctl<TextBlock>("EnvironmentState").Text = _env is null
+            ? (_indexing ? "Discovering installed environment…" : "Environment needs attention")
+            : $"{_env.ManagerLabel} ready";
+        Ctl<TextBlock>("StudioEnvironmentDetail").Text = _env is null
+            ? "Manager, catalogue and installed content are still being resolved."
+            : $"{_env.EnabledPluginCount:N0} enabled plugins · {(_indexing ? "catalogue indexing" : "catalogue ready")}";
+    }
+
+    private void InitializeCommands()
+    {
+        _commands =
+        [
+            new("Open Studio", "Workspace overview", () => OpenSection(WorkspaceSection.Studio)),
+            new("Open Identity", "Name, relationship and progression", () => OpenSection(WorkspaceSection.IdentityProgression)),
+            new("Open Appearance", "Race and RaceMenu face", () => OpenSection(WorkspaceSection.Appearance)),
+            new("Open Voice", "Voice coverage and custom dialogue", () => OpenSection(WorkspaceSection.VoiceDialogue)),
+            new("Open Combat", "Class, skills and transformation", () => OpenSection(WorkspaceSection.CombatSkillsTransformation)),
+            new("Open Loadout", "Equipment, belongings and magic", () => OpenSection(WorkspaceSection.Loadout)),
+            new("Open Placement", "Starting location and routines", () => OpenSection(WorkspaceSection.PlacementRoutines)),
+            new("Open Review", "Validation and build", () => OpenSection(WorkspaceSection.ReviewValidationBuild)),
+            new("Build follower", "Validate and write the follower package", () =>
+            {
+                OpenSection(WorkspaceSection.ReviewValidationBuild);
+                OnBuild(null, new RoutedEventArgs());
+            }),
+            new("Paths…", "xVASynth and output folders", () => OnPathsSetup(null, new RoutedEventArgs())),
+            new("MO2 setup…", "Choose ModOrganizer.ini and profile", () => OnMo2Setup(null, new RoutedEventArgs())),
+            new("Switch manager", "Flip Vortex / Mod Organizer 2", () => OnManagerSwitch(null, new RoutedEventArgs())),
+            new("Copy diagnostics", "Setup + choices + last build, for a bug report",
+                () => OnCopyDiagnostics(null, new RoutedEventArgs())),
+            new("Toggle Guided / Expert", "Change workspace experience", ToggleExperience),
+            new("Cycle theme", "Switch to the next visual theme", CycleTheme),
+        ];
+        Ctl<ListBox>("CommandList").ItemsSource = _commands;
+    }
+
+    private void OnOpenCommandPalette(object? sender, RoutedEventArgs e) => OpenCommandPalette();
+
+    private void OpenCommandPalette()
+    {
+        Ctl<Border>("CommandPaletteOverlay").IsVisible = true;
+        Ctl<TextBox>("CommandSearch").Text = "";
+        ShowCommands(_commands);
+        Ctl<TextBox>("CommandSearch").Focus();
+    }
+
+    private void OnCloseCommandPalette(object? sender, RoutedEventArgs e) => CloseCommandPalette();
+
+    private void CloseCommandPalette() => Ctl<Border>("CommandPaletteOverlay").IsVisible = false;
+
+    private void OnCommandSearch(object? sender, KeyEventArgs e)
+    {
+        // Arrows move the highlight while the caret stays in the search box. They never change
+        // the query, so they must not re-filter (which would snap the highlight back to the top).
+        if (e.Key is Key.Down or Key.Up)
+        {
+            var list = Ctl<ListBox>("CommandList");
+            if (list.ItemCount > 0)
+                list.SelectedIndex = Math.Clamp(
+                    list.SelectedIndex + (e.Key == Key.Down ? 1 : -1), 0, list.ItemCount - 1);
+            e.Handled = true;
+            return;
+        }
+
+        // Enter must run the highlighted row. Re-filtering here would reset SelectedIndex to 0
+        // and launch the first hit instead of the one the user arrowed to.
+        if (e.Key == Key.Enter)
+        {
+            RunSelectedCommand();
+            e.Handled = true;
+            return;
+        }
+
+        // Caret movement must not re-filter: ShowCommands would snap the highlight back to 0.
+        if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.Tab or Key.Escape)
+            return;
+
+        var query = Ctl<TextBox>("CommandSearch").Text?.Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? _commands
+            : _commands.Where(command => command.Title.Contains(query, StringComparison.OrdinalIgnoreCase)
+                                         || command.Detail.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        ShowCommands(filtered);
+    }
+
+    /// <summary>
+    /// Fills the palette and highlights the top hit. Focus stays in the search box, so without
+    /// this the list has no selection and Enter would do nothing at all — the whole point of a
+    /// type-and-run palette.
+    /// </summary>
+    private void ShowCommands(IReadOnlyList<CommandOption> commands)
+    {
+        var list = Ctl<ListBox>("CommandList");
+        list.ItemsSource = commands;
+        list.SelectedIndex = commands.Count > 0 ? 0 : -1;
+    }
+
+    private void OnCommandInvoked(object? sender, TappedEventArgs e) => RunSelectedCommand();
+
+    private void RunSelectedCommand()
+    {
+        if (Ctl<ListBox>("CommandList").SelectedItem is not CommandOption command) return;
+        CloseCommandPalette();
+        command.Run();
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            if (Ctl<Border>("DeckOverlay").IsVisible)
+            {
+                CloseDeck(cancel: true);
+                e.Handled = true;
+            }
+            else if (Ctl<Border>("CommandPaletteOverlay").IsVisible)
+            {
+                CloseCommandPalette();
+                e.Handled = true;
+            }
+            else if (Ctl<Border>("DossierDrawer").IsVisible)
+            {
+                Ctl<Border>("DossierDrawer").IsVisible = false;
+                e.Handled = true;
+            }
+            return;
+        }
+
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0) return;
+
+        // A modal overlay owns the keyboard. Do not navigate or rebuild behind it.
+        if (Ctl<Border>("DeckOverlay").IsVisible) return;
+        if (Ctl<Border>("CommandPaletteOverlay").IsVisible && e.Key != Key.K) return;
+
+        if (e.Key == Key.K)
+        {
+            OpenCommandPalette();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.E)
+        {
+            ToggleExperience();
+            e.Handled = true;
+        }
+        else if (e.Key is >= Key.D0 and <= Key.D7)
+        {
+            OpenSection((WorkspaceSection)(e.Key - Key.D0));
+            e.Handled = true;
+        }
+    }
+
+    private void OnToggleExperience(object? sender, RoutedEventArgs e) => ToggleExperience();
+
+    private void ToggleExperience()
+    {
+        var mode = _preferences.Experience == ExperienceMode.Guided ? ExperienceMode.Expert : ExperienceMode.Guided;
+        _preferences = _preferences with { Experience = mode, ExpertIntroductionSeen = true };
+        Ctl<Button>("ExperienceButton").Content = mode == ExperienceMode.Expert ? "Expert" : "Guided";
+        SaveUiPreferences();
+    }
+
+    private void CycleTheme() => Ctl<ComboBox>("ThemeBox").SelectedIndex =
+        (Ctl<ComboBox>("ThemeBox").SelectedIndex + 1) % Enum.GetValues<UiTheme>().Length;
+
+    private void OnThemeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready) return;
+        var index = Math.Clamp(Ctl<ComboBox>("ThemeBox").SelectedIndex, 0, Enum.GetValues<UiTheme>().Length - 1);
+        var theme = (UiTheme)index;
+        _preferences = _preferences with { Theme = theme };
+        if (Application.Current is { } app) ThemeResources.Apply(app, theme);
+        SaveUiPreferences();
+    }
+
+    private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (!_ready) return;
+        var narrow = e.NewSize.Width < 1180;
+        Ctl<Border>("DossierPanel").IsVisible = !narrow;
+        Ctl<Button>("DossierToggleButton").IsVisible = narrow;
+        // Hiding the panel does not shrink its fixed column: without this the pages kept being
+        // measured 312px narrower than the window and got clipped on the right (these pages have
+        // horizontal scrolling disabled), leaving a dead strip exactly where the dossier had been.
+        Ctl<Grid>("WorkspaceGrid").ColumnDefinitions[2].Width =
+            narrow ? new GridLength(0) : new GridLength(312);
+        if (!narrow) Ctl<Border>("DossierDrawer").IsVisible = false;
+    }
+
+    private void OnOpenDossier(object? sender, RoutedEventArgs e) =>
+        Ctl<Border>("DossierDrawer").IsVisible = true;
+
+    private void OnCloseDossier(object? sender, RoutedEventArgs e) =>
+        Ctl<Border>("DossierDrawer").IsVisible = false;
+
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e) => SaveUiPreferences();
+
+    private void SaveUiPreferences()
+    {
+        var size = WindowState == WindowState.Maximized
+            ? _preferences.Window
+            : new WindowPlacement(Math.Max(1040, Width), Math.Max(700, Height), false);
+        _preferences = _preferences with
+        {
+            Window = size with { Maximized = WindowState == WindowState.Maximized },
+        };
+        try
+        {
+            UiPreferencesStore.Save(_preferences);
+            if (_ready) Ctl<TextBlock>("AutosaveState").Text = "● UI preferences saved";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (_ready) Ctl<TextBlock>("AutosaveState").Text = "UI preferences could not be saved";
+            Log.Warning(ex, "Could not save UI preferences");
+        }
+    }
+
+    /// <summary>
+    /// Puts a paste-ready diagnostics report on the clipboard. Every 3.x bug report so far has
+    /// arrived without any of this, so the first reply was always a request for it.
+    /// </summary>
+    private async void OnCopyDiagnostics(object? sender, RoutedEventArgs e)
+    {
+        string report;
+        try
+        {
+            report = DiagnosticsReport.Render(
+                appVersion: typeof(WizardWindow).Assembly.GetName().Version?.ToString(3) ?? "unknown",
+                env: _env,
+                isIndexing: _indexing,
+                knownPlaceCount: _library?.Locations.Count ?? 0,
+                exportedFaceCount: _faces.Count,
+                preferences: _preferences,
+                draft: new DiagnosticsDraft(
+                    FollowerName: Ctl<TextBox>("NameBox").Text?.Trim() ?? "",
+                    PluginName: Ctl<TextBox>("PluginBox").Text?.Trim() ?? "",
+                    Race: Picked("RaceList")?.Display,
+                    Face: (Ctl<ListBox>("FaceList").SelectedItem as FaceItem)?.Export.Name,
+                    Voice: Picked("VoiceList")?.Display,
+                    Class: Picked("ClassList")?.Display,
+                    ArmorCount: _selectedArmor.Count,
+                    WeaponCount: _selectedWeapons.Count,
+                    AmmoCount: _selectedAmmo.Count,
+                    SpellCount: _selectedSpells.Count,
+                    PerkCount: _selectedPerks.Count,
+                    CustomLineCount: _lines.Count),
+                lastBuildMustFix: _lastMustFix,
+                lastBuildWarnings: _lastBuildWarnings);
+        }
+        catch (Exception ex)
+        {
+            // A diagnostics button that crashes the app is worse than no button at all.
+            Log.Warning(ex, "Could not assemble diagnostics");
+            SetStatus("Could not assemble diagnostics — see the log.");
+            return;
+        }
+
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            SetStatus("No clipboard available on this system.");
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(report);
+            SetStatus("Diagnostics copied — paste them into your bug report.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not write diagnostics to the clipboard");
+            SetStatus("The clipboard refused the copy — another app may be holding it.");
+        }
+    }
+
+    // ---------- Expert Deck ----------
+
+    private void OnOpenDeck(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { Tag: { } tag }) return;
+        OpenDeck(tag.ToString() ?? "");
+    }
+
+    private void OpenDeck(string target)
+    {
+        var definition = CreateDeckDefinition(target);
+        _deckTarget = target;
+        _deckOpener = FocusManager?.GetFocusedElement() as Control;
+        _deckSession = new ExpertDeckSession(definition.Family, definition.Records, definition.Mode, definition.SelectedKeys);
+        Ctl<TextBlock>("DeckTitle").Text = $"Browse {definition.Family}";
+        Ctl<TextBlock>("DeckFamily").Text = definition.Family;
+        Ctl<TextBox>("DeckSearch").Text = "";
+        Ctl<DataGrid>("DeckGrid").SelectionMode = definition.Mode == DeckSelectionMode.Multi
+            ? DataGridSelectionMode.Extended
+            : DataGridSelectionMode.Single;
+        Ctl<Border>("DeckOverlay").IsVisible = true;
+        RefreshDeck();
+        Ctl<TextBox>("DeckSearch").Focus();
+    }
+
+    private sealed record DeckDefinition(
+        string Family,
+        IReadOnlyList<DeckRecord> Records,
+        DeckSelectionMode Mode,
+        IReadOnlyList<string> SelectedKeys);
+
+    private DeckDefinition CreateDeckDefinition(string target)
+    {
+        static IReadOnlyList<DeckRecord> PickerRecords(IEnumerable<PickerItem> source) => source
+            .Select(item => new DeckRecord(item.FormKey, item.Display, item.Detail, item.Badge, item.EditorId, item))
+            .ToList();
+        static IReadOnlyList<string> SinglePicker(ListBox list) => list.SelectedItem is PickerItem item ? [item.FormKey] : [];
+
+        return target switch
+        {
+            "Race" => new("races", PickerRecords(_races), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("RaceList"))),
+            "Face" => new("faces", _faces.Select(face => new DeckRecord(face.Export.Name, face.Display, face.Detail, face.Badge, face.Export.Name, face)).ToList(), DeckSelectionMode.Single,
+                Ctl<ListBox>("FaceList").SelectedItem is FaceItem face ? [face.Export.Name] : []),
+            "Voice" => new("voices", PickerRecords(_voices), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("VoiceList"))),
+            "Class" => new("classes", PickerRecords(_classes), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("ClassList"))),
+            "CombatStyle" => new("combat styles", PickerRecords(_styles), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("CstyList"))),
+            "ArmorTorso" => Multi("torso armor", _armorTorso, _selectedArmor),
+            "ArmorHead" => Multi("helmets", _armorHead, _selectedArmor),
+            "ArmorHands" => Multi("gauntlets", _armorHands, _selectedArmor),
+            "ArmorFeet" => Multi("boots", _armorFeet, _selectedArmor),
+            "ArmorShield" => Multi("shields", _armorShield, _selectedArmor),
+            "ArmorAccessories" => Multi("accessories", _armorAccessories, _selectedArmor),
+            "ArmorOther" => Multi("other armor", _armorOther, _selectedArmor),
+            "Weapon" => Multi("weapons", _weapons, _selectedWeapons),
+            "Ammo" => Multi("ammunition", _ammo, _selectedAmmo),
+            "Lore" => Multi("belongings", LoreSource(), _selectedLore),
+            "Spell" => Multi("spells", _spells, _selectedSpells),
+            "Perk" => Multi("perks", _perks, _selectedPerks),
+            "Outfit" => new("outfits", PickerRecords(_outfits), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("OutfitList"))),
+            "Skin" => new("body records", PickerRecords(_skins), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("SkinList"))),
+            "TransformRace" => new("transform races", PickerRecords(_transformRaces), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("TransformRaceList"))),
+            "TransformSpell" => new("transform spells", PickerRecords(_spells), DeckSelectionMode.Single, SinglePicker(Ctl<ListBox>("TransformSpellList"))),
+            "Location" => LocationDeck(),
+            _ => new("records", [], DeckSelectionMode.Single, []),
+        };
+
+        DeckDefinition Multi(string family, IReadOnlyList<PickerItem> source, HashSet<string> selected) =>
+            new(family, PickerRecords(source), DeckSelectionMode.Multi, selected.ToList());
+
+        DeckDefinition LocationDeck()
+        {
+            var records = (_library?.Locations ?? [])
+                .Where(location => location.Placeable)
+                .Select(location =>
+                {
+                    var item = new LocationItem(location);
+                    return new DeckRecord(location.Id, item.Display, item.Detail, item.Badge, location.CellEditorId, item);
+                }).ToList();
+            var selected = Ctl<ListBox>("PlaceList").SelectedItem is LocationItem item ? new[] { item.Location.Id } : [];
+            return new("locations", records, DeckSelectionMode.Single, selected);
+        }
+    }
+
+    private void OnDeckSearch(object? sender, KeyEventArgs e) => RefreshDeck();
+
+    private void OnClearDeckFilter(object? sender, RoutedEventArgs e)
+    {
+        Ctl<TextBox>("DeckSearch").Text = "";
+        RefreshDeck();
+    }
+
+    private void OnClearDeckSelection(object? sender, RoutedEventArgs e)
+    {
+        _deckSession?.ClearSelection();
+        RefreshDeck();
+    }
+
+    /// <summary>
+    /// Unselects a whole picker. Reported by a user who added the wrong clothing, hit a
+    /// must-fix build, went back to undo it and found no way to: click-again-to-deselect is
+    /// invisible, and the deck's checkbox column is a read-only status light. Kin and custom
+    /// lines already had "Remove selected", which taught people to look for a button.
+    /// </summary>
+    private void OnClearPicks(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { Tag: { } tag }) return;
+
+        switch (tag.ToString())
+        {
+            case "ArmorTorso": ClearFamily(_selectedArmor, _armorTorso, "ArmorTorsoList"); break;
+            case "ArmorHead": ClearFamily(_selectedArmor, _armorHead, "ArmorHeadList"); break;
+            case "ArmorHands": ClearFamily(_selectedArmor, _armorHands, "ArmorHandsList"); break;
+            case "ArmorFeet": ClearFamily(_selectedArmor, _armorFeet, "ArmorFeetList"); break;
+            case "ArmorShield": ClearFamily(_selectedArmor, _armorShield, "ArmorShieldList"); break;
+            case "ArmorAccessories": ClearFamily(_selectedArmor, _armorAccessories, "ArmorAccessoriesList"); break;
+            case "ArmorOther": ClearFamily(_selectedArmor, _armorOther, "ArmorOtherList"); break;
+            case "Weapon": ClearFamily(_selectedWeapons, _weapons, "WeaponList"); break;
+            case "Ammo": ClearFamily(_selectedAmmo, _ammo, "AmmoList"); break;
+            case "Lore": ClearFamily(_selectedLore, LoreSource(), "LoreList"); break;
+            case "Spell": ClearFamily(_selectedSpells, _spells, "SpellList"); break;
+            case "Perk": ClearFamily(_selectedPerks, _perks, "PerkList"); break;
+            // Single-choice optionals: once set they could never be unset either.
+            case "Face": Ctl<ListBox>("FaceList").SelectedItem = null; break;
+            case "CombatStyle": Ctl<ListBox>("CstyList").SelectedItem = null; break;
+            case "Outfit": Ctl<ListBox>("OutfitList").SelectedItem = null; break;
+            case "Skin": Ctl<ListBox>("SkinList").SelectedItem = null; break;
+            case "TransformRace": Ctl<ListBox>("TransformRaceList").SelectedItem = null; break;
+            case "TransformSpell": Ctl<ListBox>("TransformSpellList").SelectedItem = null; break;
+        }
+
+        RefreshWorkspaceChrome();
+    }
+
+    /// <summary>
+    /// Clears only the keys this picker offers. Same scoping rule the deck uses: the seven
+    /// armor slots share one remembered set, so clearing torso must not drop the helmet.
+    /// </summary>
+    private void ClearFamily(HashSet<string> remembered, IReadOnlyList<PickerItem> family, string listName)
+    {
+        DeckSelectionMerge.ReplaceFamily(remembered, family.Select(item => item.FormKey), []);
+        RestoreMulti(listName, family, remembered);
+    }
+
+    private void RefreshDeck()
+    {
+        if (_deckSession is null) return;
+        var records = _deckSession.Filter(Ctl<TextBox>("DeckSearch").Text);
+        var grid = Ctl<DataGrid>("DeckGrid");
+        _syncingDeckSelection = true;
+        try
+        {
+            grid.ItemsSource = records;
+            DeckGridSelection.SyncSelected(grid, records);
+        }
+        finally { _syncingDeckSelection = false; }
+
+        Ctl<TextBlock>("DeckSelectedCount").Text = $"{_deckSession.SelectionCart.Count:N0} selected";
+        Ctl<ListBox>("DeckCart").ItemsSource = _deckSession.SelectionCart.Select(record => record.Display).ToList();
+        Ctl<TextBlock>("DeckEmptyState").IsVisible = records.Count == 0;
+        Ctl<TextBlock>("DeckEmptyState").Text = records.Count == 0
+            ? _deckSession.EmptyStateMessage(Ctl<TextBox>("DeckSearch").Text)
+            : "";
+        RefreshDeckInspector(grid.SelectedItem as DeckRecord);
+    }
+
+    private void OnDeckSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingDeckSelection || _deckSession is null) return;
+        foreach (var removed in e.RemovedItems.OfType<DeckRecord>()) _deckSession.SetSelected(removed.Key, false);
+        foreach (var added in e.AddedItems.OfType<DeckRecord>()) _deckSession.SetSelected(added.Key, true);
+        Ctl<TextBlock>("DeckSelectedCount").Text = $"{_deckSession.SelectionCart.Count:N0} selected";
+        Ctl<ListBox>("DeckCart").ItemsSource = _deckSession.SelectionCart.Select(record => record.Display).ToList();
+        RefreshDeckInspector(Ctl<DataGrid>("DeckGrid").SelectedItem as DeckRecord);
+    }
+
+    private void RefreshDeckInspector(DeckRecord? record)
+    {
+        Ctl<TextBlock>("DeckInspectorName").Text = record?.Display ?? "Select a record";
+        Ctl<TextBlock>("DeckInspectorType").Text = record?.Badge ?? _deckSession?.Family ?? "";
+        Ctl<TextBlock>("DeckInspectorDetail").Text = record is null
+            ? "Choose a row to inspect its plugin and identity."
+            : string.Join(Environment.NewLine, new[] { record.Detail, record.Key, record.EditorId }.Where(value => !string.IsNullOrWhiteSpace(value))!);
+    }
+
+    private void OnCancelDeck(object? sender, RoutedEventArgs e) => CloseDeck(cancel: true);
+
+    private void OnApplyDeck(object? sender, RoutedEventArgs e)
+    {
+        if (_deckSession is null || _deckTarget is null) return;
+        ApplyDeckSelection(_deckTarget, _deckSession.Commit());
+        CloseDeck(cancel: false);
+        RefreshWorkspaceChrome();
+    }
+
+    private void CloseDeck(bool cancel)
+    {
+        if (cancel) _deckSession?.Cancel();
+        Ctl<Border>("DeckOverlay").IsVisible = false;
+        _deckSession = null;
+        _deckTarget = null;
+        _deckOpener?.Focus();
+        _deckOpener = null;
+    }
+
+    /// <summary>
+    /// Writes a deck's committed keys back into the canonical picker state.
+    ///
+    /// Every multi-choice family replaces ONLY the keys that deck actually offered. That scope
+    /// is what keeps the seven armor decks from clearing each other out of the one shared
+    /// _selectedArmor set — and what stops the belongings deck (which shows books OR misc OR
+    /// food OR ingredients, never all four) from silently dropping the kinds it never showed.
+    /// </summary>
+    private void ApplyDeckSelection(string target, IReadOnlyList<string> keys)
+    {
+        var selected = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+        var offered = _deckSession?.OfferedKeys ?? [];
+
+        void ReplaceOffered(HashSet<string> destination) =>
+            DeckSelectionMerge.ReplaceFamily(destination, offered, selected);
+
+        switch (target)
+        {
+            case "Race": SelectSingle("RaceList", _races, selected); break;
+            case "Face":
+                Ctl<ListBox>("FaceList").ItemsSource = _faces;
+                Ctl<ListBox>("FaceList").SelectedItem = _faces.FirstOrDefault(face => selected.Contains(face.Export.Name));
+                break;
+            case "Voice": SelectSingle("VoiceList", _voices, selected); break;
+            case "Class": SelectSingle("ClassList", _classes, selected); break;
+            case "CombatStyle": SelectSingle("CstyList", _styles, selected); break;
+            case "ArmorTorso": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorTorsoList", _armorTorso, _selectedArmor); break;
+            case "ArmorHead": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorHeadList", _armorHead, _selectedArmor); break;
+            case "ArmorHands": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorHandsList", _armorHands, _selectedArmor); break;
+            case "ArmorFeet": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorFeetList", _armorFeet, _selectedArmor); break;
+            case "ArmorShield": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorShieldList", _armorShield, _selectedArmor); break;
+            case "ArmorAccessories": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorAccessoriesList", _armorAccessories, _selectedArmor); break;
+            case "ArmorOther": ReplaceOffered(_selectedArmor); RestoreMulti("ArmorOtherList", _armorOther, _selectedArmor); break;
+            case "Weapon": ReplaceOffered(_selectedWeapons); RestoreMulti("WeaponList", _weapons, _selectedWeapons); break;
+            case "Ammo": ReplaceOffered(_selectedAmmo); RestoreMulti("AmmoList", _ammo, _selectedAmmo); break;
+            case "Lore": ReplaceOffered(_selectedLore); RestoreMulti("LoreList", LoreSource(), _selectedLore); break;
+            case "Spell": ReplaceOffered(_selectedSpells); RestoreMulti("SpellList", _spells, _selectedSpells); break;
+            case "Perk": ReplaceOffered(_selectedPerks); RestoreMulti("PerkList", _perks, _selectedPerks); break;
+            case "Outfit": SelectSingle("OutfitList", _outfits, selected); break;
+            case "Skin": SelectSingle("SkinList", _skins, selected); break;
+            case "TransformRace": SelectSingle("TransformRaceList", _transformRaces, selected); break;
+            case "TransformSpell": SelectSingle("TransformSpellList", _spells, selected); break;
+            case "Location":
+                var places = (_library?.Locations ?? []).Where(location => location.Placeable).Select(location => new LocationItem(location)).ToList();
+                Ctl<ListBox>("PlaceList").ItemsSource = places;
+                Ctl<ListBox>("PlaceList").SelectedItem = places.FirstOrDefault(item => selected.Contains(item.Location.Id));
+                break;
+        }
+    }
+
+    private void SelectSingle(string listName, IReadOnlyList<PickerItem> source, HashSet<string> selected)
+    {
+        var list = Ctl<ListBox>(listName);
+        list.ItemsSource = source;
+        list.SelectedItem = source.FirstOrDefault(item => selected.Contains(item.FormKey));
+    }
+
+    private void RestoreMulti(string listName, IReadOnlyList<PickerItem> source, HashSet<string> selected)
+    {
+        var list = Ctl<ListBox>(listName);
+        _restoringMultiSelection = true;
+        try
+        {
+            list.ItemsSource = source;
+            list.SelectedItems?.Clear();
+            if (list.SelectedItems is { } choices)
+                foreach (var item in source.Where(item => selected.Contains(item.FormKey))) choices.Add(item);
+        }
+        finally { _restoringMultiSelection = false; }
+    }
+
+    // ---------- building ----------
+
+    private PickerItem? Picked(string listName) => Ctl<ListBox>(listName).SelectedItem as PickerItem;
+
+    /// <summary>
+    /// "+3,914 lines from RDO, OOD, +6 more" — what she says for free with this voice, before a
+    /// single custom line is written. Silent when the scan has never been run.
+    /// </summary>
+    private string? CoverageLabel(string voiceFormKey)
+    {
+        if (_coverage is null || !_coverage.TryGetValue(voiceFormKey, out var c) || c.TotalLines == 0)
+            return null;
+        var top = c.Contributions
+            .Where(x => !x.Plugin.Equals("Skyrim.esm", StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .Select(x => Path.GetFileNameWithoutExtension(x.Plugin))
+            .ToList();
+        var rest = c.Contributions.Count - top.Count;
+        var who = top.Count == 0 ? "vanilla" : string.Join(", ", top) + (rest > 0 ? $", +{rest} more" : "");
+        return $"+{c.TotalLines:N0} lines from {who}";
+    }
+
+    private static string Join(string a, string? b) => b is null ? a : $"{a}  ·  {b}";
+
+    private static IReadOnlyList<RecordRef> RecordRefs(HashSet<string> remembered) =>
+        RecordRefs(remembered, 1);
+
+    /// <summary>Same list with a stack count — arrows and stacked belongings.</summary>
+    private static IReadOnlyList<RecordRef> RecordRefs(HashSet<string> remembered, int count) =>
+        remembered.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+            .Select(k => new RecordRef(k, Math.Max(1, count)))
+            .ToList();
+
+    /// <summary>Reads a NumericUpDown that the user may have blanked out.</summary>
+    private int CountOf(string control, int fallback) =>
+        Ctl<NumericUpDown>(control).Value is { } v ? (int)Math.Clamp(v, 1, 9999) : fallback;
+
+    private string Summary()
+    {
+        SyncPluginName();
+        var place = (Ctl<ListBox>("PlaceList").SelectedItem as LocationItem)?.Location;
+        var face = (Ctl<ListBox>("FaceList").SelectedItem as FaceItem)?.Export;
+        return $"""
+            Name      {Ctl<TextBox>("NameBox").Text}   ({Ctl<TextBox>("PluginBox").Text})
+            Race      {Picked("RaceList")?.Display ?? "(default Nord)"}{(Ctl<CheckBox>("VampireBox").IsChecked == true ? "   (vampire)" : "")}
+            Face      {face?.Name ?? "(plain default face)"}
+            Voice     {Picked("VoiceList")?.Display ?? "(default)"}
+            Lines     {LinesSummary()}
+            Class     {Picked("ClassList")?.Display ?? "(default warrior)"}
+            Combat    {Picked("CstyList")?.Display ?? "(race default)"}
+            Level     {(Ctl<ComboBox>("LevelModeBox").SelectedIndex == 0 ? "scales with player" : $"fixed at {LevelValue("FixedLevelBox", 20)}")}
+            Stats     {StatsSummary()}
+            Body      {Picked("SkinList")?.Display ?? "(the player's installed body — best for OBody)"}
+            Equipment {_selectedArmor.Count} armor/accessory piece(s), {_selectedWeapons.Count} weapon(s)
+            Ammo      {(_selectedAmmo.Count == 0 ? "(none — a bow needs arrows)" : $"{_selectedAmmo.Count} type(s), {CountOf("AmmoCountBox", 100)} each")}
+            Carries   {(_selectedLore.Count == 0 ? "(nothing personal)" : $"{_selectedLore.Count} book(s)/belonging(s)")}
+            Magic     {_selectedSpells.Count} spell(s), {_selectedPerks.Count} perk(s)
+            Legacy    {Picked("OutfitList")?.Display ?? "(none — using actual equipment)"}
+            Waits at  {place?.Display ?? "(Whiterun, outside)"}
+            Routine   {RoutineSummary()}
+            Starts    {(Ctl<CheckBox>("E2ABox").IsChecked == true ? CurrentPronouns.Fill($"as an ENEMY at {_alternateSpawns.Count} possible place(s) — beat {{object}} to recruit {{object}}") : _alternateSpawns.Count == 0 ? "always at the place above" : $"at random among {_alternateSpawns.Count} place(s): " + string.Join(", ", _alternateSpawns.Select(x => x.Location.Display)))}
+            Regards   you as {CurrentPronouns.Possessive} {(RelationshipRank)Math.Max(0, Ctl<ComboBox>("RelationshipBox").SelectedIndex)}
+            Knows     {(_kin.Count == 0 ? "(nobody else)" : string.Join(", ", _kin.Select(k => $"{k.DisplayName} ({k.Relationship.Rank})")))}
+            Growth    {EvolutionSummary()}
+            Form      {TransformSummary()}
+            """;
+    }
+
+    private string EvolutionSummary()
+    {
+        var spec = BuildEvolution();
+        return spec.IsUsable
+            ? $"EXPERIMENTAL — {spec.Phases} phases, {spec.CombatsPerPhase} fights each, "
+              + $"cowardly to {(Confidence)spec.EndConfidence} (adds a script)"
+            : CurrentPronouns.Fill("(none — no script, {possessive} values never change)");
+    }
+
+    /// <summary>Mirrors the game's confidence ranks for display only.</summary>
+    private enum Confidence { Cowardly, Cautious, Average, Brave, Foolhardy }
+
+    private string RoutineSummary()
+    {
+        var idle = (IdleBehavior)Math.Max(0, Ctl<ComboBox>("IdleBox").SelectedIndex);
+        var sleeps = Ctl<CheckBox>("SleepsBox").IsChecked == true;
+        var what = idle switch
+        {
+            IdleBehavior.StaysPut => CurrentPronouns.Fill("keeps to {possessive} spot"),
+            IdleBehavior.WandersNearby => CurrentPronouns.Fill("uses the room {subject} is in"),
+            IdleBehavior.SettlesWhereverSheIs => CurrentPronouns.Fill("settles wherever {subject} is"),
+            _ => "game default",
+        };
+        return $"{what}, {(sleeps ? "sleeps at night" : "never sleeps")}";
+    }
+
+    /// <summary>
+    /// States plainly whether the custom lines will be heard. "3 custom lines" reads as success
+    /// even when every one of them is about to ship silent, so the silent case says so.
+    /// </summary>
+    private string LinesSummary()
+    {
+        if (_lines.Count == 0) return CurrentPronouns.Fill("(none — only {possessive} voice type's stock dialogue)");
+        var voice = Picked("VoiceList")?.Display;
+        var spoken = Ctl<CheckBox>("SynthesizeBox").IsChecked == true
+                     && _voiceModels.CanMakeFuz && _voiceModels.CanSpeak(voice);
+        return $"{_lines.Count} custom line(s), {(spoken ? "spoken with lip sync" : "SILENT subtitles")}";
+    }
+
+    private FollowerProfile BuildProfile()
+    {
+        SyncPluginName();
+        var name = (Ctl<TextBox>("NameBox").Text ?? "Follower").Trim();
+        var place = (Ctl<ListBox>("PlaceList").SelectedItem as LocationItem)?.Location;
+        var face = (Ctl<ListBox>("FaceList").SelectedItem as FaceItem)?.Export;
+        var csty = Picked("CstyList");
+        var legacyOutfit = Picked("OutfitList");
+
+        var mortality = Ctl<ComboBox>("MortalBox").SelectedIndex;   // 0 protected, 1 essential, 2 mortal
+        // The game's own confidence scale, used directly: 0 cowardly … 4 foolhardy.
+        var confidence = (byte)Math.Clamp(Ctl<ComboBox>("TemperBox").SelectedIndex, 0, 4);
+        var scalesWithPlayer = Ctl<ComboBox>("LevelModeBox").SelectedIndex == 0;
+
+        return new FollowerProfile
+        {
+            Name = name,
+            PluginName = Ctl<TextBox>("PluginBox").Text!,
+            Female = Ctl<ComboBox>("SexBox").SelectedIndex == 0,
+            Race = new RecordRef(Picked("RaceList")?.FormKey ?? VanillaForms.NordRace.ToString()),
+            VoiceType = new RecordRef(Picked("VoiceList")?.FormKey ?? VanillaForms.FemaleEvenTonedVoice.ToString()),
+            Class = new RecordRef(Picked("ClassList")?.FormKey ?? VanillaForms.CombatWarrior1HClass.ToString()),
+            Outfit = legacyOutfit is null ? null : new RecordRef(legacyOutfit.FormKey),
+            SkinArmor = Picked("SkinList") is { } skin ? new RecordRef(skin.FormKey) : null,
+            CombatStyle = csty is null ? null : new CombatStyleChoice
+            {
+                Style = new RecordRef(csty.FormKey),
+                CloneIntoPlugin = Ctl<CheckBox>("CloneCstyBox").IsChecked == true,
+            },
+            Placement = place is not null
+                ? new PlacementSpec
+                {
+                    LocationId = place.Id,
+                    AlternateLocationIds = _alternateSpawns.Select(x => x.Location.Id).ToList(),
+                }
+                : new PlacementSpec { Cell = new RecordRef(VanillaForms.WhiterunWorldPersistentCell.ToString()) },
+            IsVampire = Ctl<CheckBox>("VampireBox").IsChecked == true,
+            Appearance = new AppearanceSpec { CharGenExportName = face?.Name },
+            Behavior = new BehaviorSpec
+            {
+                Idle = (IdleBehavior)Math.Max(0, Ctl<ComboBox>("IdleBox").SelectedIndex),
+                SleepsAtNight = Ctl<CheckBox>("SleepsBox").IsChecked == true,
+                Relationship = (RelationshipRank)Math.Max(0, Ctl<ComboBox>("RelationshipBox").SelectedIndex),
+                OtherRelationships = _kin.Select(k => k.Relationship).ToList(),
+            },
+            Evolution = BuildEvolution(),
+            Transformation = BuildTransformation(),
+            EnemyToAlly = BuildEnemyToAlly(),
+            Dialogue = new DialogueSpec
+            {
+                Lines = _lines.ToList(),
+                Synthesize = Ctl<CheckBox>("SynthesizeBox").IsChecked == true,
+            },
+            Hub = Ctl<ComboBox>("HubModeBox").SelectedIndex switch
+            {
+                1 => HubMode.FreeHubs,
+                2 => HubMode.OwnHub,
+                _ => HubMode.ReferenceInstalled,
+            },
+            OwnHubPrefix = Ctl<TextBox>("HubPrefixBox").Text,
+            // Only ever set from the user ticking the box themselves.
+            RedistributionPermission = Ctl<CheckBox>("HubPermissionBox").IsChecked == true
+                ? "The author confirmed in FollowerForge that they checked each source mod's " +
+                  "permissions and may redistribute these files."
+                : null,
+            Protected = mortality == 0,
+            Essential = mortality == 1,
+            Marriageable = Ctl<CheckBox>("MarriageBox").IsChecked == true,
+            Level = new LevelScaling
+            {
+                ScaleWithPlayer = scalesWithPlayer,
+                MinLevel = (short)LevelValue("MinLevelBox", 10),
+                MaxLevel = (short)LevelValue("MaxLevelBox", 0),
+                FixedLevel = (short)LevelValue("FixedLevelBox", 20),
+            },
+            EquippedArmor = RecordRefs(_selectedArmor),
+            InventoryItems = [.. RecordRefs(_selectedArmor), .. RecordRefs(_selectedWeapons),
+                              .. RecordRefs(_selectedLore, CountOf("LoreCountBox", 1))],
+            Ammo = RecordRefs(_selectedAmmo, CountOf("AmmoCountBox", 100)),
+            Spells = RecordRefs(_selectedSpells),
+            Perks = RecordRefs(_selectedPerks),
+            Ai = new AiValues
+            {
+                // Only the most reckless setting makes her pick fights; a follower otherwise
+                // defends rather than starts them.
+                Aggression = confidence == 4 ? (byte)1 : (byte)0,
+                Confidence = confidence,
+                Assistance = 2,
+            },
+            Stats = BuildStats(),
+        };
+    }
+
+    private int LevelValue(string controlName, int fallback) =>
+        Ctl<NumericUpDown>(controlName).Value is { } value
+            ? Math.Clamp((int)value, 0, short.MaxValue)
+            : fallback;
+
+    private void BuildSkillEditor()
+    {
+        var groups = new[]
+        {
+            (Title: "Combat",
+                Skills: new[]
+                {
+                    FollowerSkill.OneHanded, FollowerSkill.TwoHanded, FollowerSkill.Archery,
+                    FollowerSkill.Block, FollowerSkill.Smithing, FollowerSkill.HeavyArmor,
+                    FollowerSkill.LightArmor,
+                }),
+            (Title: "Magic",
+                Skills: new[]
+                {
+                    FollowerSkill.Alteration, FollowerSkill.Conjuration, FollowerSkill.Destruction,
+                    FollowerSkill.Illusion, FollowerSkill.Restoration, FollowerSkill.Enchanting,
+                }),
+            (Title: "Stealth & utility",
+                Skills: new[]
+                {
+                    FollowerSkill.Sneak, FollowerSkill.Lockpicking, FollowerSkill.Pickpocket,
+                    FollowerSkill.Alchemy, FollowerSkill.Speech,
+                }),
+        };
+
+        var editor = Ctl<Grid>("SkillEditorGrid");
+        for (var column = 0; column < groups.Length; column++)
+        {
+            var panel = new StackPanel { Spacing = 5 };
+            Grid.SetColumn(panel, column);
+
+            var heading = new TextBlock { Text = groups[column].Title, Margin = new Thickness(0, 0, 0, 3) };
+            heading.Classes.Add("label");
+            panel.Children.Add(heading);
+
+            foreach (var skill in groups[column].Skills)
+            {
+                var row = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitions($"*,{SkillValueEditorWidth}"),
+                    ColumnSpacing = 8,
+                };
+                row.Children.Add(new TextBlock
+                {
+                    Text = SkillLabel(skill),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                });
+
+                var box = new NumericUpDown
+                {
+                    Minimum = 0,
+                    Maximum = 100,
+                    Value = 15,
+                    FormatString = "0",
+                    MinWidth = SkillValueEditorWidth,
+                };
+                Grid.SetColumn(box, 1);
+                row.Children.Add(box);
+                panel.Children.Add(row);
+                _skillBoxes.Add(skill, box);
+            }
+
+            editor.Children.Add(panel);
+        }
+    }
+
+    private static string SkillLabel(FollowerSkill skill) => skill switch
+    {
+        FollowerSkill.OneHanded => "One-Handed",
+        FollowerSkill.TwoHanded => "Two-Handed",
+        FollowerSkill.HeavyArmor => "Heavy Armor",
+        FollowerSkill.LightArmor => "Light Armor",
+        _ => System.Text.RegularExpressions.Regex.Replace(skill.ToString(), "([a-z])([A-Z])", "$1 $2"),
+    };
+
+    private void ApplyStatPreset(FollowerStatPreset preset)
+    {
+        var stats = FollowerStats.FromPreset(preset);
+        foreach (var skill in Enum.GetValues<FollowerSkill>())
+            _skillBoxes[skill].Value = stats.GetSkill(skill);
+        Ctl<NumericUpDown>("HealthStatBox").Value = stats.Health;
+        Ctl<NumericUpDown>("MagickaStatBox").Value = stats.Magicka;
+        Ctl<NumericUpDown>("StaminaStatBox").Value = stats.Stamina;
+    }
+
+    private FollowerStats BuildStats()
+    {
+        if (Ctl<ComboBox>("StatsModeBox").SelectedIndex != 1)
+            return new FollowerStats();
+
+        return new FollowerStats
+        {
+            Mode = FollowerStatsMode.Custom,
+            Skills = Enum.GetValues<FollowerSkill>()
+                .ToDictionary(skill => skill, skill => SkillValue(_skillBoxes[skill])),
+            Health = PrimaryStatValue("HealthStatBox", 100),
+            Magicka = PrimaryStatValue("MagickaStatBox", 100),
+            Stamina = PrimaryStatValue("StaminaStatBox", 100),
+        };
+    }
+
+    private string StatsSummary()
+    {
+        if (Ctl<ComboBox>("StatsModeBox").SelectedIndex != 1)
+            return "automatic from class (recommended)";
+
+        var strongest = Enum.GetValues<FollowerSkill>()
+            .Select(skill => (Skill: skill, Value: SkillValue(_skillBoxes[skill])))
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Skill)
+            .Take(3)
+            .Select(pair => $"{SkillLabel(pair.Skill)} {pair.Value}");
+        return $"custom: {string.Join(", ", strongest)}; " +
+               $"H/M/S {PrimaryStatValue("HealthStatBox", 100)}/" +
+               $"{PrimaryStatValue("MagickaStatBox", 100)}/" +
+               $"{PrimaryStatValue("StaminaStatBox", 100)}";
+    }
+
+    private static byte SkillValue(NumericUpDown box) =>
+        box.Value is { } value ? (byte)Math.Clamp((int)value, 0, 100) : (byte)15;
+
+    private ushort PrimaryStatValue(string controlName, ushort fallback) =>
+        Ctl<NumericUpDown>(controlName).Value is { } value
+            ? (ushort)Math.Clamp((int)value, 0, ushort.MaxValue)
+            : fallback;
+
+    private async void OnBuild(object? s, RoutedEventArgs e)
+    {
+        var log = Ctl<TextBox>("BuildLog");
+        if (_env is null) { log.Text = "Still reading your setup — try again in a moment."; return; }
+        if (string.IsNullOrWhiteSpace(Ctl<TextBox>("NameBox").Text)) { log.Text = WizardCopy.SheNeedsName(CurrentPronouns); return; }
+
+        Ctl<Button>("BuildButton").IsEnabled = false;
+        log.Text = "Building…";
+        var profile = BuildProfile();
+        var wantZip = Ctl<CheckBox>("ZipBox").IsChecked == true;
+
+        try
+        {
+            var (text, dir, groups) = await Task.Run(() => RunBuild(profile, wantZip));
+            log.Text = text;
+            _lastOutputDir = dir;
+            Ctl<Button>("OpenFolderButton").IsEnabled = dir is not null;
+            Ctl<ItemsControl>("MustFixList").ItemsSource = groups.MustFix;
+            Ctl<ItemsControl>("WarningList").ItemsSource = groups.CheckBeforeBuilding;
+            Ctl<ItemsControl>("InformationList").ItemsSource = groups.Information;
+            _lastBuildHadMustFix = groups.MustFix.Count > 0;
+            _lastMustFix = groups.MustFix;
+            _lastBuildWarnings = groups.CheckBeforeBuilding;
+        }
+        catch (Exception ex)
+        {
+            log.Text = "Build failed: " + ex.Message;
+            _lastBuildHadMustFix = true;
+        }
+        finally
+        {
+            Ctl<Button>("BuildButton").IsEnabled = true;
+            RefreshWorkspaceChrome();
+        }
+    }
+
+    private (string Text, string? Dir, ReviewFindingGroups Groups) RunBuild(FollowerProfile profile, bool zip)
+    {
+        var workspace = AppUserSettings.DefaultWorkspaceRoot;
+        var publishRoot = AppUserSettings.Load(warning: message => Log.Warning("{Warning}", message)).WorkspaceRoot;
+        var dbPath = CatalogBuilder.DefaultDbPath;
+        CatalogDb? catalog = File.Exists(dbPath) ? new CatalogDb(dbPath, Log) : null;
+        try
+        {
+            var result = new FollowerBuilder(Log).Build(
+                profile, _env!, workspace, location: null, catalog, publishRoot);
+            var sb = new System.Text.StringBuilder();
+            var p = FollowerPronouns.FromFemale(profile.Female);
+            sb.AppendLine(result.Success
+                ? WizardCopy.DoneReady(p)
+                : "BUILD STOPPED — FollowerForge found errors that would make the plugin unsafe.");
+            sb.AppendLine();
+            sb.AppendLine($"Plugin   : {result.Manifest.PluginName}");
+            sb.AppendLine($"Requires : {string.Join(", ", result.Manifest.Masters)}");
+            sb.AppendLine($"Face     : {(result.Manifest.HasFaceGen ? "custom (from your RaceMenu export)" : "default")}");
+            sb.AppendLine($"Folder   : {result.OutputDirectory}");
+
+            if (result.Success && zip)
+            {
+                var zipPath = new VortexPackager(Log)
+                    .Package(result.OutputDirectory, Path.GetFileNameWithoutExtension(profile.PluginName));
+                sb.AppendLine($"Zip      : {zipPath}");
+            }
+
+            var sharing = result.Validation.Findings
+                .Where(f => f.Code.StartsWith("SHARING_", StringComparison.Ordinal))
+                .ToList();
+            if (sharing.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine(WizardCopy.ShareHer(p));
+                foreach (var f in sharing) sb.AppendLine($"  • {f.Message}");
+            }
+
+            var errors = result.Validation.Findings
+                .Where(f => f.Severity == ValidationSeverity.Error)
+                .ToList();
+            var warnings = result.Validation.Findings
+                .Where(f => f.Severity == ValidationSeverity.Warning)
+                .ToList();
+            if (errors.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Must be fixed:");
+                foreach (var f in errors) sb.AppendLine($"  • {f.Message} [{f.Code}]");
+            }
+            if (warnings.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Warnings to review:");
+                foreach (var f in warnings) sb.AppendLine($"  • {f.Message} [{f.Code}]");
+
+                if (warnings.Any(f => f.Code == "FACEGEN_TEX_MISSING"))
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("  Those textures are baked into the face you exported. Either install the");
+                    sb.AppendLine("  mod that provides them, or load the preset in RaceMenu and press F5 again");
+                    sb.AppendLine("  with your current mods so the face points at files you actually have.");
+                }
+            }
+            if (errors.Count == 0 && warnings.Count == 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("No problems found.");
+            }
+            sb.AppendLine();
+            sb.AppendLine(WizardCopy.FindHer(p));
+            return (sb.ToString(), result.Success ? result.OutputDirectory : null,
+                ReviewFindingGroups.From(result.Validation.Findings));
+        }
+        finally { catalog?.Dispose(); }
+    }
+
+    private void OnOpenFolder(object? s, RoutedEventArgs e)
+    {
+        if (_lastOutputDir is null) return;
+        if (!Directory.Exists(_lastOutputDir))
+        {
+            SetStatus(WizardCopy.FolderGone(CurrentPronouns));
+            return;
+        }
+        // Launch Explorer with the folder as an argument. Shell-executing the directory path
+        // itself is what produced the "Location is not available" dialog.
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"\"{_lastOutputDir.TrimEnd(Path.DirectorySeparatorChar)}\"",
+            UseShellExecute = true,
+        });
+    }
+
+    private void SetStatus(string text)
+    {
+        Ctl<TextBlock>("StatusLine").Text = text;
+        RefreshWorkspaceChrome();
+    }
+}

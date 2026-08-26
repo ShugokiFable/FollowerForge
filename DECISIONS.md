@@ -1,5 +1,36 @@
 # FollowerForge decisions
 
+## 2026-08-26 - 3.7.0: creature transformation, and the outfit branch (Claude Code)
+
+- A creature race is excluded from the IDENTITY picker because it carries no head data, so no
+  face can ever be built for it. That is a constraint on the race she IS. It does not apply to
+  the race she TURNS INTO: the face belongs to her base race and FF_Transform only calls
+  SetRace() once combat starts. Vanilla werewolf, already offered by this feature, is itself
+  classified Creature - the exclusion was internally inconsistent.
+- The transform race picker gets its OWN source, `_transformRaces`, rather than reusing the
+  identity source. Four call sites had drifted apart because there was no single source to
+  point at. Creatures lead it; beast forms are the point of transforming.
+- The identity page's "show creature races" checkbox does NOT gate the transform picker. They
+  answer different questions and must not share a switch.
+- Creature rows carry FormID + EditorID. Five installed mods each ship a "BabyDragonRace"; in
+  a 944-row list a bare display name identifies nothing.
+- A validator must follow the same branch as the compiler it validates. FollowerCompiler picks
+  chosen-OTFT XOR generated-outfit; FollowerValidator ran the generated-outfit check
+  unconditionally and hard-failed a combination the compiler has always supported. When two
+  pieces of code encode the same decision, one of them will be wrong eventually - the check
+  now mirrors the branch explicitly and a test pins both sides.
+- One situation gets one finding. LEGACY_OUTFIT_WITH_EQUIPMENT ("the engine MAY choose the
+  OTFT pieces") was hedging about something certain, and fired alongside the new definite
+  warning. Deleted rather than kept for compatibility.
+- Warn only about what can be measured. The deferred "RaceMenu overlay warning" became a
+  bodyMorphs warning because two real presets on disk carry bodyMorphs and neither carries an
+  overlay block - so the overlay key name cannot be confirmed, and a guessed schema is exactly
+  what the workspace rules forbid. Overlays are named inside the warning as a known
+  limitation, with no claim of detection.
+- Untouched sliders do not count as a body shape. RaceMenu writes the whole slider set
+  regardless of use (119 present, 86 shaped in the reference preset), so counting entries
+  rather than values would warn on every single build and be ignored within a week.
+
 ## 2026-08-19 - 3.6.0 release-readiness: deck apply, readiness colors, palette (Grok)
 
 - Stay on snapshot 3.6.0. It was never a public release; 3.5.0 remains the rollback.

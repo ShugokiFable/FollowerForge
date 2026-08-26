@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FollowerForge.Ui.Mo2SetupWindow"
+        Width="760" Height="650" MinWidth="640" MinHeight="540"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/appicon.ico"
+        Title="FollowerForge - Mod Organizer 2 setup"
+        Background="{DynamicResource WindowBrush}">
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="LineHeight" Value="19"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,9"/>
+      <Setter Property="MinHeight" Value="38"/>
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="MinHeight" Value="38"/>
+      <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource OnStatusBrush}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover">
+      <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+    </Style>
+    <Style Selector="Button.primary:pressed">
+      <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="28" RowSpacing="14">
+    <StackPanel Grid.Row="0" Spacing="6">
+      <TextBlock Text="Mod Organizer 2 setup" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+      <TextBlock Classes="hint"
+                 Text="Choose the exact ModOrganizer.ini and profile FollowerForge should index. This does not modify MO2, your profile, Skyrim, or your saves."/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="8">
+      <TextBlock Classes="label" Text="ModOrganizer.ini"/>
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <TextBox x:Name="IniPathBox" Grid.Column="0"/>
+        <Button Grid.Column="1" Content="Browse..." Click="OnBrowse"/>
+        <Button Grid.Column="2" Content="Read profiles" Click="OnInspect"/>
+      </Grid>
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Spacing="8">
+      <TextBlock Classes="label" Text="Profile"/>
+      <ComboBox x:Name="ProfileBox" MinHeight="38" SelectionChanged="OnProfileChanged"/>
+    </StackPanel>
+
+    <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="14">
+      <TextBlock x:Name="ResolvedSummary" Classes="hint" Text="Choose ModOrganizer.ini to inspect the instance."/>
+    </Border>
+
+    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+      <TextBlock x:Name="ValidationText" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
+    </ScrollViewer>
+
+    <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+      <Button Grid.Column="0" Content="Return to automatic detection" Click="OnAutomatic"/>
+      <Button Grid.Column="2" Content="Cancel" Click="OnCancel"/>
+      <Button x:Name="UseButton" Grid.Column="3" Classes="primary"
+              Content="Use this profile and re-index" IsEnabled="False" Click="OnUse"/>
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,8 @@
+FollowerForge 3.5.0
+
+- Werewolf now reverts after combat. 3.4.0 (and earlier) cast Skyrim's Beast Form
+  visual spell, which waits 10 seconds and turns the follower into a werewolf
+  again after revert had already run. That spell is no longer used.
+- A fight that ends during the 2-second delay no longer transforms them afterwards.
+- Rebuild the follower for the new script to apply. Existing saves of a stuck
+  werewolf follower revert on load once the new script is installed.
