@@ -6,6 +6,7 @@ Change: Creature races can be transformed into. Plus the real cause of the "Must
         report - armour with a legacy outfit was a guaranteed hard error - and a warning
         for the RaceMenu body shape that has never transferred.
 
-Status: implemented; Release build, 489 tests, and a shipped-CLI end-to-end build all pass
+Status: RELEASED - GitHub v3.7.0 (Latest), built from eb4c2de, CI green on that commit
 Runtime: tool-validated (plugin bytes read back); in-game creature transform not confirmed
-Release: NOT published, pushed or tagged. GitHub serves 3.6.1; Nexus serves 3.6.0.
+Nexus:   NOT yet uploaded. Page still serves 3.6.0; 3.6.1 never went up, so the staged
+         3.7.0 upload in NEXUS-UPLOAD/ delivers both.

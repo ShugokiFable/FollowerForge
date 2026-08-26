@@ -22,7 +22,10 @@
        warning without pretending to detect them.
 7. [x] 489 Release tests (478 inherited + 11 new). End-to-end CLI build of the reported
        combination verified, including the VMAD FormID for the creature beast race.
-8. [ ] Publish 3.7.0 zip, refresh NEXUS-UPLOAD, push, tag `v3.7.0`. NOT yet authorised.
+8. [x] Published, pushed, CI green on `eb4c2de`, tagged `v3.7.0`, release created as Latest
+       with the zip attached (99,252,454 B, SHA-256 A2A1A067...). NEXUS-UPLOAD refreshed.
+9. [ ] Nexus upload - the author's step. The page is still on 3.6.0, and 3.6.1 was never
+       uploaded there, so this one upload delivers both.
 
 Next, deliberately NOT in 3.7.0:
   - Detecting RaceMenu overlays specifically. Neither reference preset on this machine has an

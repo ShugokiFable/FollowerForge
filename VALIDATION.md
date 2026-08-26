@@ -13,7 +13,7 @@ Robocopy: 238 copied, 0 failed, 0 mismatched (bin/obj/dist excluded — disposab
 ```text
 dotnet build src/FollowerForge.slnx -c Release      -> PASS, 0 warnings, 0 errors
 dotnet test  src/FollowerForge.slnx -c Release      -> 489 passed, 0 failed (478 + 11 new)
-Publish-FollowerForge.ps1 -Version 3.7.0            -> NOT RUN (release not authorised yet)
+Publish-FollowerForge.ps1 -Version 3.7.0            -> PASS, boot check "window stayed up"
 ```
 
 ## Creature transformation gate
@@ -78,6 +78,25 @@ tintInfo — so bodyMorphs is genuinely unread, and genuinely lost.
 
 `transforms` was deliberately NOT warned about: in the reference preset it holds SHIELD and
 WEAPON node placement from a weapon-position mod, which has nothing to do with the follower.
+
+## Shipped artifact
+
+```text
+zip     : FollowerForge-3.7.0-win-x64.zip
+bytes   : 99,252,454
+SHA-256 : A2A1A0675F6DB84D8D7E5E12E3ABD8FEC74DF48813C705A91E627F8BBA3FA55E
+stamp   : 3.7.0+eb4c2deb200f6d5a5ce31babe019397f401a2080
+tag     : v3.7.0 -> eb4c2de (Latest, not draft, not prerelease, target main)
+```
+
+GitHub release asset digest reads `sha256:a2a1a067...bba3fa55e` — identical to the local hash
+above, and the size matches. CI was green on `eb4c2de` itself (489/489, snapshot auto-detected
+as FollowerForge 3.7.0) BEFORE the tag was cut, so the tag names a commit whose tests passed.
+
+The zip was published twice. The first build (`5B8FF57D...`, from `6ce7945`) was discarded
+because the Nexus changelog it embedded was superseded; the shipped one carries the final text.
+Both stamps name commits that exist in pushed history — the 3.6.1 mistake was amending after
+publishing, which orphaned the sha the binary already named.
 
 ## Runtime status
 
